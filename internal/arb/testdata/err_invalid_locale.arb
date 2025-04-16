@@ -1,0 +1,7 @@
+{
+    "@@locale": "invalid",
+    "invalidMsg": "Foo bar",
+    "@invalidMsg": {
+        "type": "text"
+    }
+}

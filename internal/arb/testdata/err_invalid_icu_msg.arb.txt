@@ -1,0 +1,13 @@
+{
+    "@@locale": "en",
+    "invalidMsg": "You have {newMessages, plural, }",
+    "@invalidMsg": {
+        "type": "text",
+        "description": "This is an intentionally broken message for testing",
+        "placeholders": {
+            "newMessages": {
+                "type": "int"
+            }
+        }
+    }
+}

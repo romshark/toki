@@ -1,0 +1,8 @@
+{
+    "@@locale": "en",
+    "invalidMsg": "This has an invalid type",
+    "@invalidMsg": {
+        "type": "invalid",
+        "description": "This message has an intentionally empty message for testing"
+    }
+}

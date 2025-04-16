@@ -1,0 +1,13 @@
+{
+    "@@locale": "en",
+    "@@last_modified": "2025-04-12T20:03:44Z",
+    "@@x-generator": "Foo",
+    "@@x-something-else": "Bar Bazz",
+    "msgWithCustomAttr": "Translation",
+    "@msgWithCustomAttr": {
+        "description": "This message has custom attributes x-src and x-something-else",
+        "type": "text",
+        "x-something-else": "bazz",
+        "x-src": "foo/bar/main.go:14"
+    }
+}

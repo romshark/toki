@@ -1,0 +1,7 @@
+{
+    "@@locale": "en",
+    "x": "Simple message",
+    "@x": {
+        "description": "The message type is intentionally undefined"
+    }
+}

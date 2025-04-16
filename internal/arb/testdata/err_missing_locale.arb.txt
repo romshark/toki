@@ -1,0 +1,7 @@
+{
+    "invalidMsg": "Message",
+    "@invalidMsg": {
+        "type": "text",
+        "description": "This .arb file is missing the required @@locale"
+    }
+}

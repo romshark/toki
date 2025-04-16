@@ -1,0 +1,13 @@
+{
+    "@@locale": "en",
+    "invalidMsg": "This placeholder called {notInList} must be listed below",
+    "@invalidMsg": {
+        "type": "text",
+        "placeholders": {
+            "anotherOne": {
+                "type": "String",
+                "description": "Not the one used in the ICU message"
+            }
+        }
+    }
+}

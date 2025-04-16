@@ -1,0 +1,13 @@
+{
+    "@@locale": "en",
+    "invalidMsg": "This has an invalid {placeholder} type",
+    "@invalidMsg": {
+        "type": "text",
+        "placeholders": {
+            "placeholder": {
+                "type": "invalid",
+                "description": "Type is broken intentionally for testing"
+            }
+        }
+    }
+}

@@ -1,0 +1,29 @@
+{
+    "@@locale": "uk",
+    "@@context": "HomePage",
+    "helloAndWelcome": "Ласкаво просимо, {firstName} {lastName}!",
+    "@helloAndWelcome": {
+        "description": "Initial welcome message",
+        "placeholders": {
+            "firstName": {
+                "type": "String"
+            },
+            "lastName": {
+                "type": "String"
+            }
+        },
+        "type": "text"
+    },
+    "newMessages": "У вас {newMessages, plural, one {# нове повідомлення} few {# нових повідомлення} many {# нових повідомлень} other {# нових повідомлень}}",
+    "@newMessages": {
+        "comment": "Test comment",
+        "context": "Test Context",
+        "description": "Number of new messages in inbox.",
+        "placeholders": {
+            "newMessages": {
+                "type": "int"
+            }
+        },
+        "type": "text"
+    }
+}
