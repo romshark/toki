@@ -205,6 +205,7 @@ func subtract(number any, amount uint) any {
 
 	w.println("// Bundle bundles all currently enabled translations.")
 	w.println("type Bundle struct {}")
+	w.println("var _ toki.Bundler = Bundle{}")
 
 	w.println("// Catalogs returns an iterator over all enabled catalogs.")
 	w.println("func (Bundle) Catalogs() iter.Seq[toki.Reader] {")
@@ -236,6 +237,7 @@ func (w *Writer) WritePackageCatalog(
 	w.printf("\tlocales \"github.com/go-playground/locales\"")
 	w.printf("\t locale \"github.com/go-playground/locales/%s\"",
 		goPlaygroundLocalesPkg(locale))
+	w.println("\ttoki" + `"github.com/romshark/toki"`)
 	w.println("\tlanguage" + `"golang.org/x/text/language"`)
 	w.println(")") // End of imports.
 
@@ -260,8 +262,9 @@ func (w *Writer) writeCatalogType(msgIter iter.Seq[Message]) {
 
 	// Type definition.
 	catalogTypeName := TypePrefixCatalog + localeCatalogSuffix
-	w.printf(`// %s provides localization for %s.`, catalogTypeName, w.l.String())
-	w.printf(`type %s struct {}`, catalogTypeName)
+	w.printf("// %s provides localization for %s.", catalogTypeName, w.l.String())
+	w.printf("type %s struct {}\n", catalogTypeName)
+	w.printf("var _ toki.Reader = %s{}\n", catalogTypeName)
 
 	// Translation functions by TIK.
 	translationsVarMapName := "translations" + localeCatalogSuffix
