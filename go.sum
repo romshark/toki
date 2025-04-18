@@ -10,6 +10,8 @@ github.com/romshark/icumsg v0.0.0-20250415182612-4a05428bc5b4 h1:pfHRbanTKHOqJEi
 github.com/romshark/icumsg v0.0.0-20250415182612-4a05428bc5b4/go.mod h1:lb3H0PBrqbS3J3VyGYYL5wLEAH8uKJGEbH97gpYKkHY=
 github.com/romshark/tik/tik-go v0.0.0-20250415184638-57a73b0bd9e1 h1:tAvr7d2A5LSphXwrvl1SdLRvWwwHyH3O3wUbPPSigc0=
 github.com/romshark/tik/tik-go v0.0.0-20250415184638-57a73b0bd9e1/go.mod h1:E7PEMCgk78UGBjm2spbO1LCcN4oQOHy3Pli70l2PP5Y=
+github.com/romshark/tik/tik-go v0.0.0-20250418211323-1948b1c0ffea h1:vzrZUTnXckLhA/cITWh95hbun0vD37LqmLZibIfbQos=
+github.com/romshark/tik/tik-go v0.0.0-20250418211323-1948b1c0ffea/go.mod h1:E7PEMCgk78UGBjm2spbO1LCcN4oQOHy3Pli70l2PP5Y=
 github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 golang.org/x/mod v0.24.0 h1:ZfthKaKaT4NrhGVZHO1/WDTwGES4De8KtWO0SIbNJMU=
