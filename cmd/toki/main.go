@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -21,37 +20,52 @@ var (
 	ErrNoCommand       = errors.New("no command")
 	ErrUnknownCommand  = errors.New("unknown command")
 	ErrAnalyzingSource = errors.New("analyzing sources")
+	ErrInvalidCLIArgs  = errors.New("invalid arguments")
 )
 
 func main() {
-	if err := run(os.Args); err != nil {
-		fmt.Println("ERR:", err)
-		os.Exit(1)
-	}
+	r, exitCode := run(os.Args)
+	r.Print()
+	os.Exit(exitCode)
 }
 
-func run(osArgs []string) error {
+func run(osArgs []string) (result Result, exitCode int) {
 	if len(osArgs) < 2 {
-		return fmt.Errorf("%w, use either of: [generate,lint]", ErrNoCommand)
+		return Result{
+			Err: fmt.Errorf("%w, use either of: [generate,lint]", ErrNoCommand),
+		}, 2
 	}
 	log.SetLevel(log.LevelDebug)
 	switch osArgs[1] {
 	case "lint":
 		// TODO: implement lint command
-		panic("not yet implemented")
+		return Result{
+			Err: errors.New("not yet implemented"),
+		}, 1
 	case "generate":
-		return runGenerate(osArgs)
+		r := runGenerate(osArgs)
+		switch {
+		case errors.Is(r.Err, ErrInvalidCLIArgs):
+			return r, 2
+		case r.Err != nil:
+			return r, 1
+		}
+		return r, 0
 	}
-	return fmt.Errorf("%w %q, use either of: [generate,lint]",
-		ErrUnknownCommand, osArgs[1])
+	return Result{
+		Err: fmt.Errorf("%w %q, use either of: [generate,lint]",
+			ErrUnknownCommand, osArgs[1]),
+	}, 2
 }
 
-func runGenerate(osArgs []string) error {
-	start := time.Now()
+func runGenerate(osArgs []string) (result Result) {
+	result.Start = time.Now()
 	conf, err := config.ParseCLIArgsGenerate(osArgs)
 	if err != nil {
-		return fmt.Errorf("parsing arguments: %w", err)
+		result.Err = fmt.Errorf("%w: %w", ErrInvalidCLIArgs, err)
+		return result
 	}
+	result.Config = conf
 
 	if conf.QuietMode {
 		log.SetLevel(log.LevelError)
@@ -59,11 +73,17 @@ func runGenerate(osArgs []string) error {
 		log.SetLevel(log.LevelVerbose)
 	}
 
+	// Create bundle package directory if it doesn't exist yet.
+	if err := prepareBundlePackageDir(conf.BundlePkgPath); err != nil {
+		result.Err = err
+		return result
+	}
+
 	// Read/create head.txt.
 	headTxt, err := readOrCreateHeadTxt(conf)
 	if err != nil {
-		log.Errorf("reading/creating head.txt: %s\n", err.Error())
-		return nil
+		result.Err = err
+		return result
 	}
 
 	_ = headTxt // TODO
@@ -75,27 +95,32 @@ func runGenerate(osArgs []string) error {
 		conf.SrcPathPattern, conf.BundlePkgPath, conf.Locale, conf.TrimPath,
 	)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
+		result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
+		return result
 	}
+	result.Stats = stats
+	result.Scan = scan
 
 	if len(scan.SourceErrors) > 0 {
-		log.Errorf("ERRORS (%d):\n", len(scan.SourceErrors))
-		for _, e := range scan.SourceErrors {
-			log.Errorf("%s:%d:%d: %v\n", e.Filename, e.Line, e.Column, e.Err)
-		}
-		if err := NewResult(start, stats, scan).Print(conf.JSON); err != nil {
-			return err
-		}
-		return ErrSourceErrors
+		result.Err = ErrSourceErrors
+		return result
 	}
 
 	// Generate go bundle.
 	if err := generateGoBundle(conf.BundlePkgPath, conf.Locale, scan); err != nil {
-		return err
+		result.Err = err
+		return result
 	}
 
-	if err := NewResult(start, stats, scan).Print(conf.JSON); err != nil {
-		return err
+	return result
+}
+
+func prepareBundlePackageDir(bundlePkgPath string) error {
+	if _, err := os.Stat(bundlePkgPath); errors.Is(err, os.ErrNotExist) {
+		log.Verbosef("create new bundle package %q", bundlePkgPath)
+	}
+	if err := os.MkdirAll(bundlePkgPath, 0o755); err != nil {
+		return fmt.Errorf("mkdir: bundle package path: %w", err)
 	}
 	return nil
 }
@@ -164,54 +189,82 @@ func readOrCreateHeadTxt(conf *config.ConfigGenerate) ([]string, error) {
 	return nil, nil
 }
 
-func NewResult(
-	start time.Time,
-	stats *codeparse.Statistics,
-	scan *codeparse.Scan,
-) *Result {
-	se := make([]ResultSourceError, len(scan.SourceErrors))
-	for i, e := range scan.SourceErrors {
-		se[i] = ResultSourceError{
-			Msg: e.Err.Error(),
-			Location: ResultSourceLocation{
-				File:   e.Filename,
-				Line:   e.Line,
-				Column: e.Column,
-			},
+type Result struct {
+	Config *config.ConfigGenerate
+	Start  time.Time
+	Stats  *codeparse.Statistics
+	Scan   *codeparse.Scan
+	Err    error
+}
+
+func (r Result) printJSON() {
+	indent := "\t"
+	w := os.Stderr
+	write := func(s string) { _, _ = fmt.Fprint(w, s) }
+	writeLnf := func(indents int, format string, a ...any) {
+		for range indents {
+			write(indent)
+		}
+		_, _ = fmt.Fprintf(w, format, a...)
+		write("\n")
+	}
+
+	writeLnf(0, "{")
+	if r.Scan != nil {
+		if len(r.Scan.SourceErrors) > 0 {
+			writeLnf(1, "%q: [", "source-errors")
+			for i, serr := range r.Scan.SourceErrors {
+				writeLnf(2, "{")
+				writeLnf(3, "%q: %q,", "error", serr.Err.Error())
+				writeLnf(3, "%q: %q,", "file", serr.Filename)
+				writeLnf(3, "%q: %d,", "line", serr.Line)
+				writeLnf(3, "%q: %d", "col", serr.Column)
+				if i+1 == len(r.Scan.SourceErrors) {
+					// Last entry
+					writeLnf(2, "}")
+					break
+				}
+				writeLnf(2, "},")
+			}
+			writeLnf(1, "],")
+		}
+	} else {
+		writeLnf(1, "%q: null,", "source-errors")
+	}
+	if r.Stats != nil {
+		writeLnf(1, "%q: %d,", "texts", r.Stats.TextTotal.Load())
+		writeLnf(1, "%q: %d,", "files", r.Stats.FilesTraversed.Load())
+	} else {
+		writeLnf(1, "%q: null,", "texts")
+		writeLnf(1, "%q: null,", "files")
+	}
+	writeLnf(1, "%q: %d,", "time-ms", time.Since(r.Start).Milliseconds())
+	if r.Err != nil {
+		writeLnf(1, "%q: %q", "error", r.Err.Error())
+	} else {
+		writeLnf(1, "%q: null", "error")
+	}
+	writeLnf(0, "}")
+}
+
+func (r Result) Print() {
+	if r.Config != nil && r.Config.JSON {
+		r.printJSON()
+		return
+	}
+
+	if r.Scan != nil {
+		log.Errorf("Source errors (%d):\n", len(r.Scan.SourceErrors))
+		for _, e := range r.Scan.SourceErrors {
+			log.Errorf(" %s:%d:%d: %v\n", e.Filename, e.Line, e.Column, e.Err)
 		}
 	}
-	return &Result{
-		TimeTotal:      time.Since(start),
-		FilesTraversed: uint64(stats.FilesTraversed.Load()),
-		Texts:          uint64(stats.TextTotal.Load()),
+	if r.Stats != nil {
+		log.Verbosef("Texts: %d\n", len(r.Scan.Texts))
+		log.Verbosef("Files scanned: %d\n", r.Stats.FilesTraversed.Load())
+		log.Verbosef("Time total: %s\n", time.Since(r.Start).String())
 	}
-}
-
-type ResultSourceError struct {
-	Msg      string               `json:"msg"`
-	Location ResultSourceLocation `json:"location"`
-}
-
-type ResultSourceLocation struct {
-	File   string `json:"file"`
-	Line   int    `json:"line"`
-	Column int    `json:"column"`
-}
-
-type Result struct {
-	TimeTotal      time.Duration       `json:"time-total"`
-	SourceErrors   []ResultSourceError `json:"source-errors"`
-	FilesTraversed uint64              `json:"files-traversed"`
-	Texts          uint64              `json:"texts"`
-	NewTexts       uint64              `json:"texts-new"`
-}
-
-func (r *Result) Print(jsonOutput bool) error {
-	if jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(r)
+	if r.Err != nil {
+		log.Verbosef("Error: %s\n", r.Err.Error())
 	}
-	log.Verbosef("Texts: %d\n", r.Texts)
-	log.Verbosef("Files scanned: %d\n", r.FilesTraversed)
-	log.Verbosef("Time total: %s\n", r.TimeTotal.String())
-	return nil
 }

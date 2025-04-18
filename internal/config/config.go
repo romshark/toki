@@ -32,10 +32,10 @@ func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
 	cli.StringVar(&c.OutPathCatalogTemplate, "tmpl", "",
 		"catalog template output file path. Set to bundle package by default.")
 	cli.BoolVar(&c.TrimPath, "trimpath", true, "enable source code path trimming")
-	cli.BoolVar(&c.JSON, "json", false, "enable JSON result output to stdout")
+	cli.BoolVar(&c.JSON, "json", false, "enables JSON output")
 	cli.BoolVar(&c.QuietMode, "q", false, "disable all console logging")
 	cli.BoolVar(&c.VerboseMode, "v", false, "enables verbose console logging")
-	cli.StringVar(&c.BundlePkgPath, "b", "localizebundle",
+	cli.StringVar(&c.BundlePkgPath, "b", "tokibundle",
 		"path to generated Go bundle package relative to module path (-p)")
 
 	if err := cli.Parse(osArgs[2:]); err != nil {
