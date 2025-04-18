@@ -58,6 +58,14 @@ type Text struct {
 	Comments []string
 }
 
+func (t Text) Context() string {
+	f := t.TIK.Tokens[0]
+	if f.Type != tik.TokenTypeContext {
+		return ""
+	}
+	return f.String(t.TIK.Raw)
+}
+
 type SourceError struct {
 	token.Position
 	Err error
@@ -207,7 +215,6 @@ func (p *Parser) collectTexts(
 					if !ok {
 						return false
 					}
-					_ = tikVal
 
 					comments := findLeadingComments(fset, file, call)
 
