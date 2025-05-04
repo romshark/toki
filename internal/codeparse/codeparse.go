@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/cespare/xxhash/v2"
+	"github.com/romshark/icumsg"
 	tik "github.com/romshark/tik/tik-go"
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/log"
@@ -28,25 +30,32 @@ const (
 	FuncTypeText = "Text"
 )
 
+var ErrUnsupportedSelectOption = errors.New("unsupported select option")
+
 type Statistics struct {
 	TextTotal      atomic.Int64
-	NewTexts       atomic.Int64
 	FilesTraversed atomic.Int64
 }
 
 type Parser struct {
+	hasher        *xxhash.Digest
 	tikParser     *tik.Parser
 	arbDecoder    *arb.Decoder
+	icuDecoder    *icumsg.Tokenizer
 	icuTranslator *tik.ICUTranslator
 }
 
-var defaultTIKConfig = tik.DefaultConfig()
-
-func NewParser() *Parser {
+func NewParser(
+	hasher *xxhash.Digest,
+	tikParser *tik.Parser,
+	translatorICU *tik.ICUTranslator,
+) *Parser {
 	return &Parser{
-		tikParser:     tik.NewParser(defaultTIKConfig),
+		hasher:        hasher,
+		tikParser:     tikParser,
 		arbDecoder:    arb.NewDecoder(),
-		icuTranslator: tik.NewICUTranslator(defaultTIKConfig),
+		icuDecoder:    new(icumsg.Tokenizer),
+		icuTranslator: translatorICU,
 	}
 }
 
@@ -55,6 +64,7 @@ type FnOnSrcErr func(pos token.Position, err error)
 type Text struct {
 	Position token.Position
 	TIK      tik.TIK
+	IDHash   string
 	Comments []string
 }
 
@@ -71,19 +81,29 @@ type SourceError struct {
 	Err error
 }
 
+type CatalogStatistics struct {
+	MessagesIncomplete atomic.Int64
+}
+
+type Catalog struct {
+	CatalogStatistics
+	ARB *arb.File
+}
+
 type Scan struct {
-	Texts        []Text
-	SourceErrors []SourceError
-	ARBFiles     []*arb.File
+	Statistics
+	Texts         []Text
+	TextIndexByID map[string]int
+	SourceErrors  []SourceError
+	Catalogs      []*Catalog
 }
 
 func (p *Parser) Parse(
 	pathPattern, bundlePkg string,
 	locale language.Tag,
 	trimpath bool,
-) (stats *Statistics, scan *Scan, err error) {
+) (scan *Scan, err error) {
 	fset := token.NewFileSet()
-	stats = new(Statistics)
 
 	cfg := &packages.Config{
 		Mode: packages.NeedFiles |
@@ -97,26 +117,26 @@ func (p *Parser) Parse(
 	}
 	pkgs, err := packages.Load(cfg, pathPattern+"/...")
 	if err != nil {
-		return stats, nil, fmt.Errorf("loading packages: %w", err)
+		return nil, fmt.Errorf("loading packages: %w", err)
 	}
 
-	scan = new(Scan)
+	scan = &Scan{TextIndexByID: map[string]int{}}
 
 	pkgBundle := findBundlePkg(bundlePkg, pkgs)
 	if pkgBundle != nil {
 		log.Verbosef("bundle detected: %s\n", pkgBundle.Dir)
 		err = p.collectARBFiles(pkgBundle.Dir, scan)
 		if err != nil {
-			return stats, scan, fmt.Errorf("searching .arb files: %w", err)
+			return scan, fmt.Errorf("searching .arb files: %w", err)
 		}
 	}
 
-	p.collectTexts(fset, pkgs, bundlePkg, pathPattern, trimpath, stats, scan)
+	p.collectTexts(fset, pkgs, bundlePkg, pathPattern, trimpath, scan)
 
 	// TODO: process bundle package
 	_ = pkgBundle
 
-	return stats, scan, nil
+	return scan, nil
 }
 
 func findBundlePkg(bundlePkg string, pkgs []*packages.Package) *packages.Package {
@@ -128,6 +148,19 @@ func findBundlePkg(bundlePkg string, pkgs []*packages.Package) *packages.Package
 	return nil
 }
 
+var selectOptionsGender = []string{"male", "female"}
+
+func selectOptions(argName string) (
+	[]string, icumsg.OptionsPresencePolicy, icumsg.OptionUnknownPolicy,
+) {
+	if strings.HasSuffix(argName, "_gender") {
+		return selectOptionsGender,
+			icumsg.OptionsPresencePolicyRequired,
+			icumsg.OptionUnknownPolicyReject
+	}
+	return nil, 0, 0
+}
+
 func (p *Parser) collectARBFiles(bundlePkgDir string, scan *Scan) error {
 	return forFileInDir(bundlePkgDir, func(fileName string) error {
 		if filepath.Ext(fileName) != ".arb" {
@@ -135,7 +168,8 @@ func (p *Parser) collectARBFiles(bundlePkgDir string, scan *Scan) error {
 		}
 		log.Verbosef("translation file detected: %s\n", fileName)
 
-		f, err := os.OpenFile(fileName, os.O_RDONLY, 0o644)
+		path := filepath.Join(bundlePkgDir, fileName)
+		f, err := os.OpenFile(path, os.O_RDONLY, 0o644)
 		if err != nil {
 			return err
 		}
@@ -145,7 +179,32 @@ func (p *Parser) collectARBFiles(bundlePkgDir string, scan *Scan) error {
 			return fmt.Errorf("parsing .arb file: %w", err)
 		}
 
-		scan.ARBFiles = append(scan.ARBFiles, arbFile)
+		catalog := &Catalog{ARB: arbFile}
+
+		for _, msg := range arbFile.Messages {
+			incomplete := false
+			_ = icumsg.Completeness(
+				msg.ICUMessage, msg.ICUMessageTokens, arbFile.Locale,
+				selectOptions,
+				func(_ int) { incomplete = true }, // On incomplete.
+				func(index int) { // On rejected.
+					name := msg.ICUMessageTokens[index+1].String(
+						msg.ICUMessage, msg.ICUMessageTokens,
+					)
+					scan.SourceErrors = append(scan.SourceErrors, SourceError{
+						Err: fmt.Errorf("%w: %q", ErrUnsupportedSelectOption, name),
+						Position: token.Position{
+							Filename: fileName,
+						},
+					})
+				},
+			)
+			if incomplete {
+				catalog.MessagesIncomplete.Add(1)
+			}
+		}
+
+		scan.Catalogs = append(scan.Catalogs, catalog)
 
 		return nil
 	})
@@ -154,14 +213,14 @@ func (p *Parser) collectARBFiles(bundlePkgDir string, scan *Scan) error {
 func (p *Parser) collectTexts(
 	fset *token.FileSet, pkgs []*packages.Package,
 	bundlePkg, pathPattern string, trimpath bool,
-	stats *Statistics, scan *Scan,
+	scan *Scan,
 ) {
 	for _, pkg := range pkgs {
 		if isPkgBundle(bundlePkg, pkg) {
 			continue
 		}
 		for _, file := range pkg.Syntax {
-			stats.FilesTraversed.Add(1)
+			scan.FilesTraversed.Add(1)
 			for _, decl := range file.Decls {
 				ast.Inspect(decl, func(node ast.Node) bool {
 					call, ok := node.(*ast.CallExpr)
@@ -196,7 +255,7 @@ func (p *Parser) collectTexts(
 					funcType := selector.Sel.Name
 					switch funcType {
 					case FuncTypeText:
-						stats.TextTotal.Add(1)
+						scan.TextTotal.Add(1)
 					default:
 						return true // Not the right methods.
 					}
@@ -218,11 +277,15 @@ func (p *Parser) collectTexts(
 
 					comments := findLeadingComments(fset, file, call)
 
+					id := HashMessage(p.hasher, tikVal.Raw)
+					index := len(scan.Texts)
 					scan.Texts = append(scan.Texts, Text{
 						Position: posCall,
+						IDHash:   id,
 						TIK:      tikVal,
 						Comments: comments,
 					})
+					scan.TextIndexByID[id] = index
 
 					return true
 				})
@@ -384,6 +447,12 @@ func iterArgs(call *ast.CallExpr) iter.Seq[ast.Expr] {
 			}
 		}
 	}
+}
+
+func HashMessage(hash *xxhash.Digest, tik string) string {
+	hash.Reset()
+	_, _ = hash.WriteString(tik)
+	return fmt.Sprintf("msg%x", hash.Sum64())
 }
 
 func isString(pkg *packages.Package, expr ast.Expr) (actualTypeName string, ok bool) {

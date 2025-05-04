@@ -41,6 +41,7 @@ func (w *Writer) println(a ...any) {
 }
 
 type Message struct {
+	ID        string
 	TIK       string
 	ICUMsg    string
 	ICUTokens []icumsg.Token
@@ -48,7 +49,7 @@ type Message struct {
 
 var replacerCatalogSuffix = strings.NewReplacer("-", "_")
 
-func localeToCatalogSuffix(t language.Tag) string {
+func LocaleToCatalogSuffix(t language.Tag) string {
 	s := t.String()
 	return strings.ToUpper(replacerCatalogSuffix.Replace(s))
 }
@@ -201,7 +202,13 @@ func subtract(number any, amount uint) any {
 	default:
 		return number
 	}
-}`, packageName)
+}
+
+// Prevent "unused function" linter errors.
+var _ = pluralRuleCardinal(nil, maxInt53)
+var _ = pluralRuleOrdinal(nil, maxInt53)
+var _ = subtract(0, 0)
+`, packageName)
 
 	w.println("// Bundle bundles all currently enabled translations.")
 	w.println("type Bundle struct {}")
@@ -211,7 +218,7 @@ func subtract(number any, amount uint) any {
 	w.println("func (Bundle) Catalogs() iter.Seq[toki.Reader] {")
 	w.println("return func(yield func(toki.Reader) bool) {")
 	for _, l := range translationLocales {
-		suffix := localeToCatalogSuffix(l)
+		suffix := LocaleToCatalogSuffix(l)
 		typeName := TypePrefixCatalog + suffix
 		w.printf("if !yield(%s{}) { return }\n", typeName)
 	}
@@ -245,7 +252,7 @@ func (w *Writer) WritePackageCatalog(
 }
 
 func (w *Writer) writeCatalogType(msgIter iter.Seq[Message]) {
-	localeCatalogSuffix := localeToCatalogSuffix(w.l)
+	localeCatalogSuffix := LocaleToCatalogSuffix(w.l)
 	w.translatorVar = fmt.Sprintf("Translator%s", localeCatalogSuffix)
 	w.printf("\n"+`var locale%s language.Tag`+"\n", localeCatalogSuffix)
 	w.printf("\n"+`var %s = locale.New()`+"\n", w.translatorVar)
@@ -266,11 +273,11 @@ func (w *Writer) writeCatalogType(msgIter iter.Seq[Message]) {
 	w.printf("type %s struct {}\n", catalogTypeName)
 	w.printf("var _ toki.Reader = %s{}\n", catalogTypeName)
 
-	// Translation functions by TIK.
+	// Translation functions map by TIK.
 	translationsVarMapName := "translations" + localeCatalogSuffix
 	w.printf(`var %s = map[string]func(args ...any) string {`, translationsVarMapName)
 	for msg := range msgIter {
-		w.writeFunc(msg.TIK, msg.ICUMsg, msg.ICUTokens)
+		w.writeFunc(msg.ID, msg.TIK, msg.ICUMsg, msg.ICUTokens)
 	}
 	w.println(`}`)
 
@@ -299,21 +306,53 @@ func (w *Writer) writeMethodText(translationsVarMapName string) {
 }
 
 // writeFunc writes a translation function as a map entry.
-func (w *Writer) writeFunc(tik, icuMsg string, tokens []icumsg.Token) {
+func (w *Writer) writeFunc(id, tik, icuMsg string, tokens []icumsg.Token) {
 	w.m = icuMsg
 	w.t = tokens
 	w.i = 0
 
+	w.printf("// %s", id)
 	w.printf("%q:", tik)
 	w.printf("func(args ...any) string {")
-	w.println("var b strings.Builder;")
 	w.writeExpr(len(w.t))
-	w.println("return b.String();},")
+	w.println("},")
 }
 
 var ErrUnsupportedArgName = errors.New("unsupported argument name")
 
+// literalConcat returns "" if message isn't just a sequence
+// of literal tokens.
+func (w *Writer) literalConcat(endIndex int) string {
+	l := 0
+	for i := w.i; i < endIndex; i++ {
+		t := w.t[i]
+		switch t.Type {
+		case icumsg.TokenTypeLiteral:
+			l += len(t.String(w.m, w.t))
+		default:
+			return "" // Not a sequence of literals, abort.
+		}
+	}
+
+	var s strings.Builder
+	s.Grow(l)
+	for i := w.i; i < endIndex; i++ {
+		t := w.t[i]
+		if t.Type == icumsg.TokenTypeLiteral {
+			s.WriteString(t.String(w.m, w.t))
+		}
+	}
+	return s.String()
+}
+
 func (w *Writer) writeExpr(endIndex int) {
+	if s := w.literalConcat(endIndex); s != "" {
+		w.println("_ = args")
+		w.printf("return %q\n", s)
+		return
+	}
+
+	w.println("var b strings.Builder;")
 	for w.i < endIndex {
 		t := w.t[w.i]
 		switch t.Type {
@@ -334,6 +373,7 @@ func (w *Writer) writeExpr(endIndex int) {
 			panic(t.Type.String())
 		}
 	}
+	w.println("return b.String();")
 }
 
 func (w *Writer) writeSimpleArg() {
@@ -344,8 +384,7 @@ func (w *Writer) writeSimpleArg() {
 		// before the Go bundle code is generated.
 		panic(err)
 	}
-	tokType := w.t[w.i+2]
-	if !isTokenArgType(tokType.Type) {
+	if w.i+2 <= len(w.t) || !isTokenArgType(w.t[w.i+2].Type) {
 		// No argument type.
 		w.printf("_, _ = fmt.Fprintf(&b, %q, args[%d]);", `%v`, arg.Index)
 		w.i += 2
@@ -406,7 +445,7 @@ func (w *Writer) writePlural(ordinal bool) {
 	argNameToken := w.t[w.i+1].String(w.m, w.t)
 	argIndex, err := parseArgName(argNameToken)
 	if err != nil {
-		return
+		panic(err)
 	}
 
 	offset := uint64(0)
@@ -523,7 +562,7 @@ func (w *Writer) writeSelect() {
 	argNameToken := w.t[w.i+1].String(w.m, w.t)
 	argIndex, err := parseArgName(argNameToken)
 	if err != nil {
-		return
+		panic(err)
 	}
 
 	w.printf("switch args[%d].(string) {", argIndex.Index)
@@ -551,12 +590,20 @@ type argName struct {
 }
 
 func parseArgName(s string) (argName, error) {
-	if len(s) < 2 || s[0] != '_' {
+	if len(s) < len("var0") || !strings.HasPrefix(s, "var") {
 		return argName{}, fmt.Errorf("%w: %q", ErrUnsupportedArgName, s)
 	}
 	gender := strings.HasSuffix(s, "_gender")
 
-	v, err := strconv.ParseUint(s[1:], 10, 32)
+	endIndex := len("var0")
+	for i := range s[endIndex:] {
+		if s[i] < '0' || s[i] > '9' {
+			endIndex += i
+			break
+		}
+	}
+
+	v, err := strconv.ParseUint(s[len("var"):endIndex], 10, 32)
 	if err != nil {
 		return argName{}, err
 	}
