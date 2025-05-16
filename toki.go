@@ -78,10 +78,16 @@ func New(defaultLocale language.Tag, bundler Bundler) (*Localizer, error) {
 	}, nil
 }
 
-// Match returns the best matching reader for locale.
+// Match returns the best matching reader for locales.
 func (l *Localizer) Match(locales ...language.Tag) (Reader, language.Confidence) {
-	matchedTag, _, c := l.matcher.Match(locales...)
-	return l.readerByLocale[matchedTag.String()], c
+	t, _, c := l.matcher.Match(locales...)
+	for t := t; t != language.Und; t = t.Parent() {
+		if r, ok := l.readerByLocale[t.String()]; ok {
+			return r, c
+		}
+	}
+	// Fallback to default.
+	return l.readerByLocale[l.defaultLocaleStr], language.No
 }
 
 // ForBase returns either the localization for language, or the default localization
