@@ -226,7 +226,7 @@ func writeARBFiles(bundlePkgPath string, catalogs []*codeparse.Catalog) error {
 
 func prepareBundlePackageDir(bundlePkgPath string) error {
 	if _, err := os.Stat(bundlePkgPath); errors.Is(err, os.ErrNotExist) {
-		log.Verbosef("create new bundle package %q", bundlePkgPath)
+		log.Verbosef("create new bundle package %q\n", bundlePkgPath)
 	}
 	if err := os.MkdirAll(bundlePkgPath, 0o755); err != nil {
 		return fmt.Errorf("mkdir: bundle package path: %w", err)
@@ -307,7 +307,7 @@ func generateGoBundle(
 func readOrCreateHeadTxt(conf *config.ConfigGenerate) ([]string, error) {
 	headFilePath := filepath.Join(conf.BundlePkgPath, "head.txt")
 	if fc, err := os.ReadFile(headFilePath); errors.Is(err, os.ErrNotExist) {
-		log.Verbosef("head.txt not found, creating a new one")
+		log.Verbosef("head.txt not found, creating a new one\n")
 		f, err := os.Create(headFilePath)
 		if err != nil {
 			return nil, fmt.Errorf("creating head.txt file: %w", err)
