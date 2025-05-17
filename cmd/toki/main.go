@@ -160,7 +160,7 @@ func (g *Generate) Run(osArgs []string) (result Result) {
 	// Check for new messages
 	for _, text := range scan.Texts {
 		if _, ok := nativeARB.Messages[text.IDHash]; !ok {
-			log.Verbosef("new text at %s:%d:%d\n",
+			log.Verbosef("new TIK at %s:%d:%d\n",
 				text.Position.Filename, text.Position.Line, text.Position.Column)
 			result.NewTexts = append(result.NewTexts, text)
 			id, newMsg, err := g.newARBMsg(conf.Locale, text)
@@ -177,6 +177,24 @@ func (g *Generate) Run(osArgs []string) (result Result) {
 				catalog.ARB.Messages[id] = newMsg
 			}
 		}
+	}
+
+	// Delete unused messages
+	for id := range nativeARB.Messages {
+		index, ok := scan.TextIndexByID[id]
+		if ok {
+			continue
+		}
+		text := scan.Texts[index]
+		log.Verbosef("unused TIK %s at %s:%d:%d\n",
+			text.IDHash, text.Position.Filename,
+			text.Position.Line, text.Position.Column,
+		)
+		delete(nativeARB.Messages, id)
+		for _, c := range scan.Catalogs {
+			delete(c.ARB.Messages, id)
+		}
+		result.RemovedTexts = append(result.RemovedTexts, text)
 	}
 
 	// (Re-)Generate .arb files.
@@ -324,11 +342,12 @@ func readOrCreateHeadTxt(conf *config.ConfigGenerate) ([]string, error) {
 }
 
 type Result struct {
-	Config   *config.ConfigGenerate
-	Start    time.Time
-	Scan     *codeparse.Scan
-	NewTexts []codeparse.Text
-	Err      error
+	Config       *config.ConfigGenerate
+	Start        time.Time
+	Scan         *codeparse.Scan
+	NewTexts     []codeparse.Text
+	RemovedTexts []codeparse.Text
+	Err          error
 }
 
 func (r Result) mustPrintJSON() {
@@ -346,16 +365,22 @@ func (r Result) mustPrintJSON() {
 	}
 	data := struct {
 		Error          error         `json:"error,omitempty"`
-		Texts          int64         `json:"texts"`
-		NewTexts       int           `json:"new-texts"`
+		StringCalls    int64         `json:"string-calls"`
+		WriteCalls     int64         `json:"write-calls"`
+		TIKs           int           `json:"tiks"`
+		TIKsUnique     int           `json:"tiks-unique"`
+		TIKsNew        int           `json:"tiks-new"`
 		FilesTraversed int           `json:"files-traversed"`
 		SourceErrors   []SourceError `json:"source-errors,omitempty"`
 		TimeMS         int64         `json:"time-ms"`
 		Catalogs       []Catalog     `json:"catalogs"`
 	}{
 		Error:          r.Err,
-		Texts:          r.Scan.TextTotal.Load(),
-		NewTexts:       len(r.NewTexts),
+		StringCalls:    r.Scan.StringCalls.Load(),
+		WriteCalls:     r.Scan.WriteCalls.Load(),
+		TIKs:           len(r.Scan.Texts),
+		TIKsUnique:     len(r.Scan.TextIndexByID),
+		TIKsNew:        len(r.NewTexts),
 		FilesTraversed: int(r.Scan.FilesTraversed.Load()),
 		SourceErrors:   make([]SourceError, len(r.Scan.SourceErrors)),
 		TimeMS:         time.Since(r.Start).Milliseconds(),
@@ -370,12 +395,7 @@ func (r Result) mustPrintJSON() {
 		}
 	}
 	for i, c := range r.Scan.Catalogs {
-		completeness := float64(1)
-		total := float64(len(c.ARB.Messages))
-		if total > 0 {
-			complete := total - float64(c.MessagesIncomplete.Load())
-			completeness = complete / total
-		}
+		completeness := completeness(c)
 		data.Catalogs[i] = Catalog{
 			Locale:       c.ARB.Locale.String(),
 			Completeness: completeness,
@@ -394,18 +414,37 @@ func (r Result) Print() {
 	}
 
 	if r.Scan != nil {
-		log.Errorf("Source errors (%d):\n", len(r.Scan.SourceErrors))
-		log.Verbosef("Texts: %d\n", len(r.Scan.Texts))
-		log.Verbosef("New texts: %d\n", len(r.NewTexts))
-		log.Verbosef("Files traversed: %d\n", r.Scan.FilesTraversed.Load())
-		log.Verbosef("Time total: %s\n", time.Since(r.Start).String())
-		for _, e := range r.Scan.SourceErrors {
-			log.Errorf(" %s:%d:%d: %v\n", e.Filename, e.Line, e.Column, e.Err)
+		if l := len(r.Scan.SourceErrors); l > 0 {
+			log.Errorf("Source errors (%d):\n", l)
+			for _, e := range r.Scan.SourceErrors {
+				log.Errorf(" %s:%d:%d: %v\n", e.Filename, e.Line, e.Column, e.Err)
+			}
+		}
+		log.Verbosef("TIKs: %d (unique: %d; new: %d; removed: %d)\n",
+			len(r.Scan.Texts), len(r.Scan.TextIndexByID),
+			len(r.NewTexts), len(r.RemovedTexts))
+		log.Verbosef("Scanned %d file(s) in %s\n",
+			r.Scan.FilesTraversed.Load(), time.Since(r.Start).String())
+		log.Verbosef("Catalogs (%d):\n", len(r.Scan.Catalogs))
+		for _, c := range r.Scan.Catalogs {
+			completeness := completeness(c) * 100
+			log.Verbosef(" %s: %.2f%%\n",
+				c.ARB.Locale.String(), completeness)
 		}
 	}
 	if r.Err != nil {
 		log.Verbosef("Error: %s\n", r.Err.Error())
 	}
+}
+
+func completeness(catalog *codeparse.Catalog) float64 {
+	c := float64(1)
+	total := float64(len(catalog.ARB.Messages))
+	if total > 0 {
+		complete := total - float64(catalog.MessagesIncomplete.Load())
+		c = complete / total
+	}
+	return c
 }
 
 func (g *Generate) newARBMsg(

@@ -27,13 +27,15 @@ const (
 	targetType    = targetPackage + ".Reader"
 	typeGender    = "Gender"
 
-	FuncTypeText = "Text"
+	FuncTypeString = "String"
+	FuncTypeWrite  = "Write"
 )
 
 var ErrUnsupportedSelectOption = errors.New("unsupported select option")
 
 type Statistics struct {
-	TextTotal      atomic.Int64
+	StringCalls    atomic.Int64
+	WriteCalls     atomic.Int64
 	FilesTraversed atomic.Int64
 }
 
@@ -186,7 +188,7 @@ func (p *Parser) collectARBFiles(bundlePkgDir string, scan *Scan) error {
 			_ = icumsg.Completeness(
 				msg.ICUMessage, msg.ICUMessageTokens, arbFile.Locale,
 				selectOptions,
-				func(_ int) { incomplete = true }, // On incomplete.
+				func(index int) { incomplete = true }, // On incomplete.
 				func(index int) { // On rejected.
 					name := msg.ICUMessageTokens[index+1].String(
 						msg.ICUMessage, msg.ICUMessageTokens,
@@ -253,19 +255,20 @@ func (p *Parser) collectTexts(
 					}
 
 					funcType := selector.Sel.Name
+					posCall := fset.Position(call.Pos())
+					argumentOffset := 0
+					var tikVal tik.TIK
 					switch funcType {
-					case FuncTypeText:
-						scan.TextTotal.Add(1)
+					case FuncTypeString:
+						scan.StringCalls.Add(1)
+					case FuncTypeWrite:
+						argumentOffset = 1
+						scan.WriteCalls.Add(1)
 					default:
 						return true // Not the right methods.
 					}
 
-					posCall := fset.Position(call.Pos())
-					if trimpath {
-						posCall.Filename = mustTrimPath(pathPattern, posCall.Filename)
-					}
-
-					tikVal, ok := p.parseTIK(fset, pkg, call,
+					tikVal, ok = p.parseTIK(fset, pkg, call, argumentOffset,
 						func(pos token.Position, err error) {
 							scan.SourceErrors = append(scan.SourceErrors, SourceError{
 								Position: pos, Err: fmt.Errorf("TIK: %w", err),
@@ -273,6 +276,10 @@ func (p *Parser) collectTexts(
 						})
 					if !ok {
 						return false
+					}
+
+					if trimpath {
+						posCall.Filename = mustTrimPath(pathPattern, posCall.Filename)
 					}
 
 					comments := findLeadingComments(fset, file, call)
@@ -295,10 +302,10 @@ func (p *Parser) collectTexts(
 }
 
 func (p *Parser) parseTIK(
-	fileset *token.FileSet, pkg *packages.Package,
-	call *ast.CallExpr, onSrcErr FnOnSrcErr,
+	fileset *token.FileSet, pkg *packages.Package, call *ast.CallExpr,
+	methodArgumentOffset int, onSrcErr FnOnSrcErr,
 ) (tk tik.TIK, ok bool) {
-	arg := call.Args[0]
+	arg := call.Args[methodArgumentOffset]
 	pos := fileset.Position(arg.Pos())
 	tv, ok := pkg.TypesInfo.Types[arg]
 	if !ok {
@@ -338,7 +345,7 @@ func (p *Parser) parseTIK(
 
 	ok = true
 	index := 0
-	for arg := range iterArgs(call) {
+	for arg := range iterArgs(call, methodArgumentOffset) {
 		idx := index
 		index++
 		if idx >= len(placeholders) {
@@ -417,13 +424,13 @@ func (p *Parser) parseTIK(
 	return tk, ok
 }
 
-func iterArgs(call *ast.CallExpr) iter.Seq[ast.Expr] {
-	if len(call.Args) < 2 {
+func iterArgs(call *ast.CallExpr, argOffset int) iter.Seq[ast.Expr] {
+	if len(call.Args)+argOffset < 2 {
 		return func(yield func(ast.Expr) bool) {}
 	}
-	secondArg := call.Args[1]
 	isEllipsis := call.Ellipsis.IsValid() // true if passed as slice...
-	if isEllipsis {
+	if isEllipsis && argOffset+1 < len(call.Args) {
+		secondArg := call.Args[argOffset+1]
 		compositeLit, ok := secondArg.(*ast.CompositeLit)
 		if !ok {
 			panic("not a composite literal, can't unpack")
@@ -438,9 +445,8 @@ func iterArgs(call *ast.CallExpr) iter.Seq[ast.Expr] {
 		}
 	} else {
 		return func(yield func(ast.Expr) bool) {
-			// Direct variadic args: foo.Text("msg", a, b, c)
-			// call.Args[1:] are the variadic arguments
-			for _, a := range call.Args[1:] {
+			// Iterate over variadic arguments like: foo.String("msg", a, b, c)
+			for _, a := range call.Args[argOffset+1:] {
 				if !yield(a) {
 					break
 				}

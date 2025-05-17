@@ -3,6 +3,7 @@ package toki
 import (
 	"errors"
 	"fmt"
+	"io"
 	"iter"
 
 	"github.com/go-playground/locales"
@@ -24,8 +25,11 @@ type Reader interface {
 	// Locale provides the locale this reader localizes for.
 	Locale() language.Tag
 
-	// Text provides a localized translation for the given TIK.
-	Text(tik string, args ...any) (localized string)
+	// String provides a localized translation string for the given TIK.
+	String(tik string, args ...any) (localized string)
+
+	// Write writes a localized translation for the given TIK to writer.
+	Write(writer io.Writer, tik string, args ...any) (written int, err error)
 
 	// Translator returns the localized translator of github.com/go-playground/locales
 	// for the locale this reader localizes for.
