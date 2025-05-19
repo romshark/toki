@@ -135,9 +135,6 @@ func (p *Parser) Parse(
 
 	p.collectTexts(fset, pkgs, bundlePkg, pathPattern, trimpath, scan)
 
-	// TODO: process bundle package
-	_ = pkgBundle
-
 	return scan, nil
 }
 
