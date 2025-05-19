@@ -2,12 +2,14 @@ package main
 
 import (
 	"bytes"
+	"debug/buildinfo"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"go/format"
 	"maps"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -32,6 +34,32 @@ var (
 	ErrInvalidCLIArgs  = errors.New("invalid arguments")
 )
 
+const Version = "0.2.0"
+
+func PrintVersionInfoAndExit() {
+	defer os.Exit(0)
+
+	p, err := exec.LookPath(os.Args[0])
+	if err != nil {
+		fmt.Printf("resolving executable file path: %v\n", err)
+		os.Exit(1)
+	}
+
+	f, err := os.Open(p)
+	if err != nil {
+		fmt.Printf("opening executable file %q: %v\n", os.Args[0], err)
+		os.Exit(1)
+	}
+
+	info, err := buildinfo.Read(f)
+	if err != nil {
+		fmt.Printf("Reading build information: %v\n", err)
+	}
+
+	fmt.Printf("Toki v%s\n\n", Version)
+	fmt.Printf("%v\n", info)
+}
+
 func main() {
 	r, exitCode := run(os.Args)
 	r.Print()
@@ -46,19 +74,18 @@ func run(osArgs []string) (result Result, exitCode int) {
 	}
 	log.SetLevel(log.LevelDebug)
 	switch osArgs[1] {
-	case "lint":
-		// TODO: implement lint command
-		return Result{
-			Err: errors.New("not yet implemented"),
-		}, 1
-	case "generate":
+	case "version":
+		PrintVersionInfoAndExit()
+
+	case "lint", "generate":
 		g := Generate{
 			hasher:           xxhash.New(),
 			icuTokenizer:     new(icumsg.Tokenizer),
 			tikParser:        tik.NewParser(defaultTIKConfig),
 			tikICUTranslator: tik.NewICUTranslator(defaultTIKConfig),
 		}
-		r := g.Run(osArgs)
+		lintOnly := osArgs[1] == "lint"
+		r := g.Run(osArgs, lintOnly)
 		switch {
 		case errors.Is(r.Err, ErrInvalidCLIArgs):
 			return r, 2
@@ -82,7 +109,7 @@ type Generate struct {
 	tikICUTranslator *tik.ICUTranslator
 }
 
-func (g *Generate) Run(osArgs []string) (result Result) {
+func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 	result.Start = time.Now()
 	conf, err := config.ParseCLIArgsGenerate(osArgs)
 	if err != nil {
@@ -97,14 +124,21 @@ func (g *Generate) Run(osArgs []string) (result Result) {
 		log.SetLevel(log.LevelVerbose)
 	}
 
-	// Create bundle package directory if it doesn't exist yet.
-	if err := prepareBundlePackageDir(conf.BundlePkgPath); err != nil {
-		result.Err = err
-		return result
+	if lintOnly {
+		log.Verbosef("linting only mode\n")
+	}
+
+	if !lintOnly {
+		// Create bundle package directory if it doesn't exist yet.
+		if err := prepareBundlePackageDir(conf.BundlePkgPath); err != nil {
+			result.Err = err
+			return result
+		}
 	}
 
 	// Read/create head.txt.
-	headTxt, err := readOrCreateHeadTxt(conf)
+	createIfNotExist := !lintOnly
+	headTxt, err := readOrCreateHeadTxt(conf, createIfNotExist)
 	if err != nil {
 		result.Err = err
 		return result
@@ -141,7 +175,7 @@ func (g *Generate) Run(osArgs []string) (result Result) {
 			LastModified: time.Now(),
 			CustomAttributes: map[string]any{
 				"x-generator":         "github.com/romshark/toki",
-				"x-generator-version": "v0.1.0",
+				"x-generator-version": "v" + Version,
 			},
 			Messages: make(map[string]arb.Message, len(scan.Texts)),
 		}
@@ -196,17 +230,19 @@ func (g *Generate) Run(osArgs []string) (result Result) {
 	}
 
 	// (Re-)Generate .arb files.
-	if err := writeARBFiles(conf.BundlePkgPath, scan.Catalogs); err != nil {
-		result.Err = err
-		return result
-	}
+	if !lintOnly {
+		if err := writeARBFiles(conf.BundlePkgPath, scan.Catalogs); err != nil {
+			result.Err = err
+			return result
+		}
 
-	// Generate go bundle.
-	if err := generateGoBundle(
-		conf.BundlePkgPath, conf.Locale, scan, headTxt,
-	); err != nil {
-		result.Err = err
-		return result
+		// Generate go bundle.
+		if err := generateGoBundle(
+			conf.BundlePkgPath, conf.Locale, scan, headTxt,
+		); err != nil {
+			result.Err = err
+			return result
+		}
 	}
 
 	return result
@@ -325,9 +361,17 @@ func generateGoBundle(
 }
 
 // readOrCreateHeadTxt reads the head.txt file if it exists, otherwise creates it.
-func readOrCreateHeadTxt(conf *config.ConfigGenerate) ([]string, error) {
+func readOrCreateHeadTxt(
+	conf *config.ConfigGenerate,
+	createIfNotExist bool,
+) ([]string, error) {
 	headFilePath := filepath.Join(conf.BundlePkgPath, "head.txt")
 	if fc, err := os.ReadFile(headFilePath); errors.Is(err, os.ErrNotExist) {
+		if !createIfNotExist {
+			log.Verbosef("head.txt not found\n")
+			return nil, nil
+		}
+
 		log.Verbosef("head.txt not found, creating a new one\n")
 		f, err := os.Create(headFilePath)
 		if err != nil {
