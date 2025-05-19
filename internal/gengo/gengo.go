@@ -70,11 +70,25 @@ func (w *Writer) WritePackageBundle(
 package %s
 
 import (
+	"fmt"
+	"io"
 	"iter"
 
 	"github.com/go-playground/locales"
 	"github.com/romshark/toki"
 )
+
+// MissingTranslationString is the default missing translation handler for String.
+var MissingTranslationString = func(tik string, _ ...any) string {
+	return fmt.Sprintf("[missing translation: %%q]", tik)
+}
+
+// MissingTranslationWrite is the default missing translation handler for Write.
+var MissingTranslationWrite = func(
+	w io.Writer, tik string, _ ...any,
+) (written int, err error) {
+	return fmt.Fprintf(w, "[missing translation: %%q]", tik)
+}
 
 const (
 	minInt53 = -1 << 53
@@ -315,7 +329,7 @@ func (w *Writer) writeCatalogType(msgIter iter.Seq[Message]) {
 	w.println(`// String returns localized text string for the given TIK.`)
 	w.printf("func (%s) String(tik string, args ...any) string {\n",
 		catalogTypeName)
-	w.writeMethodText(buildersMapName)
+	w.writeMethodString(buildersMapName)
 	w.print("}\n\n")
 
 	// Method Write.
@@ -329,13 +343,13 @@ func (w *Writer) writeCatalogType(msgIter iter.Seq[Message]) {
 
 func (w *Writer) writeMethodWrite(fnMapVarName string) {
 	w.printf("f := %s[tik];\n", fnMapVarName)
-	w.println(`if f == nil { panic("TODO") }`)
+	w.println(`if f == nil { return MissingTranslationWrite(writer, tik, args...) }`)
 	w.print("return f(writer, args...)")
 }
 
-func (w *Writer) writeMethodText(fnMapVarName string) {
+func (w *Writer) writeMethodString(fnMapVarName string) {
 	w.printf("f := %s[tik];\n", fnMapVarName)
-	w.println(`if f == nil { panic("TODO") }`)
+	w.println(`if f == nil { return MissingTranslationString(tik, args...) }`)
 	w.print("return f(args...)")
 }
 
