@@ -22,6 +22,73 @@ files as used as intermediate translation storage,
 [TIK](https://github.com/romshark/tik) for text keys and
 [ICU messages](https://unicode-org.github.io/icu/userguide/format_parse/messages/).
 
+## Quick Start Guide
+
+1. Make yourself familiar with
+   [Textual Internationalization Key](https://github.com/romshark/tik) syntax.
+2. Write a Go program with localized texts
+   (`reader.String` will return localized strings):
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/romshark/toki"
+	"golang.org/x/text/language"
+)
+
+func main() {
+	// Make a new localizer with English being the default language.
+	localization, err := toki.New(language.MustParse("en"), nil)
+	if err != nil {
+		panic(fmt.Errorf("initializing localization bundle: %w", err))
+	}
+
+	// Get a localized reader for British English.
+	// Toki will automatically select the most appropriate translation catalog available.
+	reader, _ := localization.Match(language.BritishEnglish)
+
+	// This comment describes the text below and is included in the translator context.
+	fmt.Println(reader.String(`{"Framework"} is powerful yet easy to use!`, "Toki"))
+}
+```
+
+3. Run `toki generate`
+
+```
+go run github.com/romshark/toki/cmd/toki@v0.2.0 generate -l en -b path/to/myi18nbundle
+```
+
+This will create a new Go package under `./path/to/` named `myi18nbundle` with `en` (English)
+as source code language containing your generated Go i18n code and translation catalogs.
+
+4. Import the generated bundle package into your application and pass it to `toki.New`:
+
+```go
+package main
+
+import (
+  "fmt"
+
+  "github.com/romshark/toki"
+  "golang.org/x/text/language"
+  
+  "yourmodule/myi18nbundle"
+)
+
+func main() {
+  // Make a new localizer with English being the default language.
+  localization, err := toki.New(language.MustParse("en"), myi18nbundle.Bundle{})
+  if err != nil {
+    panic(fmt.Errorf("initializing localization bundle: %w", err))
+  }
+  //...
+```
+
+5. Done! Your setup is now ready.
+
 ## Bundle File Structure
 
 - `bundle_gen.go` contains the generated `Bundle` type, helper functions and
