@@ -110,8 +110,6 @@ func (g *Generate) Run(osArgs []string) (result Result) {
 		return result
 	}
 
-	_ = headTxt // TODO
-
 	parser := codeparse.NewParser(g.hasher, g.tikParser, g.tikICUTranslator)
 
 	// Parse source code and bundle.
@@ -204,7 +202,9 @@ func (g *Generate) Run(osArgs []string) (result Result) {
 	}
 
 	// Generate go bundle.
-	if err := generateGoBundle(conf.BundlePkgPath, conf.Locale, scan); err != nil {
+	if err := generateGoBundle(
+		conf.BundlePkgPath, conf.Locale, scan, headTxt,
+	); err != nil {
 		result.Err = err
 		return result
 	}
@@ -254,6 +254,7 @@ func prepareBundlePackageDir(bundlePkgPath string) error {
 
 func generateGoBundle(
 	bundlePkgPath string, srcLocale language.Tag, scan *codeparse.Scan,
+	headTxtLines []string,
 ) error {
 	pkgName := filepath.Base(bundlePkgPath)
 
@@ -271,7 +272,9 @@ func generateGoBundle(
 			translationLocales[i] = catalog.ARB.Locale
 		}
 		var buf bytes.Buffer
-		writer.WritePackageBundle(&buf, pkgName, srcLocale, translationLocales)
+		writer.WritePackageBundle(
+			&buf, pkgName, srcLocale, translationLocales, headTxtLines,
+		)
 
 		formatted, err := format.Source(buf.Bytes())
 		if err != nil {
@@ -293,7 +296,7 @@ func generateGoBundle(
 		}
 
 		var buf bytes.Buffer
-		writer.WritePackageCatalog(&buf, locale, pkgName,
+		writer.WritePackageCatalog(&buf, locale, pkgName, headTxtLines,
 			func(yield func(gengo.Message) bool) {
 				sorted := slices.Sorted(maps.Keys(catalog.ARB.Messages))
 				for _, msgID := range sorted {
@@ -335,7 +338,7 @@ func readOrCreateHeadTxt(conf *config.ConfigGenerate) ([]string, error) {
 		}
 	} else if err != nil {
 		return nil, fmt.Errorf("reading head.txt: %w", err)
-	} else {
+	} else if len(fc) > 0 {
 		return strings.Split(string(fc), "\n"), nil
 	}
 	return nil, nil
