@@ -107,17 +107,19 @@ func (p *Parser) Parse(
 ) (scan *Scan, err error) {
 	fset := token.NewFileSet()
 
-	cfg := &packages.Config{
+	conf := &packages.Config{
 		Mode: packages.NeedFiles |
 			packages.NeedSyntax |
 			packages.NeedTypes |
 			packages.NeedTypesInfo |
+			packages.NeedCompiledGoFiles |
 			packages.NeedDeps |
 			packages.NeedName |
 			packages.NeedModule,
 		Fset: fset,
 	}
-	pkgs, err := packages.Load(cfg, pathPattern+"/...")
+	conf.Tests = true
+	pkgs, err := packages.Load(conf, pathPattern+"/...")
 	if err != nil {
 		return nil, fmt.Errorf("loading packages: %w", err)
 	}
@@ -214,11 +216,18 @@ func (p *Parser) collectTexts(
 	bundlePkg, pathPattern string, trimpath bool,
 	scan *Scan,
 ) {
+	seenFiles := make(map[string]struct{})
 	for _, pkg := range pkgs {
 		if isPkgBundle(bundlePkg, pkg) {
 			continue
 		}
-		for _, file := range pkg.Syntax {
+		for iFile, file := range pkg.Syntax {
+			filePath := pkg.CompiledGoFiles[iFile]
+			if _, ok := seenFiles[filePath]; ok {
+				continue
+			}
+			seenFiles[filePath] = struct{}{}
+
 			scan.FilesTraversed.Add(1)
 			for _, decl := range file.Decls {
 				ast.Inspect(decl, func(node ast.Node) bool {
@@ -283,6 +292,8 @@ func (p *Parser) collectTexts(
 
 					id := HashMessage(p.hasher, tikVal.Raw)
 					index := len(scan.Texts)
+					log.Verbosef("%s at %s:%d:%d\n",
+						funcType, posCall.Filename, posCall.Line, posCall.Column)
 					scan.Texts = append(scan.Texts, Text{
 						Position: posCall,
 						IDHash:   id,
@@ -294,6 +305,7 @@ func (p *Parser) collectTexts(
 					return true
 				})
 			}
+			log.Verbosef("traversed file %s\n", filePath)
 		}
 	}
 }
