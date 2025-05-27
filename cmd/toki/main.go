@@ -162,13 +162,21 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 		return result
 	}
 
+	var nativeCatalog *codeparse.Catalog
 	var nativeARB *arb.File
+	var nativeARBFileName string
 	for _, catalog := range scan.Catalogs {
 		if catalog.ARB.Locale == conf.Locale {
+			nativeCatalog = catalog
 			nativeARB = catalog.ARB
+			nativeARBFileName = catalog.ARBFileName
 		}
 	}
 	if nativeARB == nil {
+		nativeARBFileName = filepath.Join(
+			conf.BundlePkgPath,
+			"catalog."+gengo.LocaleToCatalogSuffix(conf.Locale)+".arb",
+		)
 		// Make a new one.
 		nativeARB = &arb.File{
 			Locale:       conf.Locale,
@@ -177,15 +185,13 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 				"x-generator":         "github.com/romshark/toki",
 				"x-generator-version": "v" + Version,
 			},
-			Messages: make(map[string]arb.Message, len(scan.Texts)),
+			Messages: make(map[string]arb.Message, len(scan.TextIndexByID)),
 		}
 
-		nativeCatalog := &codeparse.Catalog{
-			ARB: nativeARB,
+		nativeCatalog = &codeparse.Catalog{
+			ARB:         nativeARB,
+			ARBFileName: nativeARBFileName,
 		}
-		nativeCatalog.MessagesIncomplete.Add(
-			int64(len(nativeARB.Messages)),
-		)
 		scan.Catalogs = append(scan.Catalogs, nativeCatalog)
 	}
 
@@ -201,6 +207,11 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 				return result
 			}
 			nativeARB.Messages[id] = newMsg
+			if incomplete := codeparse.IsMsgIncomplete(
+				scan, nativeARB, nativeARBFileName, &newMsg,
+			); incomplete {
+				nativeCatalog.MessagesIncomplete.Add(1)
+			}
 			for _, catalog := range scan.Catalogs {
 				if catalog.ARB.Locale == conf.Locale {
 					// Skip native .arb
