@@ -5,7 +5,7 @@ go 1.24.3
 require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/go-playground/locales v0.14.1
-	github.com/romshark/icumsg v0.0.0-20250525151837-ad1665c86f5e
+	github.com/romshark/icumsg v0.0.0-20250527151507-1b1b9beed34e
 	github.com/romshark/tik/tik-go v0.4.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/text v0.25.0
