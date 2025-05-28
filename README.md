@@ -26,8 +26,11 @@ files as used as intermediate translation storage,
 
 1. Make yourself familiar with
    [Textual Internationalization Key](https://github.com/romshark/tik) syntax.
-2. Write a Go program with localized texts
-   (`reader.String` will return localized strings):
+2. Create new project directory `mkdir tokiexample && cd tokiexample`.
+3. Initialize the Go module by running `go mod init tokiexample && go mod tidy`.
+4. Run `go run github.com/romshark/toki@latest -l en && go mod tidy`
+   which will create a new Toki bundle package with default language set to `en`.
+5. Import the bundle package in your program and add some TIKs:
 
 ```go
 package main
@@ -35,59 +38,23 @@ package main
 import (
 	"fmt"
 
-	"github.com/romshark/toki"
+	"tokiexample/tokibundle"
+
 	"golang.org/x/text/language"
 )
 
 func main() {
-	// Make a new localizer with English being the default language.
-	localization, err := toki.New(language.MustParse("en"), nil)
-	if err != nil {
-		panic(fmt.Errorf("initializing localization bundle: %w", err))
-	}
-
 	// Get a localized reader for British English.
 	// Toki will automatically select the most appropriate translation catalog available.
-	reader, _ := localization.Match(language.BritishEnglish)
+	reader, _ := tokibundle.Match(language.BritishEnglish)
 
 	// This comment describes the text below and is included in the translator context.
 	fmt.Println(reader.String(`{"Framework"} is powerful yet easy to use!`, "Toki"))
 }
 ```
 
-3. Run `toki generate`
-
-```
-go run github.com/romshark/toki/cmd/toki@v0.2.0 generate -l en -b path/to/myi18nbundle
-```
-
-This will create a new Go package under `./path/to/` named `myi18nbundle` with `en` (English)
-as source code language containing your generated Go i18n code and translation catalogs.
-
-4. Import the generated bundle package into your application and pass it to `toki.New`:
-
-```go
-package main
-
-import (
-  "fmt"
-
-  "github.com/romshark/toki"
-  "golang.org/x/text/language"
-  
-  "yourmodule/myi18nbundle"
-)
-
-func main() {
-  // Make a new localizer with English being the default language.
-  localization, err := toki.New(language.MustParse("en"), myi18nbundle.Bundle{})
-  if err != nil {
-    panic(fmt.Errorf("initializing localization bundle: %w", err))
-  }
-  //...
-```
-
-5. Done! Your setup is now ready.
+6. Run `go run github.com/romshark/toki@latest -l en` again to update the bundle.
+7. Done! Your setup is now ready and you can run your program with `go run .`.
 
 ## Bundle File Structure
 

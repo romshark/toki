@@ -1,0 +1,306 @@
+package %s
+
+import (
+	"fmt"
+	"io"
+	"iter"
+	"bytes"
+	"sync"
+
+	"golang.org/x/text/language"
+	"github.com/go-playground/locales"
+)
+
+/*** HELPERS ***/
+
+type stringifier interface {
+	comparable
+	String() string
+}
+
+type stringified[T stringifier] struct {
+	lock sync.RWMutex
+	m    map[T]string
+}
+
+// String return the result of t.String(), cached by value of t if possible.
+func (c *stringified[T]) String(t T) string {
+	c.lock.RLock()
+	s, ok := c.m[t]
+	c.lock.RUnlock()
+
+	if ok {
+		return s
+	}
+
+	s = t.String()
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.m[t] = s
+	return s
+}
+
+// newStringified creates a new stringifier cache with preallocated capacity of cap.
+func newStringified[T stringifier](cap int) *stringified[T] {
+	return &stringified[T]{m: make(map[T]string, cap)}
+}
+
+const (
+	minInt53 = -1 << 53
+	maxInt53 = 1 << 53
+)
+
+func pluralRuleCardinal(t locales.Translator, quantity any) (locales.PluralRule) {
+	var q float64
+	switch n := quantity.(type) {
+	case uint:
+		if n >= maxInt53 {
+			return locales.PluralRuleOther // Lossy conversion.
+		}
+		q = float64(n)
+	case uint8:
+		q = float64(n)
+	case uint16:
+		q = float64(n)
+	case uint32:
+		q = float64(n)
+	case uint64:
+		if n >= maxInt53 {
+			return locales.PluralRuleOther // Lossy conversion.
+		}
+		q = float64(n)
+	case int:
+		if n >= maxInt53 || n <= minInt53 {
+			return locales.PluralRuleOther // Lossy conversion.
+		}
+		q = float64(n)
+	case int8:
+		q = float64(n)
+	case int16:
+		q = float64(n)
+	case int32:
+		q = float64(n)
+	case int64:
+		if n >= maxInt53 || n <= minInt53 {
+			return locales.PluralRuleOther // Lossy conversion.
+		}
+		q = float64(n)
+	case float32:
+		q = float64(n)
+	case float64:
+		q = float64(n)
+	default:
+		// Incorrect input type, fallback to other rule.
+		return locales.PluralRuleOther
+	}
+	return t.CardinalPluralRule(float64(q), 0)
+}
+
+func pluralRuleOrdinal(t locales.Translator, quantity any) (locales.PluralRule) {
+	var q float64
+	switch n := quantity.(type) {
+	case uint:
+		if n >= maxInt53 {
+			// Lossy conversion.
+			return locales.PluralRuleOther
+		}
+		q = float64(n)
+	case uint8:
+		q = float64(n)
+	case uint16:
+		q = float64(n)
+	case uint32:
+		q = float64(n)
+	case uint64:
+		if n >= maxInt53 {
+			// Lossy conversion.
+			return locales.PluralRuleOther
+		}
+		q = float64(n)
+	case int:
+		if n >= maxInt53 || n <= minInt53 {
+			// Lossy conversion.
+			return locales.PluralRuleOther
+		}
+		q = float64(n)
+	case int8:
+		q = float64(n)
+	case int16:
+		q = float64(n)
+	case int32:
+		q = float64(n)
+	case int64:
+		if n >= maxInt53 || n <= minInt53 {
+			// Lossy conversion.
+			return locales.PluralRuleOther
+		}
+		q = float64(n)
+	case float32:
+		q = float64(n)
+	case float64:
+		q = float64(n)
+	default:
+		// Incorrect input type, fallback to default form.
+		return locales.PluralRuleOther
+	}
+	return t.OrdinalPluralRule(float64(q), 0)
+}
+
+func subtract(number any, amount uint) any {
+	switch v := number.(type) {
+	case int:
+		return v - int(amount)
+	case uint:
+		return v - uint(amount)
+	case int8:
+		return v - int8(amount)
+	case uint8:
+		return v - uint8(amount)
+	case int16:
+		return v - int16(amount)
+	case uint16:
+		return v - uint16(amount)
+	case int32:
+		return v - int32(amount)
+	case uint32:
+		return v - uint32(amount)
+	case int64:
+		return v - int64(amount)
+	case uint64:
+		return v - uint64(amount)
+	case float64:
+		return v - float64(amount)
+	case float32:
+		return v - float32(amount)
+	default:
+		return number
+	}
+}
+
+// Prevent "unused function" linter errors.
+var _ = pluralRuleCardinal(nil, maxInt53)
+var _ = pluralRuleOrdinal(nil, maxInt53)
+var _ = subtract(0, 0)
+
+/*** INTERNALS ***/
+
+var (
+	allLocales     []language.Tag
+	readers        []Reader
+	matcher        language.Matcher
+	readerByLocale map[string]Reader
+)
+
+var localeStringCache = newStringified[language.Tag](0)
+var baseStringCache = newStringified[language.Base](0)
+
+var poolBuf = sync.Pool{
+	New: func() any {
+		var b bytes.Buffer
+		b.Grow(BufferCap)
+		return &b
+	},
+}
+
+func poolBufGet() *bytes.Buffer {
+	return poolBuf.Get().(*bytes.Buffer)
+}
+
+func poolBufPut(b *bytes.Buffer) {
+	if b.Cap() > BufferCap {
+		return // Too large; Drop for GC to collect.
+	}
+	b.Reset()
+	poolBuf.Put(b)
+}
+
+func init() {
+	readerByLocale = make(map[string]Reader)
+	for r := range Catalogs() {
+		locale := r.Locale()
+		allLocales = append(allLocales, locale)
+		localeStr := localeStringCache.String(locale)
+		readerByLocale[localeStr] = r
+		readers = append(readers, r)
+	}
+	matcher = language.NewMatcher(allLocales)
+}
+
+/*** DEFAULTS ***/
+
+// DefaultLocale defines the default language of the Toki bundle.
+// This is the language used by the TIKs in the source code.
+const DefaultLocale = %q
+
+/*** CONFIGURABLES ***/
+
+// BufferCap defines the default buffer capacity of 8KiB.
+var BufferCap = 8 * 1024
+
+// MissingTranslation is the default missing translation handler.
+var MissingTranslation = func(
+	w io.Writer, tik string, _ ...any,
+) (written int, err error) {
+	return fmt.Fprintf(w, "[missing translation: %%q]", tik)
+}
+
+/*** PUBLIC API ***/
+
+type Gender uint8
+
+const (
+	_ Gender = iota
+
+	GenderNeutral // They
+	GenderMale    // He
+	GenderFemale  // She
+)
+
+// Reader reads localized messages.
+type Reader interface {
+	// Locale provides the locale this reader localizes for.
+	Locale() language.Tag
+
+	// String provides a localized translation string for the given TIK.
+	String(tik string, args ...any) (localized string)
+
+	// Write writes a localized translation for the given TIK to writer.
+	Write(writer io.Writer, tik string, args ...any) (written int, err error)
+
+	// Translator returns the localized translator of github.com/go-playground/locales
+	// for the locale this reader localizes for.
+	Translator() locales.Translator
+}
+
+// Match returns the best matching reader for locales.
+func Match(locales ...language.Tag) (Reader, language.Confidence) {
+	t, _, c := matcher.Match(locales...)
+	for t := t; t != language.Und; t = t.Parent() {
+		s := localeStringCache.String(t)
+		if r, ok := readerByLocale[s]; ok {
+			return r, c
+		}
+	}
+	// Fallback to default.
+	return readerByLocale[DefaultLocale], language.No
+}
+
+// ForBase returns either the localization for language, or the default localization
+// if no localization for language is found.
+func ForBase(language language.Base) Reader {
+	s := baseStringCache.String(language)
+	r := readerByLocale[s]
+	if r == nil {
+		r = readerByLocale[DefaultLocale]
+	}
+	return r
+}
+
+// Default returns the reader for the default locale.
+func Default() Reader { return readerByLocale[DefaultLocale] }
+
+// Locales returns all locales of the bundle.
+func Locales() []language.Tag { return allLocales }
+
+// Readers returns all available readers.
+func Readers() []Reader { return readers }
