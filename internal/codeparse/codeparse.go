@@ -23,10 +23,6 @@ import (
 )
 
 const (
-	targetPackage = "github.com/romshark/toki"
-	targetType    = targetPackage + ".Reader"
-	typeGender    = "Gender"
-
 	FuncTypeString = "String"
 	FuncTypeWrite  = "Write"
 )
@@ -45,6 +41,9 @@ type Parser struct {
 	arbDecoder    *arb.Decoder
 	icuDecoder    *icumsg.Tokenizer
 	icuTranslator *tik.ICUTranslator
+
+	genderType string
+	readerType string
 }
 
 func NewParser(
@@ -135,6 +134,9 @@ func (p *Parser) Parse(
 			return scan, fmt.Errorf("searching .arb files: %w", err)
 		}
 	}
+
+	p.genderType = pkgBundle.PkgPath + ".Gender"
+	p.readerType = pkgBundle.PkgPath + ".Reader"
 
 	p.collectTexts(fset, pkgs, bundlePkg, pathPattern, trimpath, scan)
 
@@ -278,12 +280,8 @@ func (p *Parser) collectTexts(
 					}
 
 					recv := methodType.Recv()
-					if recv == nil || recv.Type().String() != targetType {
+					if recv == nil || recv.Type().String() != p.readerType {
 						return true // Not the right receiver type.
-					}
-
-					if obj.Pkg() == nil || obj.Pkg().Path() != targetPackage {
-						return true // Not from the target package.
 					}
 
 					funcType := selector.Sel.Name
@@ -410,7 +408,7 @@ func (p *Parser) parseTIK(
 			}
 
 		case tik.TokenTypeGenderPronoun:
-			if typName, isGender := isTokiGender(pkg, arg); !isGender {
+			if typName, isGender := p.isTokiGender(pkg, arg); !isGender {
 				onSrcErr(pos, fmt.Errorf("arg %d must be toki.Gender but received: %s",
 					idx, typName))
 				ok = false
@@ -551,7 +549,7 @@ func isTime(pkg *packages.Package, expr ast.Expr) (actualTypeName string, ok boo
 	return obj.Pkg().Name() + "." + obj.Name(), false
 }
 
-func isTokiGender(
+func (p *Parser) isTokiGender(
 	pkg *packages.Package, expr ast.Expr,
 ) (actualTypeName string, ok bool) {
 	tv, found := pkg.TypesInfo.Types[expr]
@@ -570,7 +568,7 @@ func isTokiGender(
 		return tv.Type.String(), false
 	}
 
-	if obj.Name() == typeGender && objPkg.Path() == targetPackage {
+	if objPkg.Path() == p.genderType {
 		return objPkg.Name() + "." + obj.Name(), true // "toki.Gender"
 	}
 
