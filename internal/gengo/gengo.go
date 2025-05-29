@@ -100,6 +100,7 @@ func (w *Writer) WritePackageCatalog(
 	}
 	w.printf("\npackage %s\n", packageName)
 	w.println("import (")
+	w.println("\t" + `"fmt"`)
 	w.println("\t" + `"io"`)
 	w.println("")
 	w.printf("\tlocales \"github.com/go-playground/locales\"\n")
