@@ -18,15 +18,12 @@ import (
 	tik "github.com/romshark/tik/tik-go"
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/log"
+	"github.com/romshark/toki/internal/sync"
 	"golang.org/x/text/language"
 	"golang.org/x/tools/go/packages"
 )
 
 const (
-	targetPackage = "github.com/romshark/toki"
-	targetType    = targetPackage + ".Reader"
-	typeGender    = "Gender"
-
 	FuncTypeString = "String"
 	FuncTypeWrite  = "Write"
 )
@@ -45,6 +42,9 @@ type Parser struct {
 	arbDecoder    *arb.Decoder
 	icuDecoder    *icumsg.Tokenizer
 	icuTranslator *tik.ICUTranslator
+
+	genderType string
+	readerType string
 }
 
 func NewParser(
@@ -95,10 +95,12 @@ type Catalog struct {
 
 type Scan struct {
 	Statistics
-	Texts         []Text
-	TextIndexByID map[string]int
-	SourceErrors  []SourceError
-	Catalogs      []*Catalog
+	TokiVersion   string
+	DefaultLocale language.Tag
+	Texts         *sync.Slice[Text]
+	TextIndexByID *sync.Map[string, int]
+	SourceErrors  *sync.Slice[SourceError]
+	Catalogs      *sync.Slice[*Catalog]
 }
 
 func (p *Parser) Parse(
@@ -125,15 +127,30 @@ func (p *Parser) Parse(
 		return nil, fmt.Errorf("loading packages: %w", err)
 	}
 
-	scan = &Scan{TextIndexByID: map[string]int{}}
+	scan = &Scan{
+		Texts:         sync.NewSlice[Text](0),
+		TextIndexByID: sync.NewMap[string, int](0),
+		SourceErrors:  sync.NewSlice[SourceError](0),
+		Catalogs:      sync.NewSlice[*Catalog](1),
+	}
 
 	pkgBundle := findBundlePkg(bundlePkg, pkgs)
 	if pkgBundle != nil {
 		log.Verbosef("bundle detected: %s\n", pkgBundle.Dir)
+		scan.TokiVersion = getConstantValue(pkgBundle, "TokiVersion")
+		defaultLocaleString := getConstantValue(pkgBundle, "DefaultLocale")
+		defaultLocale, err := language.Parse(defaultLocaleString)
+		if err != nil {
+			return nil, fmt.Errorf("invalid DefaultLocale value: %w", err)
+		}
+		scan.DefaultLocale = defaultLocale
+
 		err = p.collectARBFiles(pkgBundle.Dir, scan)
 		if err != nil {
 			return scan, fmt.Errorf("searching .arb files: %w", err)
 		}
+		p.genderType = pkgBundle.PkgPath + ".Gender"
+		p.readerType = pkgBundle.PkgPath + ".Reader"
 	}
 
 	p.collectTexts(fset, pkgs, bundlePkg, pathPattern, trimpath, scan)
@@ -150,9 +167,30 @@ func findBundlePkg(bundlePkg string, pkgs []*packages.Package) *packages.Package
 	return nil
 }
 
+// getConstantValue returns the literal value of the constant name declared in package p.
+// Empty string is returned if it isn't found, isn't a constant, or has no value.
+func getConstantValue(p *packages.Package, name string) string {
+	if p == nil || p.Types == nil {
+		return ""
+	}
+	obj := p.Types.Scope().Lookup(name)
+	c, ok := obj.(*types.Const)
+	if !ok {
+		return ""
+	}
+	val := c.Val()
+	if val == nil {
+		return ""
+	}
+	if val.Kind() == constant.String {
+		return constant.StringVal(val)
+	}
+	return val.String()
+}
+
 var selectOptionsGender = []string{"male", "female"}
 
-func selectOptions(argName string) (
+func ICUSelectOptions(argName string) (
 	[]string, icumsg.OptionsPresencePolicy, icumsg.OptionUnknownPolicy,
 ) {
 	if strings.HasSuffix(argName, "_gender") {
@@ -208,7 +246,7 @@ func (p *Parser) collectARBFiles(bundlePkgDir string, scan *Scan) error {
 			}
 		}
 
-		scan.Catalogs = append(scan.Catalogs, catalog)
+		scan.Catalogs.Append(catalog)
 
 		return nil
 	})
@@ -220,13 +258,13 @@ func IsMsgIncomplete(
 	incomplete := false
 	_ = icumsg.Completeness(
 		msg.ICUMessage, msg.ICUMessageTokens, arbFile.Locale,
-		selectOptions,
+		ICUSelectOptions,
 		func(index int) { incomplete = true }, // On incomplete.
 		func(index int) { // On rejected.
 			name := msg.ICUMessageTokens[index+1].String(
 				msg.ICUMessage, msg.ICUMessageTokens,
 			)
-			scan.SourceErrors = append(scan.SourceErrors, SourceError{
+			scan.SourceErrors.Append(SourceError{
 				Err: fmt.Errorf("%w: %q", ErrUnsupportedSelectOption, name),
 				Position: token.Position{
 					Filename: fileName,
@@ -278,12 +316,8 @@ func (p *Parser) collectTexts(
 					}
 
 					recv := methodType.Recv()
-					if recv == nil || recv.Type().String() != targetType {
+					if recv == nil || recv.Type().String() != p.readerType {
 						return true // Not the right receiver type.
-					}
-
-					if obj.Pkg() == nil || obj.Pkg().Path() != targetPackage {
-						return true // Not from the target package.
 					}
 
 					funcType := selector.Sel.Name
@@ -302,7 +336,7 @@ func (p *Parser) collectTexts(
 
 					tikVal, ok = p.parseTIK(fset, pkg, call, argumentOffset,
 						func(pos token.Position, err error) {
-							scan.SourceErrors = append(scan.SourceErrors, SourceError{
+							scan.SourceErrors.Append(SourceError{
 								Position: pos, Err: fmt.Errorf("TIK: %w", err),
 							})
 						})
@@ -317,16 +351,18 @@ func (p *Parser) collectTexts(
 					comments := findLeadingComments(fset, file, call)
 
 					id := HashMessage(p.hasher, tikVal.Raw)
-					index := len(scan.Texts)
 					log.Verbosef("%s at %s:%d:%d\n",
 						funcType, posCall.Filename, posCall.Line, posCall.Column)
-					scan.Texts = append(scan.Texts, Text{
-						Position: posCall,
-						IDHash:   id,
-						TIK:      tikVal,
-						Comments: comments,
+					_ = scan.TextIndexByID.Access(func(s map[string]int) error {
+						index := scan.Texts.Append(Text{
+							Position: posCall,
+							IDHash:   id,
+							TIK:      tikVal,
+							Comments: comments,
+						})
+						s[id] = index
+						return nil
 					})
-					scan.TextIndexByID[id] = index
 
 					return true
 				})
@@ -410,7 +446,7 @@ func (p *Parser) parseTIK(
 			}
 
 		case tik.TokenTypeGenderPronoun:
-			if typName, isGender := isTokiGender(pkg, arg); !isGender {
+			if typName, isGender := p.isTokiGender(pkg, arg); !isGender {
 				onSrcErr(pos, fmt.Errorf("arg %d must be toki.Gender but received: %s",
 					idx, typName))
 				ok = false
@@ -551,7 +587,7 @@ func isTime(pkg *packages.Package, expr ast.Expr) (actualTypeName string, ok boo
 	return obj.Pkg().Name() + "." + obj.Name(), false
 }
 
-func isTokiGender(
+func (p *Parser) isTokiGender(
 	pkg *packages.Package, expr ast.Expr,
 ) (actualTypeName string, ok bool) {
 	tv, found := pkg.TypesInfo.Types[expr]
@@ -570,7 +606,7 @@ func isTokiGender(
 		return tv.Type.String(), false
 	}
 
-	if obj.Name() == typeGender && objPkg.Path() == targetPackage {
+	if objPkg.Path() == p.genderType {
 		return objPkg.Name() + "." + obj.Name(), true // "toki.Gender"
 	}
 
