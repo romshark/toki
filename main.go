@@ -188,7 +188,7 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 	if nativeARB == nil {
 		nativeARBFileName = filepath.Join(
 			conf.BundlePkgPath,
-			"catalog."+gengo.LocaleToCatalogSuffix(conf.Locale)+".arb",
+			gengo.FileNameWithLocale(conf.Locale, "catalog", ".arb"),
 		)
 		// Make a new one.
 		nativeARB = &arb.File{
@@ -333,9 +333,8 @@ func writeARBFiles(
 ) error {
 	for catalog := range catalogs.Seq() {
 		locale := catalog.ARB.Locale
-		loc := strings.ToLower(gengo.LocaleToCatalogSuffix(locale))
-		filePath := filepath.Join(bundlePkgPath, fmt.Sprintf("catalog.%s.arb",
-			loc))
+		name := gengo.FileNameWithLocale(locale, "catalog", ".arb")
+		filePath := filepath.Join(bundlePkgPath, name)
 		err := func() error {
 			f, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 			if err != nil {
@@ -416,7 +415,7 @@ func generateGoBundle(
 	return scan.Catalogs.Access(func(s []*codeparse.Catalog) error {
 		for _, catalog := range s {
 			locale := catalog.ARB.Locale
-			fileName := fmt.Sprintf("catalog_%s_gen.go", locale.String())
+			fileName := gengo.FileNameWithLocale(locale, "catalog", "_gen.go")
 			filePath := filepath.Join(bundlePkgPath, fileName)
 			f, err := os.OpenFile(filePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o644)
 			if err != nil {

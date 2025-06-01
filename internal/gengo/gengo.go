@@ -55,9 +55,14 @@ type Message struct {
 
 var replacerCatalogSuffix = strings.NewReplacer("-", "_")
 
-func LocaleToCatalogSuffix(t language.Tag) string {
+func localeToCatalogSuffix(t language.Tag) string {
 	s := t.String()
-	return strings.ToUpper(replacerCatalogSuffix.Replace(s))
+	return strings.ToLower(replacerCatalogSuffix.Replace(s))
+}
+
+func FileNameWithLocale(t language.Tag, prefix, extension string) string {
+	s := localeToCatalogSuffix(t)
+	return fmt.Sprintf("%s_%s%s", prefix, s, extension)
 }
 
 //go:embed template.go.txt
@@ -83,7 +88,7 @@ func (w *Writer) WritePackageBundle(
 	w.println("func Catalogs() iter.Seq[Reader] {")
 	w.println("return func(yield func(Reader) bool) {")
 	for _, l := range translationLocales {
-		suffix := LocaleToCatalogSuffix(l)
+		suffix := localeToCatalogSuffix(l)
 		typeName := TypePrefixCatalog + suffix
 		w.printf("if !yield(%s{}) { return }\n", typeName)
 	}
@@ -120,7 +125,7 @@ func (w *Writer) WritePackageCatalog(
 }
 
 func (w *Writer) writeCatalogType(msgIter iter.Seq[Message]) {
-	localeCatalogSuffix := LocaleToCatalogSuffix(w.l)
+	localeCatalogSuffix := localeToCatalogSuffix(w.l)
 	w.translatorVar = fmt.Sprintf("translator%s", localeCatalogSuffix)
 	w.printf("\n// This prevents the \"imported and not used\" error " +
 		"when the catalog is empty.\n")
