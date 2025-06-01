@@ -3,21 +3,19 @@ package config
 import (
 	"flag"
 	"fmt"
-	"path/filepath"
 
 	"golang.org/x/text/language"
 )
 
 type ConfigGenerate struct {
-	Locale                 language.Tag
-	Translations           []language.Tag
-	SrcPathPattern         string
-	OutPathCatalogTemplate string
-	TrimPath               bool
-	JSON                   bool
-	QuietMode              bool
-	VerboseMode            bool
-	BundlePkgPath          string
+	Locale         language.Tag
+	Translations   []language.Tag
+	SrcPathPattern string
+	TrimPath       bool
+	JSON           bool
+	QuietMode      bool
+	VerboseMode    bool
+	BundlePkgPath  string
 }
 
 // ParseCLIArgsGenerate parses CLI arguments for command "generate"
@@ -33,8 +31,6 @@ func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
 	cli.StringVar(&locale, "l", "",
 		"default locale of the original source code texts in BCP 47")
 	cli.StringVar(&c.SrcPathPattern, "p", ".", "path to Go module")
-	cli.StringVar(&c.OutPathCatalogTemplate, "tmpl", "",
-		"catalog template output file path. Set to bundle package by default.")
 	cli.BoolVar(&c.TrimPath, "trimpath", true, "enable source code path trimming")
 	cli.BoolVar(&c.JSON, "json", false, "enables JSON output")
 	cli.BoolVar(&c.QuietMode, "q", false, "disable all console logging")
@@ -44,12 +40,6 @@ func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
 
 	if err := cli.Parse(osArgs[2:]); err != nil {
 		return nil, fmt.Errorf("parsing: %w", err)
-	}
-
-	if c.OutPathCatalogTemplate == "" {
-		c.OutPathCatalogTemplate = catalogTemplateFileName(
-			c.BundlePkgPath,
-		)
 	}
 
 	if locale == "" {
@@ -79,10 +69,6 @@ func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
 	}
 
 	return c, nil
-}
-
-func catalogTemplateFileName(outPath string) string {
-	return filepath.Join(outPath, "catalog.pot")
 }
 
 type arrayFlags []string
