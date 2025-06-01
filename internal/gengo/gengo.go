@@ -16,6 +16,8 @@ import (
 const TypePrefixCatalog = "catalog"
 
 type Writer struct {
+	tokiVersion string
+
 	w io.Writer      // Destination writer.
 	l language.Tag   // Locale
 	m string         // ICU message.
@@ -23,6 +25,10 @@ type Writer struct {
 	i int            // Current index in t.
 
 	translatorVar string
+}
+
+func NewWriter(tokiVersion string) *Writer {
+	return &Writer{tokiVersion: tokiVersion}
 }
 
 var lineBreak = []byte("\n")
@@ -70,7 +76,7 @@ func (w *Writer) WritePackageBundle(
 	for _, l := range headTxtLines {
 		w.printf("// %s\n", l)
 	}
-	w.printf(templateGoTxt, packageName, srcLocale.String())
+	w.printf(templateGoTxt, packageName, w.tokiVersion, srcLocale.String())
 
 	w.println("// Catalogs returns an iterator over all enabled catalogs.")
 	w.println("func Catalogs() iter.Seq[Reader] {")

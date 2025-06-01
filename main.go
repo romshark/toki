@@ -316,7 +316,7 @@ func generateGoBundle(
 	pkgName := filepath.Base(bundlePkgPath)
 
 	bundleGoFilePath := filepath.Join(bundlePkgPath, "bundle_gen.go")
-	var writer gengo.Writer
+	writer := gengo.NewWriter(Version)
 	{
 		f, err := os.OpenFile(bundleGoFilePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
@@ -447,7 +447,7 @@ func (r Result) mustPrintJSON() {
 		TimeMS         int64         `json:"time-ms"`
 		Catalogs       []Catalog     `json:"catalogs"`
 	}{
-		Error:          r.Err.Error(),
+		Error:          errMsg,
 		StringCalls:    r.Scan.StringCalls.Load(),
 		WriteCalls:     r.Scan.WriteCalls.Load(),
 		TIKs:           len(r.Scan.Texts),
