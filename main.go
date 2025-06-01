@@ -157,6 +157,16 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 	}
 	result.Scan = scan
 
+	if conf.Locale != language.Und && scan.DefaultLocale != language.Und &&
+		conf.Locale != scan.DefaultLocale {
+		// The bundle package already existed
+		// but the -l parameter doesn't match its default locale.
+		result.Err = fmt.Errorf("parameter -l (%q) must either match DefaultLocale (%q) "+
+			"in package %q or not be set at all",
+			conf.Locale.String(), scan.DefaultLocale.String(), conf.BundlePkgPath)
+		return result
+	}
+
 	if len(scan.SourceErrors) > 0 {
 		result.Err = ErrSourceErrors
 		return result
@@ -422,7 +432,7 @@ func (r Result) mustPrintJSON() {
 		Col   int    `json:"col"`
 	}
 	data := struct {
-		Error          error         `json:"error,omitempty"`
+		Error          string        `json:"error,omitempty"`
 		StringCalls    int64         `json:"string-calls"`
 		WriteCalls     int64         `json:"write-calls"`
 		TIKs           int           `json:"tiks"`
@@ -433,7 +443,7 @@ func (r Result) mustPrintJSON() {
 		TimeMS         int64         `json:"time-ms"`
 		Catalogs       []Catalog     `json:"catalogs"`
 	}{
-		Error:          r.Err,
+		Error:          r.Err.Error(),
 		StringCalls:    r.Scan.StringCalls.Load(),
 		WriteCalls:     r.Scan.WriteCalls.Load(),
 		TIKs:           len(r.Scan.Texts),

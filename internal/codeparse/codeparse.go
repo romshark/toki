@@ -94,6 +94,7 @@ type Catalog struct {
 
 type Scan struct {
 	Statistics
+	DefaultLocale language.Tag
 	Texts         []Text
 	TextIndexByID map[string]int
 	SourceErrors  []SourceError
@@ -129,14 +130,20 @@ func (p *Parser) Parse(
 	pkgBundle := findBundlePkg(bundlePkg, pkgs)
 	if pkgBundle != nil {
 		log.Verbosef("bundle detected: %s\n", pkgBundle.Dir)
+		defaultLocaleString := getConstantValue(pkgBundle, "DefaultLocale")
+		defaultLocale, err := language.Parse(defaultLocaleString)
+		if err != nil {
+			return nil, fmt.Errorf("invalid DefaultLocale value: %w", err)
+		}
+		scan.DefaultLocale = defaultLocale
+
 		err = p.collectARBFiles(pkgBundle.Dir, scan)
 		if err != nil {
 			return scan, fmt.Errorf("searching .arb files: %w", err)
 		}
+		p.genderType = pkgBundle.PkgPath + ".Gender"
+		p.readerType = pkgBundle.PkgPath + ".Reader"
 	}
-
-	p.genderType = pkgBundle.PkgPath + ".Gender"
-	p.readerType = pkgBundle.PkgPath + ".Reader"
 
 	p.collectTexts(fset, pkgs, bundlePkg, pathPattern, trimpath, scan)
 
@@ -150,6 +157,27 @@ func findBundlePkg(bundlePkg string, pkgs []*packages.Package) *packages.Package
 		}
 	}
 	return nil
+}
+
+// getConstantValue returns the literal value of the constant name declared in package p.
+// Empty string is returned if it isn't found, isn't a constant, or has no value.
+func getConstantValue(p *packages.Package, name string) string {
+	if p == nil || p.Types == nil {
+		return ""
+	}
+	obj := p.Types.Scope().Lookup(name)
+	c, ok := obj.(*types.Const)
+	if !ok {
+		return ""
+	}
+	val := c.Val()
+	if val == nil {
+		return ""
+	}
+	if val.Kind() == constant.String {
+		return constant.StringVal(val)
+	}
+	return val.String()
 }
 
 var selectOptionsGender = []string{"male", "female"}
