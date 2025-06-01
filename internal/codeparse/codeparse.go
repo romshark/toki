@@ -94,6 +94,7 @@ type Catalog struct {
 
 type Scan struct {
 	Statistics
+	TokiVersion   string
 	DefaultLocale language.Tag
 	Texts         []Text
 	TextIndexByID map[string]int
@@ -130,6 +131,7 @@ func (p *Parser) Parse(
 	pkgBundle := findBundlePkg(bundlePkg, pkgs)
 	if pkgBundle != nil {
 		log.Verbosef("bundle detected: %s\n", pkgBundle.Dir)
+		scan.TokiVersion = getConstantValue(pkgBundle, "TokiVersion")
 		defaultLocaleString := getConstantValue(pkgBundle, "DefaultLocale")
 		defaultLocale, err := language.Parse(defaultLocaleString)
 		if err != nil {
