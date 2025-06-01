@@ -55,7 +55,7 @@ func PrintVersionInfoAndExit() {
 
 	info, err := buildinfo.Read(f)
 	if err != nil {
-		fmt.Printf("Reading build information: %v\n", err)
+		fmt.Printf("reading build information: %v\n", err)
 	}
 
 	fmt.Printf("Toki v%s\n\n", Version)
