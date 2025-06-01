@@ -431,6 +431,10 @@ func (r Result) mustPrintJSON() {
 		Line  int    `json:"line"`
 		Col   int    `json:"col"`
 	}
+	var errMsg string
+	if r.Err != nil {
+		errMsg = r.Err.Error()
+	}
 	data := struct {
 		Error          string        `json:"error,omitempty"`
 		StringCalls    int64         `json:"string-calls"`
