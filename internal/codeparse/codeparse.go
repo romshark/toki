@@ -208,7 +208,7 @@ func (p *Parser) collectARBFiles(bundlePkgDir string, scan *Scan) error {
 		}
 
 		withoutExt := strings.TrimSuffix(fileName, ".arb")
-		withoutPrefix, ok := strings.CutPrefix(withoutExt, "catalog.")
+		withoutPrefix, ok := strings.CutPrefix(withoutExt, "catalog_")
 		if !ok {
 			log.Verbosef("ignoring inactive translation file: %s\n", fileName)
 			return nil
