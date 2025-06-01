@@ -190,7 +190,7 @@ func getConstantValue(p *packages.Package, name string) string {
 
 var selectOptionsGender = []string{"male", "female"}
 
-func selectOptions(argName string) (
+func ICUSelectOptions(argName string) (
 	[]string, icumsg.OptionsPresencePolicy, icumsg.OptionUnknownPolicy,
 ) {
 	if strings.HasSuffix(argName, "_gender") {
@@ -258,7 +258,7 @@ func IsMsgIncomplete(
 	incomplete := false
 	_ = icumsg.Completeness(
 		msg.ICUMessage, msg.ICUMessageTokens, arbFile.Locale,
-		selectOptions,
+		ICUSelectOptions,
 		func(index int) { incomplete = true }, // On incomplete.
 		func(index int) { // On rejected.
 			name := msg.ICUMessageTokens[index+1].String(

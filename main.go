@@ -277,6 +277,27 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 		}
 	}
 
+	if !conf.QuietMode && conf.VerboseMode {
+		// Report incomplete messages in verbose mode.
+		for catalog := range scan.Catalogs.Seq() {
+			for _, msg := range catalog.ARB.Messages {
+				_ = icumsg.Completeness(
+					msg.ICUMessage, msg.ICUMessageTokens, catalog.ARB.Locale,
+					codeparse.ICUSelectOptions,
+					func(index int) {
+						tok := msg.ICUMessageTokens[index]
+						log.Verbosef("ICU message incomplete: %q: %s %#v\n",
+							msg.ID, tok.Type.String(),
+							tok.String(msg.ICUMessage, msg.ICUMessageTokens))
+					}, // On incomplete.
+					func(index int) {
+						// On rejected do nothing. This was addressed before this report.
+					},
+				)
+			}
+		}
+	}
+
 	return result
 }
 
