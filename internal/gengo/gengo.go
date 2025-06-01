@@ -126,15 +126,11 @@ func (w *Writer) WritePackageCatalog(
 
 func (w *Writer) writeCatalogType(msgIter iter.Seq[Message]) {
 	localeCatalogSuffix := localeToCatalogSuffix(w.l)
-	w.translatorVar = fmt.Sprintf("translator%s", localeCatalogSuffix)
+	w.translatorVar = fmt.Sprintf("translator_%s", localeCatalogSuffix)
 	w.printf("\n// This prevents the \"imported and not used\" error " +
 		"when the catalog is empty.\n")
 	w.printf("var _ fmt.Formatter = nil\n")
-	w.printf("\nvar locale%s language.Tag\n", localeCatalogSuffix)
 	w.printf("\nvar %s = locale.New()\n", w.translatorVar)
-
-	w.printf("func init() { locale%s = language.MustParse(%q) }\n",
-		localeCatalogSuffix, w.l.String())
 
 	// Type definition.
 	catalogTypeName := TypePrefixCatalog + localeCatalogSuffix
@@ -151,7 +147,7 @@ func (w *Writer) writeCatalogType(msgIter iter.Seq[Message]) {
 	w.println(`}`)
 
 	// Method Locale.
-	w.printf("func (%s) Locale() language.Tag { return locale%s }\n\n",
+	w.printf("func (%s) Locale() language.Tag { return language.MustParse(%q) }\n\n",
 		catalogTypeName, localeCatalogSuffix)
 
 	// Method Translator.
