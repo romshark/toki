@@ -18,7 +18,7 @@ before:
 builds:
   - id: toki
     binary: toki
-    main: ./cmd/toki
+    main: ./
     env:
       - CGO_ENABLED=0
     goos: [linux, windows, darwin]
