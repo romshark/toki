@@ -25,6 +25,7 @@ import (
 	"github.com/romshark/toki/internal/config"
 	"github.com/romshark/toki/internal/gengo"
 	"github.com/romshark/toki/internal/log"
+	"github.com/romshark/toki/internal/sync"
 	"golang.org/x/text/language"
 )
 
@@ -36,7 +37,7 @@ var (
 	ErrInvalidCLIArgs  = errors.New("invalid arguments")
 )
 
-const Version = "0.2.3"
+const Version = "0.3.0"
 
 func PrintVersionInfoAndExit() {
 	defer os.Exit(0)
@@ -169,7 +170,7 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 		return result
 	}
 
-	if len(scan.SourceErrors) > 0 {
+	if scan.SourceErrors.Len() > 0 {
 		result.Err = ErrSourceErrors
 		return result
 	}
@@ -177,7 +178,7 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 	var nativeCatalog *codeparse.Catalog
 	var nativeARB *arb.File
 	var nativeARBFileName string
-	for _, catalog := range scan.Catalogs {
+	for catalog := range scan.Catalogs.Seq() {
 		if catalog.ARB.Locale == conf.Locale {
 			nativeCatalog = catalog
 			nativeARB = catalog.ARB
@@ -197,18 +198,18 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 				"x-generator":         "github.com/romshark/toki",
 				"x-generator-version": "v" + Version,
 			},
-			Messages: make(map[string]arb.Message, len(scan.TextIndexByID)),
+			Messages: make(map[string]arb.Message, scan.TextIndexByID.Len()),
 		}
 
 		nativeCatalog = &codeparse.Catalog{
 			ARB:         nativeARB,
 			ARBFileName: nativeARBFileName,
 		}
-		scan.Catalogs = append(scan.Catalogs, nativeCatalog)
+		scan.Catalogs.Append(nativeCatalog)
 	}
 
 	// Check for new messages
-	for _, text := range scan.Texts {
+	for text := range scan.Texts.Seq() {
 		if _, ok := nativeARB.Messages[text.IDHash]; !ok {
 			log.Verbosef("new TIK at %s:%d:%d\n",
 				text.Position.Filename, text.Position.Line, text.Position.Column)
@@ -224,7 +225,7 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 			); incomplete {
 				nativeCatalog.MessagesIncomplete.Add(1)
 			}
-			for _, catalog := range scan.Catalogs {
+			for catalog := range scan.Catalogs.Seq() {
 				if catalog.ARB.Locale == conf.Locale {
 					// Skip native .arb
 					continue
@@ -236,17 +237,17 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 
 	// Delete unused messages
 	for id := range nativeARB.Messages {
-		index, ok := scan.TextIndexByID[id]
+		index, ok := scan.TextIndexByID.Get(id)
 		if ok {
 			continue
 		}
-		text := scan.Texts[index]
+		text := scan.Texts.At(index)
 		log.Verbosef("unused TIK %s at %s:%d:%d\n",
 			text.IDHash, text.Position.Filename,
 			text.Position.Line, text.Position.Column,
 		)
 		delete(nativeARB.Messages, id)
-		for _, c := range scan.Catalogs {
+		for c := range scan.Catalogs.Seq() {
 			delete(c.ARB.Messages, id)
 		}
 		result.RemovedTexts = append(result.RemovedTexts, text)
@@ -306,8 +307,10 @@ func deleteAllTokiGeneratedFiles(dir string) error {
 	})
 }
 
-func writeARBFiles(bundlePkgPath string, catalogs []*codeparse.Catalog) error {
-	for _, catalog := range catalogs {
+func writeARBFiles(
+	bundlePkgPath string, catalogs *sync.Slice[*codeparse.Catalog],
+) error {
+	for catalog := range catalogs.Seq() {
 		locale := catalog.ARB.Locale
 		loc := strings.ToLower(gengo.LocaleToCatalogSuffix(locale))
 		filePath := filepath.Join(bundlePkgPath, fmt.Sprintf("catalog.%s.arb",
@@ -366,10 +369,14 @@ func generateGoBundle(
 		}
 
 		// Generate the main Go bundle file.
-		translationLocales := make([]language.Tag, len(scan.Catalogs))
-		for i, catalog := range scan.Catalogs {
-			translationLocales[i] = catalog.ARB.Locale
-		}
+		var translationLocales []language.Tag
+		_ = scan.Catalogs.Access(func(s []*codeparse.Catalog) error {
+			translationLocales = make([]language.Tag, len(s))
+			for i, catalog := range s {
+				translationLocales[i] = catalog.ARB.Locale
+			}
+			return nil
+		})
 		var buf bytes.Buffer
 		writer.WritePackageBundle(
 			&buf, pkgName, srcLocale, translationLocales, headTxtLines,
@@ -385,42 +392,44 @@ func generateGoBundle(
 	}
 
 	// Generate Go catalog files.
-	for _, catalog := range scan.Catalogs {
-		locale := catalog.ARB.Locale
-		fileName := fmt.Sprintf("catalog_%s_gen.go", locale.String())
-		filePath := filepath.Join(bundlePkgPath, fileName)
-		f, err := os.OpenFile(filePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o644)
-		if err != nil {
-			return err
-		}
+	return scan.Catalogs.Access(func(s []*codeparse.Catalog) error {
+		for _, catalog := range s {
+			locale := catalog.ARB.Locale
+			fileName := fmt.Sprintf("catalog_%s_gen.go", locale.String())
+			filePath := filepath.Join(bundlePkgPath, fileName)
+			f, err := os.OpenFile(filePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o644)
+			if err != nil {
+				return err
+			}
 
-		var buf bytes.Buffer
-		writer.WritePackageCatalog(&buf, locale, pkgName, headTxtLines,
-			func(yield func(gengo.Message) bool) {
-				sorted := slices.Sorted(maps.Keys(catalog.ARB.Messages))
-				for _, msgID := range sorted {
-					m := catalog.ARB.Messages[msgID]
-					txt := scan.Texts[scan.TextIndexByID[msgID]]
-					if !yield(gengo.Message{
-						ID:        txt.IDHash,
-						TIK:       txt.TIK.Raw,
-						ICUMsg:    m.ICUMessage,
-						ICUTokens: m.ICUMessageTokens,
-					}) {
-						break
+			var buf bytes.Buffer
+			writer.WritePackageCatalog(&buf, locale, pkgName, headTxtLines,
+				func(yield func(gengo.Message) bool) {
+					sorted := slices.Sorted(maps.Keys(catalog.ARB.Messages))
+					for _, msgID := range sorted {
+						m := catalog.ARB.Messages[msgID]
+						txt := scan.Texts.At(scan.TextIndexByID.GetValue(msgID))
+						if !yield(gengo.Message{
+							ID:        txt.IDHash,
+							TIK:       txt.TIK.Raw,
+							ICUMsg:    m.ICUMessage,
+							ICUTokens: m.ICUMessageTokens,
+						}) {
+							break
+						}
 					}
-				}
-			})
+				})
 
-		formatted, err := format.Source(buf.Bytes())
-		if err != nil {
-			return fmt.Errorf("formatting package catalog: %w", err)
+			formatted, err := format.Source(buf.Bytes())
+			if err != nil {
+				return fmt.Errorf("formatting package catalog: %w", err)
+			}
+			if _, err := f.Write(formatted); err != nil {
+				return fmt.Errorf("writing formatted code to file: %w", err)
+			}
 		}
-		if _, err := f.Write(formatted); err != nil {
-			return fmt.Errorf("writing formatted code to file: %w", err)
-		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // readOrCreateHeadTxt reads the head.txt file if it exists, otherwise creates it.
@@ -492,29 +501,35 @@ func (r Result) mustPrintJSON() {
 		Error:          errMsg,
 		StringCalls:    r.Scan.StringCalls.Load(),
 		WriteCalls:     r.Scan.WriteCalls.Load(),
-		TIKs:           len(r.Scan.Texts),
-		TIKsUnique:     len(r.Scan.TextIndexByID),
+		TIKs:           r.Scan.Texts.Len(),
+		TIKsUnique:     r.Scan.TextIndexByID.Len(),
 		TIKsNew:        len(r.NewTexts),
 		FilesTraversed: int(r.Scan.FilesTraversed.Load()),
-		SourceErrors:   make([]SourceError, len(r.Scan.SourceErrors)),
 		TimeMS:         time.Since(r.Start).Milliseconds(),
-		Catalogs:       make([]Catalog, len(r.Scan.Catalogs)),
 	}
-	for i, serr := range r.Scan.SourceErrors {
-		data.SourceErrors[i] = SourceError{
-			Error: serr.Err.Error(),
-			File:  serr.Filename,
-			Line:  serr.Line,
-			Col:   serr.Column,
+	_ = r.Scan.SourceErrors.Access(func(s []codeparse.SourceError) error {
+		data.SourceErrors = make([]SourceError, len(s))
+		for i, serr := range s {
+			data.SourceErrors[i] = SourceError{
+				Error: serr.Err.Error(),
+				File:  serr.Filename,
+				Line:  serr.Line,
+				Col:   serr.Column,
+			}
 		}
-	}
-	for i, c := range r.Scan.Catalogs {
-		completeness := completeness(c)
-		data.Catalogs[i] = Catalog{
-			Locale:       c.ARB.Locale.String(),
-			Completeness: completeness,
+		return nil
+	})
+	_ = r.Scan.Catalogs.Access(func(s []*codeparse.Catalog) error {
+		data.Catalogs = make([]Catalog, len(s))
+		for i, c := range s {
+			completeness := completeness(c)
+			data.Catalogs[i] = Catalog{
+				Locale:       c.ARB.Locale.String(),
+				Completeness: completeness,
+			}
 		}
-	}
+		return nil
+	})
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(data); err != nil {
 		panic(fmt.Errorf("encoding JSON to stderr: %w", err))
@@ -528,23 +543,29 @@ func (r Result) Print() {
 	}
 
 	if r.Scan != nil {
-		if l := len(r.Scan.SourceErrors); l > 0 {
-			log.Errorf("Source errors (%d):\n", l)
-			for _, e := range r.Scan.SourceErrors {
-				log.Errorf(" %s:%d:%d: %v\n", e.Filename, e.Line, e.Column, e.Err)
+		_ = r.Scan.SourceErrors.Access(func(s []codeparse.SourceError) error {
+			if l := len(s); l > 0 {
+				log.Errorf("Source errors (%d):\n", l)
+				for _, e := range s {
+					log.Errorf(" %s:%d:%d: %v\n", e.Filename, e.Line, e.Column, e.Err)
+				}
 			}
-		}
+			return nil
+		})
 		log.Verbosef("TIKs: %d (unique: %d; new: %d; removed: %d)\n",
-			len(r.Scan.Texts), len(r.Scan.TextIndexByID),
+			r.Scan.Texts.Len(), r.Scan.TextIndexByID.Len(),
 			len(r.NewTexts), len(r.RemovedTexts))
 		log.Verbosef("Scanned %d file(s) in %s\n",
 			r.Scan.FilesTraversed.Load(), time.Since(r.Start).String())
-		log.Verbosef("Catalogs (%d):\n", len(r.Scan.Catalogs))
-		for _, c := range r.Scan.Catalogs {
-			completeness := completeness(c) * 100
-			log.Verbosef(" %s: %.2f%%\n",
-				c.ARB.Locale.String(), completeness)
-		}
+		_ = r.Scan.Catalogs.Access(func(s []*codeparse.Catalog) error {
+			log.Verbosef("Catalogs (%d):\n", len(s))
+			for _, c := range s {
+				completeness := completeness(c) * 100
+				log.Verbosef(" %s: %.2f%%\n",
+					c.ARB.Locale.String(), completeness)
+			}
+			return nil
+		})
 	}
 	if r.Err != nil {
 		log.Verbosef("Error: %s\n", r.Err.Error())

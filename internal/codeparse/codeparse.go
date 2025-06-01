@@ -18,6 +18,7 @@ import (
 	tik "github.com/romshark/tik/tik-go"
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/log"
+	"github.com/romshark/toki/internal/sync"
 	"golang.org/x/text/language"
 	"golang.org/x/tools/go/packages"
 )
@@ -96,10 +97,10 @@ type Scan struct {
 	Statistics
 	TokiVersion   string
 	DefaultLocale language.Tag
-	Texts         []Text
-	TextIndexByID map[string]int
-	SourceErrors  []SourceError
-	Catalogs      []*Catalog
+	Texts         *sync.Slice[Text]
+	TextIndexByID *sync.Map[string, int]
+	SourceErrors  *sync.Slice[SourceError]
+	Catalogs      *sync.Slice[*Catalog]
 }
 
 func (p *Parser) Parse(
@@ -126,7 +127,12 @@ func (p *Parser) Parse(
 		return nil, fmt.Errorf("loading packages: %w", err)
 	}
 
-	scan = &Scan{TextIndexByID: map[string]int{}}
+	scan = &Scan{
+		Texts:         sync.NewSlice[Text](0),
+		TextIndexByID: sync.NewMap[string, int](0),
+		SourceErrors:  sync.NewSlice[SourceError](0),
+		Catalogs:      sync.NewSlice[*Catalog](1),
+	}
 
 	pkgBundle := findBundlePkg(bundlePkg, pkgs)
 	if pkgBundle != nil {
@@ -240,7 +246,7 @@ func (p *Parser) collectARBFiles(bundlePkgDir string, scan *Scan) error {
 			}
 		}
 
-		scan.Catalogs = append(scan.Catalogs, catalog)
+		scan.Catalogs.Append(catalog)
 
 		return nil
 	})
@@ -258,7 +264,7 @@ func IsMsgIncomplete(
 			name := msg.ICUMessageTokens[index+1].String(
 				msg.ICUMessage, msg.ICUMessageTokens,
 			)
-			scan.SourceErrors = append(scan.SourceErrors, SourceError{
+			scan.SourceErrors.Append(SourceError{
 				Err: fmt.Errorf("%w: %q", ErrUnsupportedSelectOption, name),
 				Position: token.Position{
 					Filename: fileName,
@@ -330,7 +336,7 @@ func (p *Parser) collectTexts(
 
 					tikVal, ok = p.parseTIK(fset, pkg, call, argumentOffset,
 						func(pos token.Position, err error) {
-							scan.SourceErrors = append(scan.SourceErrors, SourceError{
+							scan.SourceErrors.Append(SourceError{
 								Position: pos, Err: fmt.Errorf("TIK: %w", err),
 							})
 						})
@@ -345,16 +351,18 @@ func (p *Parser) collectTexts(
 					comments := findLeadingComments(fset, file, call)
 
 					id := HashMessage(p.hasher, tikVal.Raw)
-					index := len(scan.Texts)
 					log.Verbosef("%s at %s:%d:%d\n",
 						funcType, posCall.Filename, posCall.Line, posCall.Column)
-					scan.Texts = append(scan.Texts, Text{
-						Position: posCall,
-						IDHash:   id,
-						TIK:      tikVal,
-						Comments: comments,
+					_ = scan.TextIndexByID.Access(func(s map[string]int) error {
+						index := scan.Texts.Append(Text{
+							Position: posCall,
+							IDHash:   id,
+							TIK:      tikVal,
+							Comments: comments,
+						})
+						s[id] = index
+						return nil
 					})
-					scan.TextIndexByID[id] = index
 
 					return true
 				})
