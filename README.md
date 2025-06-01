@@ -18,9 +18,10 @@ processor implementation.
 extracts localized texts and generates a localization bundle.
 
 [app-resource-bundle (.arb)](https://github.com/google/app-resource-bundle)
-files as used as intermediate translation storage,
-[TIK](https://github.com/romshark/tik) for text keys and
-[ICU messages](https://unicode-org.github.io/icu/userguide/format_parse/messages/).
+files are used as intermediate translation storage for
+[ICU messages](https://unicode-org.github.io/icu/userguide/format_parse/messages/)
+generated from [TIKs](https://github.com/romshark/tik) extracted from the source code.
+
 
 ## Quick Start Guide
 
