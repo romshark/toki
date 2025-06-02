@@ -15,17 +15,22 @@ func (w *Writer) writeFuncIOWriter(id, tik, icuMsg string, tokens []icumsg.Token
 	w.printf("// %s\n", id)
 	w.printf("%q:\n", tik)
 	w.println("func(w io.Writer, args ...any) (written int, err error) {")
-	w.println("var wr int;")
-	w.writeExprIOWriter(len(w.t))
-	w.println("return written, nil;")
+	endIndex := len(w.t)
+	if s := w.literalConcat(endIndex); s != "" {
+		w.printf("return wrs(w, %q)\n", s)
+	} else {
+		w.println("var n int;")
+		w.writeExprIOWriter(endIndex)
+		w.println("return written, nil;")
+	}
 	w.println("},")
 }
 
 func (w *Writer) writeExprIOWriter(endIndex int) {
 	if s := w.literalConcat(endIndex); s != "" {
 		w.println("_ = args")
-		w.printf("wr, err = wrs(w, %q);\n", s)
-		w.println("if err != nil {return written, err}; written += wr;")
+		w.printf("n, err = wrs(w, %q);\n", s)
+		w.println("if err != nil {return written, err}; written += n;")
 		return
 	}
 
@@ -33,8 +38,8 @@ func (w *Writer) writeExprIOWriter(endIndex int) {
 		t := w.t[w.i]
 		switch t.Type {
 		case icumsg.TokenTypeLiteral:
-			w.printf("wr, err = wrs(w, %q)\n", t.String(w.m, w.t))
-			w.println("if err != nil {return written, err}; written += wr;")
+			w.printf("n, err = wrs(w, %q)\n", t.String(w.m, w.t))
+			w.println("if err != nil {return written, err}; written += n;")
 			w.i++ // Advance.
 		case icumsg.TokenTypeSimpleArg:
 			w.writeSimpleArgIOWriter()
@@ -62,8 +67,8 @@ func (w *Writer) writeSimpleArgIOWriter() {
 	}
 	if w.i+2 <= len(w.t) || !isTokenArgType(w.t[w.i+2].Type) {
 		// No argument type.
-		w.printf("wr, err = wrs(w, args[%d].(string));\n", arg.Index)
-		w.println("if err != nil {return written, err}; written += wr;")
+		w.printf("n, err = wrs(w, args[%d].(string));\n", arg.Index)
+		w.println("if err != nil {return written, err}; written += n;")
 		w.i += 2
 		return
 	}
@@ -72,8 +77,8 @@ func (w *Writer) writeSimpleArgIOWriter() {
 	if !isTokenArgStyle(tokStyle.Type) {
 		// Argument type only.
 		w.i += 3
-		w.printf("wr, err = wrs(w, args[%d].(string));\n", arg.Index)
-		w.println("if err != nil {return written, err}; written += wr;")
+		w.printf("n, err = wrs(w, args[%d].(string));\n", arg.Index)
+		w.println("if err != nil {return written, err}; written += n;")
 		return
 	}
 	// Has argument type and style parameters.
@@ -82,43 +87,43 @@ func (w *Writer) writeSimpleArgIOWriter() {
 	switch tokStyle.Type {
 	case icumsg.TokenTypeArgStyleShort:
 		// TODO
-		w.printf("wr, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += wr;")
+		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
+		w.println("if err != nil {return written, err}; written += n;")
 		return
 	case icumsg.TokenTypeArgStyleMedium:
 		// TODO
-		w.printf("wr, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += wr;")
+		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
+		w.println("if err != nil {return written, err}; written += n;")
 		return
 	case icumsg.TokenTypeArgStyleLong:
 		// TODO
-		w.printf("wr, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += wr;")
+		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
+		w.println("if err != nil {return written, err}; written += n;")
 		return
 	case icumsg.TokenTypeArgStyleFull:
 		// TODO
-		w.printf("wr, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += wr;")
+		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
+		w.println("if err != nil {return written, err}; written += n;")
 		return
 	case icumsg.TokenTypeArgStyleInteger:
 		// TODO
-		w.printf("wr, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += wr;")
+		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
+		w.println("if err != nil {return written, err}; written += n;")
 		return
 	case icumsg.TokenTypeArgStyleCurrency:
 		// TODO
-		w.printf("wr, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += wr;")
+		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
+		w.println("if err != nil {return written, err}; written += n;")
 		return
 	case icumsg.TokenTypeArgStylePercent:
 		// TODO
-		w.printf("wr, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += wr;")
+		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
+		w.println("if err != nil {return written, err}; written += n;")
 		return
 	case icumsg.TokenTypeArgStyleCustom:
 		// TODO
-		w.printf("wr, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += wr;")
+		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
+		w.println("if err != nil {return written, err}; written += n;")
 		return
 	default:
 		// This should never happen because this switch is exhaustive.
@@ -216,22 +221,22 @@ func (w *Writer) writePluralOptionIOWriter(arg argName, offset uint64) {
 				if s == "#" {
 					if offset != 0 {
 						w.printf(
-							"wr, err = fmt.Fprintf(w, %q, subtract(args[%d], %d));\n",
+							"n, err = fmt.Fprintf(w, %q, subtract(args[%d], %d));\n",
 							"%v", arg.Index, offset,
 						)
-						w.println("if err != nil {return written, err}; written += wr;")
+						w.println("if err != nil {return written, err}; written += n;")
 						continue
 					} else {
 						w.printf(
-							"wr, err = fmt.Fprintf(w, %q, args[%d]);\n",
+							"n, err = fmt.Fprintf(w, %q, args[%d]);\n",
 							"%v", arg.Index,
 						)
-						w.println("if err != nil {return written, err}; written += wr;")
+						w.println("if err != nil {return written, err}; written += n;")
 						continue
 					}
 				}
-				w.printf("wr, err = wrs(w, %q);\n", s)
-				w.println("if err != nil {return written, err}; written += wr;")
+				w.printf("n, err = wrs(w, %q);\n", s)
+				w.println("if err != nil {return written, err}; written += n;")
 			}
 			w.i++
 		case icumsg.TokenTypeSimpleArg:
