@@ -163,13 +163,13 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 	if conf.Locale != language.Und {
 		// Locale parameter provided.
 		if scan.DefaultLocale != language.Und && conf.Locale != scan.DefaultLocale {
-		// The bundle package already existed
+			// The bundle package already existed
 			// but the locale parameter doesn't match its default locale.
 			result.Err = fmt.Errorf("parameter -l (%q) must either match "+
 				"DefaultLocale (%q) in package %q or not be set at all",
-			conf.Locale.String(), scan.DefaultLocale.String(), conf.BundlePkgPath)
-		return result
-	}
+				conf.Locale.String(), scan.DefaultLocale.String(), conf.BundlePkgPath)
+			return result
+		}
 	} else {
 		// Locale parameter not provided.
 		if scan.DefaultLocale == language.Und {
@@ -179,7 +179,7 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 					"the default language of your original code base " +
 					"using the 'l' parameter",
 			)
-		return result
+			return result
 		}
 		// Use the default locale of the bundle.
 		conf.Locale = scan.DefaultLocale
