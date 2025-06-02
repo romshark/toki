@@ -204,12 +204,9 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 		nativeARB = &arb.File{
 			Locale:       conf.Locale,
 			LastModified: time.Now(),
-			CustomAttributes: map[string]any{
-				"x-generator":         "github.com/romshark/toki",
-				"x-generator-version": "v" + Version,
-			},
-			Messages: make(map[string]arb.Message, scan.TextIndexByID.Len()),
+			Messages:     make(map[string]arb.Message, scan.TextIndexByID.Len()),
 		}
+		setARBMetadata(nativeARB)
 
 		nativeCatalog = &codeparse.Catalog{
 			ARB:         nativeARB,
@@ -356,6 +353,7 @@ func writeARBFiles(
 					log.Errorf("closing catalog .arb file: %v", err)
 				}
 			}()
+			setARBMetadata(catalog.ARB)
 			if err := arb.Encode(f, catalog.ARB, "\t"); err != nil {
 				return fmt.Errorf("encoding .arb catalog (%q): %w",
 					locale.String(), err)
@@ -367,6 +365,14 @@ func writeARBFiles(
 		}
 	}
 	return nil
+}
+
+func setARBMetadata(f *arb.File) {
+	if f.CustomAttributes == nil {
+		f.CustomAttributes = make(map[string]any, 2)
+	}
+	f.CustomAttributes["@@x-generator"] = "github.com/romshark/toki"
+	f.CustomAttributes["@@x-generator-version"] = Version
 }
 
 func prepareBundlePackageDir(bundlePkgPath string) error {
