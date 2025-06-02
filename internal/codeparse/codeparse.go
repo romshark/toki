@@ -641,6 +641,9 @@ func isCurrencyAmount(
 }
 
 func isPkgBundle(bundlePkg string, pkg *packages.Package) bool {
+	if pkg.Module == nil {
+		return false
+	}
 	if c, ok := strings.CutPrefix(pkg.Dir, pkg.Module.Dir); ok {
 		if len(c) > 1 && c[0] == '/' && strings.HasSuffix(c[1:], bundlePkg) {
 			return true
