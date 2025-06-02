@@ -24,7 +24,7 @@ func (w *Writer) writeFuncIOWriter(id, tik, icuMsg string, tokens []icumsg.Token
 func (w *Writer) writeExprIOWriter(endIndex int) {
 	if s := w.literalConcat(endIndex); s != "" {
 		w.println("_ = args")
-		w.printf("wr, err = w.Write([]byte(%q));\n", s)
+		w.printf("wr, err = wrs(w, %q);\n", s)
 		w.println("if err != nil {return written, err}; written += wr;")
 		return
 	}
@@ -33,7 +33,7 @@ func (w *Writer) writeExprIOWriter(endIndex int) {
 		t := w.t[w.i]
 		switch t.Type {
 		case icumsg.TokenTypeLiteral:
-			w.printf("wr, err = w.Write([]byte(%q))\n", t.String(w.m, w.t))
+			w.printf("wr, err = wrs(w, %q)\n", t.String(w.m, w.t))
 			w.println("if err != nil {return written, err}; written += wr;")
 			w.i++ // Advance.
 		case icumsg.TokenTypeSimpleArg:
@@ -62,7 +62,7 @@ func (w *Writer) writeSimpleArgIOWriter() {
 	}
 	if w.i+2 <= len(w.t) || !isTokenArgType(w.t[w.i+2].Type) {
 		// No argument type.
-		w.printf("wr, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
+		w.printf("wr, err = wrs(w, args[%d].(string));\n", arg.Index)
 		w.println("if err != nil {return written, err}; written += wr;")
 		w.i += 2
 		return
@@ -72,7 +72,7 @@ func (w *Writer) writeSimpleArgIOWriter() {
 	if !isTokenArgStyle(tokStyle.Type) {
 		// Argument type only.
 		w.i += 3
-		w.printf("wr, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
+		w.printf("wr, err = wrs(w, args[%d].(string));\n", arg.Index)
 		w.println("if err != nil {return written, err}; written += wr;")
 		return
 	}
@@ -230,7 +230,7 @@ func (w *Writer) writePluralOptionIOWriter(arg argName, offset uint64) {
 						continue
 					}
 				}
-				w.printf("wr, err = w.Write([]byte(%q));\n", s)
+				w.printf("wr, err = wrs(w, %q);\n", s)
 				w.println("if err != nil {return written, err}; written += wr;")
 			}
 			w.i++

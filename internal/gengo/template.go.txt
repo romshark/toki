@@ -6,12 +6,19 @@ import (
 	"iter"
 	"bytes"
 	"sync"
+	"unsafe"
 
 	"golang.org/x/text/language"
 	"github.com/go-playground/locales"
 )
 
 /*** HELPERS ***/
+
+// wrs writes a string literal to w.
+// unsafe.Slice eliminates an unnecessary allocation treating the string as a byte slice.
+func wrs(w io.Writer, s string) (int, error) {
+	return w.Write(unsafe.Slice((*byte)(unsafe.Pointer(unsafe.StringData(s))), len(s)))
+}
 
 type stringifier interface {
 	comparable
