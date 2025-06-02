@@ -37,7 +37,7 @@ var (
 	ErrInvalidCLIArgs  = errors.New("invalid arguments")
 )
 
-const Version = "0.3.4"
+const Version = "0.4.0"
 
 func PrintVersionInfoAndExit() {
 	defer os.Exit(0)
