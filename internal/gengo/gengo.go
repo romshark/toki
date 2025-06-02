@@ -13,7 +13,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-const TypePrefixCatalog = "catalog"
+const TypePrefixCatalog = "catalog_"
 
 type Writer struct {
 	tokiVersion string
@@ -137,7 +137,7 @@ func (w *Writer) writeCatalogType(msgIter iter.Seq[Message]) {
 	w.printf("type %s struct {}\n", catalogTypeName)
 
 	// Translation functions map by TIK based on io.Writer.
-	writersMapName := "writers" + localeCatalogSuffix
+	writersMapName := "writers_" + localeCatalogSuffix
 	w.printf(
 		"var %s = map[string]func(w io.Writer, args ...any) (int, error) {\n",
 		writersMapName)
