@@ -160,19 +160,29 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 	}
 	result.Scan = scan
 
-	if conf.Locale != language.Und && scan.DefaultLocale != language.Und &&
-		conf.Locale != scan.DefaultLocale {
+	if conf.Locale != language.Und {
+		// Locale parameter provided.
+		if scan.DefaultLocale != language.Und && conf.Locale != scan.DefaultLocale {
 		// The bundle package already existed
-		// but the -l parameter doesn't match its default locale.
-		result.Err = fmt.Errorf("parameter -l (%q) must either match DefaultLocale (%q) "+
-			"in package %q or not be set at all",
+			// but the locale parameter doesn't match its default locale.
+			result.Err = fmt.Errorf("parameter -l (%q) must either match "+
+				"DefaultLocale (%q) in package %q or not be set at all",
 			conf.Locale.String(), scan.DefaultLocale.String(), conf.BundlePkgPath)
 		return result
 	}
-
-	if scan.SourceErrors.Len() > 0 {
-		result.Err = ErrSourceErrors
+	} else {
+		// Locale parameter not provided.
+		if scan.DefaultLocale == language.Und {
+			// Bundle didn't exist yet so the locale parameter must be provided.
+			result.Err = fmt.Errorf(
+				"please provide a valid BCP 47 locale for " +
+					"the default language of your original code base " +
+					"using the 'l' parameter",
+			)
 		return result
+		}
+		// Use the default locale of the bundle.
+		conf.Locale = scan.DefaultLocale
 	}
 
 	var nativeCatalog *codeparse.Catalog

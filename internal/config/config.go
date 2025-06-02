@@ -23,7 +23,6 @@ func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
 	c := &ConfigGenerate{}
 
 	var locale string
-
 	var translationLocales arrayFlags
 
 	cli := flag.NewFlagSet(osArgs[0], flag.ExitOnError)
@@ -42,14 +41,6 @@ func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
 		return nil, fmt.Errorf("parsing: %w", err)
 	}
 
-	if locale == "" {
-		return nil, fmt.Errorf(
-			"please provide a valid BCP 47 locale for " +
-				"the default language of your original code base " +
-				"using the 'l' parameter",
-		)
-	}
-
 	for _, locale := range translationLocales {
 		l, err := language.Parse(locale)
 		if err != nil {
@@ -60,12 +51,14 @@ func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
 		c.Translations = append(c.Translations, l)
 	}
 
-	var err error
-	c.Locale, err = language.Parse(locale)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"argument 'l' (%q) must be a valid BCP 47 locale: %w", locale, err,
-		)
+	if locale != "" {
+		var err error
+		c.Locale, err = language.Parse(locale)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"argument 'l' (%q) must be a valid BCP 47 locale: %w", locale, err,
+			)
+		}
 	}
 
 	return c, nil
