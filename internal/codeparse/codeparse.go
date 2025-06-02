@@ -29,6 +29,7 @@ const (
 )
 
 var ErrUnsupportedSelectOption = errors.New("unsupported select option")
+var ErrCantUnpackCompositeLiteral = errors.New("can't unpack composite literal")
 
 type Statistics struct {
 	StringCalls    atomic.Int64
@@ -416,7 +417,12 @@ func (p *Parser) parseTIK(
 
 	ok = true
 	index := 0
-	for arg := range iterArgs(call, methodArgumentOffset) {
+	seq, err := iterArgs(call, methodArgumentOffset)
+	if err != nil {
+		onSrcErr(pos, err)
+		return tk, false
+	}
+	for arg := range seq {
 		idx := index
 		index++
 		if idx >= len(placeholders) {
@@ -495,16 +501,16 @@ func (p *Parser) parseTIK(
 	return tk, ok
 }
 
-func iterArgs(call *ast.CallExpr, argOffset int) iter.Seq[ast.Expr] {
+func iterArgs(call *ast.CallExpr, argOffset int) (iter.Seq[ast.Expr], error) {
 	if len(call.Args)+argOffset < 2 {
-		return func(yield func(ast.Expr) bool) {}
+		return func(yield func(ast.Expr) bool) {}, nil
 	}
 	isEllipsis := call.Ellipsis.IsValid() // true if passed as slice...
 	if isEllipsis && argOffset+1 < len(call.Args) {
 		secondArg := call.Args[argOffset+1]
 		compositeLit, ok := secondArg.(*ast.CompositeLit)
 		if !ok {
-			panic("not a composite literal, can't unpack")
+			return nil, ErrCantUnpackCompositeLiteral
 		}
 		return func(yield func(ast.Expr) bool) {
 			for _, e := range compositeLit.Elts {
@@ -513,17 +519,16 @@ func iterArgs(call *ast.CallExpr, argOffset int) iter.Seq[ast.Expr] {
 					break
 				}
 			}
-		}
-	} else {
-		return func(yield func(ast.Expr) bool) {
-			// Iterate over variadic arguments like: foo.String("msg", a, b, c)
-			for _, a := range call.Args[argOffset+1:] {
-				if !yield(a) {
-					break
-				}
+		}, nil
+	}
+	return func(yield func(ast.Expr) bool) {
+		// Iterate over variadic arguments like: foo.String("msg", a, b, c)
+		for _, a := range call.Args[argOffset+1:] {
+			if !yield(a) {
+				break
 			}
 		}
-	}
+	}, nil
 }
 
 func HashMessage(hash *xxhash.Digest, tik string) string {
