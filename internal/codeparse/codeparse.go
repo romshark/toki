@@ -475,10 +475,7 @@ func (p *Parser) parseTIK(
 				continue
 			}
 
-		case tik.TokenTypeCurrencyRounded,
-			tik.TokenTypeCurrencyFull,
-			tik.TokenTypeCurrencyCodeRounded,
-			tik.TokenTypeCurrencyCodeFull:
+		case tik.TokenTypeCurrency:
 			if typName, isCurrency := isCurrencyAmount(pkg, arg); !isCurrency {
 				onSrcErr(pos, fmt.Errorf(
 					"arg %d must be currency.Amount but received: %s",

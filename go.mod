@@ -5,8 +5,8 @@ go 1.24.4
 require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/fatih/color v1.18.0
-	github.com/romshark/icumsg v0.0.0-20250527151507-1b1b9beed34e
-	github.com/romshark/tik/tik-go v0.5.0
+	github.com/romshark/icumsg v0.1.0
+	github.com/romshark/tik/tik-go v0.6.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/text v0.26.0
 	golang.org/x/tools v0.33.0

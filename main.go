@@ -650,14 +650,10 @@ func (g *Generate) newARBMsg(
 			pl.Description = "time"
 			pl.IsCustomDateFormat = true
 			pl.Type = arb.PlaceholderDateTime
-		case tik.TokenTypeCurrencyCodeFull, tik.TokenTypeCurrencyFull:
+		case tik.TokenTypeCurrency:
 			pl.Description = "currency with amount"
 			pl.Type = arb.PlaceholderNum
-			pl.Example = "USD(4)"
-		case tik.TokenTypeCurrencyRounded, tik.TokenTypeCurrencyCodeRounded:
-			pl.Description = "currency with rounded amount"
-			pl.Type = arb.PlaceholderNum
-			pl.Example = "USD(4)"
+			pl.Example = "USD(4.00)"
 		}
 		placeholders[name] = pl
 	}
