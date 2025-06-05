@@ -29,14 +29,20 @@ import (
 )
 
 var (
-	ErrSourceErrors    = errors.New("source code contains errors")
-	ErrNoCommand       = errors.New("no command")
-	ErrUnknownCommand  = errors.New("unknown command")
-	ErrAnalyzingSource = errors.New("analyzing sources")
-	ErrInvalidCLIArgs  = errors.New("invalid arguments")
+	ErrSourceErrors       = errors.New("source code contains errors")
+	ErrNoCommand          = errors.New("no command")
+	ErrUnknownCommand     = errors.New("unknown command")
+	ErrAnalyzingSource    = errors.New("analyzing sources")
+	ErrInvalidCLIArgs     = errors.New("invalid arguments")
+	ErrMissingLocaleParam = errors.New(
+		"please provide a valid BCP 47 locale for the default language of your " +
+			"original code base using the 'l' parameter",
+	)
 )
 
 const Version = "0.4.1"
+
+const MainBundleFileGo = "bundle_gen.go"
 
 func PrintVersionInfoAndExit() {
 	defer os.Exit(0)
@@ -149,12 +155,46 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 		return result
 	}
 
+	{
+		mainBundleFile := filepath.Join(
+			conf.ModPath, conf.BundlePkgPath, MainBundleFileGo,
+		)
+		if _, err := os.Stat(mainBundleFile); errors.Is(err, os.ErrNotExist) {
+			// Require the locale parameter in this case.
+			if conf.Locale == language.Und {
+				result.Err = ErrMissingLocaleParam
+				return result
+			}
+			scan := &codeparse.Scan{
+				DefaultLocale: conf.Locale,
+				TokiVersion:   Version,
+				Texts:         sync.NewSlice[codeparse.Text](0),
+				TextIndexByID: sync.NewMap[string, int](0),
+				SourceErrors:  sync.NewSlice[codeparse.SourceError](0),
+				Catalogs:      sync.NewSlice[*codeparse.Catalog](0),
+			}
+			// Need to generate an empty bundle package first.
+			// Otherwise if the bundle existed and was imported before, later got removed
+			// and then toki generate was rerun it will first generate an incorrect bundle
+			// codeparse will be missing method receiver type information on first scan.
+			if err := generateGoBundle(conf.BundlePkgPath, scan, headTxt); err != nil {
+				result.Err = err
+				return result
+			}
+		} else if err != nil {
+			result.Err = fmt.Errorf(
+				"checking main bundle file %q: %w",
+				mainBundleFile, err,
+			)
+			return result
+		}
+	}
+
 	parser := codeparse.NewParser(g.hasher, g.tikParser, g.tikICUTranslator)
 
 	// Parse source code and bundle.
-	bundlePkg := filepath.Base(conf.BundlePkgPath)
 	scan, err := parser.Parse(
-		conf.SrcPathPattern, bundlePkg, conf.Locale, conf.TrimPath,
+		conf.ModPath, conf.BundlePkgPath, conf.Locale, conf.TrimPath,
 	)
 	if err != nil {
 		result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
@@ -164,31 +204,6 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 	if scan.SourceErrors.Len() > 0 {
 		result.Err = ErrSourceErrors
 		return result
-	}
-
-	if conf.Locale != language.Und {
-		// Locale parameter provided.
-		if scan.DefaultLocale != language.Und && conf.Locale != scan.DefaultLocale {
-			// The bundle package already existed
-			// but the locale parameter doesn't match its default locale.
-			result.Err = fmt.Errorf("parameter -l (%q) must either match "+
-				"DefaultLocale (%q) in package %q or not be set at all",
-				conf.Locale.String(), scan.DefaultLocale.String(), conf.BundlePkgPath)
-			return result
-		}
-	} else {
-		// Locale parameter not provided.
-		if scan.DefaultLocale == language.Und {
-			// Bundle didn't exist yet so the locale parameter must be provided.
-			result.Err = fmt.Errorf(
-				"please provide a valid BCP 47 locale for " +
-					"the default language of your original code base " +
-					"using the 'l' parameter",
-			)
-			return result
-		}
-		// Use the default locale of the bundle.
-		conf.Locale = scan.DefaultLocale
 	}
 
 	var nativeCatalog *codeparse.Catalog
@@ -201,6 +216,29 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 			nativeARBFileName = catalog.ARBFileName
 		}
 	}
+
+	if conf.Locale != language.Und {
+		// Locale parameter provided.
+		if scan.DefaultLocale != language.Und && conf.Locale != scan.DefaultLocale {
+			// The bundle package already existed
+			// but the locale parameter doesn't match its default locale.
+			result.Err = fmt.Errorf("parameter -l (%q) must either match "+
+				"DefaultLocale (%q) in package %q or not be set at all",
+				conf.Locale.String(), scan.DefaultLocale.String(), conf.BundlePkgPath)
+			return result
+		}
+		scan.DefaultLocale = conf.Locale
+	} else {
+		// Locale parameter not provided.
+		if scan.DefaultLocale == language.Und {
+			// Bundle didn't exist yet so the locale parameter must be provided.
+			result.Err = ErrMissingLocaleParam
+			return result
+		}
+		// Use the default locale of the bundle.
+		conf.Locale = scan.DefaultLocale
+	}
+
 	if nativeARB == nil {
 		nativeARBFileName = filepath.Join(
 			conf.BundlePkgPath,
@@ -221,35 +259,61 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 		scan.Catalogs.Append(nativeCatalog)
 	}
 
-	// Check for new messages
-	for text := range scan.Texts.Seq() {
-		if _, ok := nativeARB.Messages[text.IDHash]; !ok {
+	// Check for new messages.
+	for id, index := range scan.TextIndexByID.Seq() {
+		if _, ok := nativeARB.Messages[id]; !ok {
+			// Text not in native catalog.
+			text := scan.Texts.At(index)
 			result.NewTexts = append(result.NewTexts, text)
-			id, newMsg, err := g.newARBMsg(conf.Locale, text)
+			newMsg, err := g.newARBMsg(conf.Locale, text)
 			if err != nil {
 				result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
 				return result
 			}
 			log.Verbose("new TIK",
 				slog.String("position", log.FmtPos(text.Position)),
-				slog.String("id", id))
-			nativeARB.Messages[id] = newMsg
+				slog.String("id", newMsg.ID))
+			nativeARB.Messages[newMsg.ID] = newMsg
 			if incomplete := codeparse.IsMsgIncomplete(
 				scan, nativeARB, nativeARBFileName, &newMsg,
 			); incomplete {
 				nativeCatalog.MessagesIncomplete.Add(1)
 			}
-			for catalog := range scan.Catalogs.Seq() {
-				if catalog.ARB.Locale == conf.Locale {
-					// Skip native .arb
-					continue
-				}
-				catalog.ARB.Messages[id] = newMsg
+			continue
+		}
+		for catalog := range scan.Catalogs.Seq() {
+			// Check in all other catalogs.
+			if catalog.ARB.Locale == conf.Locale {
+				// Skip native catalog. It was already handled above.
+				continue
+			}
+			if _, ok := catalog.ARB.Messages[id]; ok {
+				continue
+			}
+			log.Warn("message missing in catalog",
+				slog.String("catalog", catalog.ARB.Locale.String()),
+				slog.String("id", id))
+			// Message missing in this catalog.
+			text := scan.Texts.At(index)
+			newMsg, err := g.newARBMsg(conf.Locale, text)
+			if err != nil {
+				result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
+				return result
+			}
+			catalog.ARB.Messages[newMsg.ID] = arb.Message{
+				// Omit the ICU message since we can't take the message
+				// generated from the TIK.
+				ID:               newMsg.ID,
+				Description:      newMsg.Description,
+				Comment:          newMsg.Comment,
+				Type:             newMsg.Type,
+				Context:          newMsg.Context,
+				CustomAttributes: newMsg.CustomAttributes,
 			}
 		}
 	}
 
-	// Delete unused messages
+	// Delete unused messages.
 	for id := range nativeARB.Messages {
 		index, ok := scan.TextIndexByID.Get(id)
 		if ok {
@@ -261,6 +325,7 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 			slog.String("pos", log.FmtPos(text.Position)),
 		)
 		delete(nativeARB.Messages, id)
+		// Delete message in all other catalogs too.
 		for c := range scan.Catalogs.Seq() {
 			delete(c.ARB.Messages, id)
 		}
@@ -402,7 +467,7 @@ func generateGoBundle(
 		return err
 	}
 
-	bundleGoFilePath := filepath.Join(bundlePkgPath, "bundle_gen.go")
+	bundleGoFilePath := filepath.Join(bundlePkgPath, MainBundleFileGo)
 	writer := gengo.NewWriter(Version, scan)
 	{
 		f, err := os.OpenFile(bundleGoFilePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o644)
@@ -607,12 +672,12 @@ func completeness(catalog *codeparse.Catalog) float64 {
 
 func (g *Generate) newARBMsg(
 	locale language.Tag, text codeparse.Text,
-) (id string, msg arb.Message, err error) {
+) (msg arb.Message, err error) {
 	icuMsg := g.tikICUTranslator.TIK2ICU(text.TIK, nil)
 
 	description := strings.Join(text.Comments, " ")
 
-	id = codeparse.HashMessage(g.hasher, text.TIK.Raw)
+	msg.ID = codeparse.HashMessage(g.hasher, text.TIK.Raw)
 
 	placeholders := make(map[string]arb.Placeholder)
 	for i, placeholder := range text.TIK.Placeholders() {
@@ -660,11 +725,11 @@ func (g *Generate) newARBMsg(
 
 	icuTokens, err := g.icuTokenizer.Tokenize(locale, nil, icuMsg)
 	if err != nil {
-		return id, arb.Message{}, err
+		return arb.Message{ID: msg.ID}, err
 	}
 
-	return id, arb.Message{
-		ID:               id,
+	return arb.Message{
+		ID:               msg.ID,
 		ICUMessage:       icuMsg,
 		ICUMessageTokens: icuTokens,
 		Description:      description,

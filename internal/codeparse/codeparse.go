@@ -106,7 +106,7 @@ type Scan struct {
 }
 
 func (p *Parser) Parse(
-	pathPattern, bundlePkg string,
+	pathPattern, bundlePkgPath string,
 	locale language.Tag,
 	trimpath bool,
 ) (scan *Scan, err error) {
@@ -136,6 +136,7 @@ func (p *Parser) Parse(
 		Catalogs:      sync.NewSlice[*Catalog](1),
 	}
 
+	bundlePkg := filepath.Base(bundlePkgPath)
 	pkgBundle := findBundlePkg(bundlePkg, pkgs)
 	if pkgBundle != nil {
 		log.Verbose("bundle detected", slog.String("directory", pkgBundle.Dir))

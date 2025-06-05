@@ -169,9 +169,6 @@ func TestDecodeErr(t *testing.T) {
 		require.EqualError(t, err, expectErrMsg)
 	}
 
-	f(t, arb.ErrEmptyICUMsg,
-		`for key "invalidMsg": empty ICU message`,
-		MustReadFile(t, "testdata/err_empty_icu_msg.arb"))
 	f(t, arb.ErrInvalidICUMessage,
 		"invalid ICU message: at index 9: missing the mandatory 'other' option",
 		MustReadFile(t, "testdata/err_invalid_icu_msg.arb.txt"))

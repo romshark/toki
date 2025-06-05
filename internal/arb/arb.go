@@ -72,7 +72,6 @@ var (
 	ErrMissingRequiredLocale = errors.New("missing required @@locale")
 	ErrInvalid               = errors.New("invalid")
 	ErrMalformedJSON         = errors.New("malformed JSON")
-	ErrEmptyICUMsg           = errors.New("empty ICU message")
 	ErrUndefinedPlaceholder  = errors.New("undefined placeholder")
 )
 
@@ -171,10 +170,6 @@ func (d *Decoder) Decode(r io.Reader) (*File, error) {
 			return nil, fmt.Errorf(
 				"%w: message text for key %q: %w", ErrMalformedJSON, k, err,
 			)
-		}
-
-		if strings.TrimSpace(msgText) == "" {
-			return nil, fmt.Errorf("for key %q: %w", k, ErrEmptyICUMsg)
 		}
 
 		msg := Message{

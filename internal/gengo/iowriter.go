@@ -89,7 +89,6 @@ func (w *Writer) writeSimpleArg() {
 		return
 	}
 	// Has argument type and style parameters.
-	_ = tokStyle
 	w.i += 4
 	switch tokStyle.Type {
 	case icumsg.TokenTypeArgStyleShort:
@@ -128,6 +127,11 @@ func (w *Writer) writeSimpleArg() {
 		w.println("if err != nil {return written, err}; written += n;")
 		return
 	case icumsg.TokenTypeArgStyleCustom:
+		// TODO
+		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
+		w.println("if err != nil {return written, err}; written += n;")
+		return
+	case icumsg.TokenTypeArgStyleSkeleton:
 		// TODO
 		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
 		w.println("if err != nil {return written, err}; written += n;")

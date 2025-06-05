@@ -70,6 +70,9 @@ func newMsgIter(scan *codeparse.Scan) iter.Seq[Message] {
 			break
 		}
 	}
+	if nativeCatalog == nil {
+		return func(yield func(Message) bool) {}
+	}
 	return func(yield func(Message) bool) {
 		sorted := slices.Sorted(maps.Keys(nativeCatalog.ARB.Messages))
 		for _, msgID := range sorted {
@@ -274,7 +277,7 @@ func isTokenArgType(t icumsg.TokenType) bool {
 }
 
 func isTokenArgStyle(t icumsg.TokenType) bool {
-	return t >= icumsg.TokenTypeArgStyleShort && t <= icumsg.TokenTypeArgStyleCustom
+	return t >= icumsg.TokenTypeArgStyleShort && t <= icumsg.TokenTypeArgStyleSkeleton
 }
 
 func iterPluralLiteralParts(s string) iter.Seq[string] {

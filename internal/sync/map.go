@@ -1,6 +1,9 @@
 package sync
 
-import "sync"
+import (
+	"iter"
+	"sync"
+)
 
 func NewMap[K comparable, V any](size int) *Map[K, V] {
 	return &Map[K, V]{items: make(map[K]V, size)}
@@ -56,4 +59,16 @@ func (m *Map[K, V]) Access(fn func(s map[K]V) error) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	return fn(m.items)
+}
+
+func (m *Map[K, V]) Seq() iter.Seq2[K, V] {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	return func(yield func(K, V) bool) {
+		for k, v := range m.items {
+			if !yield(k, v) {
+				break
+			}
+		}
+	}
 }
