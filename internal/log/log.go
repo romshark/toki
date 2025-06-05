@@ -1,46 +1,72 @@
+// Package log is a thin wrapper around Go's standard log/slog.
 package log
 
 import (
 	"fmt"
-	"os"
+	"go/token"
+	"io"
+	"log/slog"
 	"sync/atomic"
 )
 
-var level atomic.Int32
-
-type Level int32
+type Mode int8
 
 const (
-	LevelDebug   Level = 2
-	LevelVerbose Level = 1
-	LevelError   Level = 0
+	ModeQuiet   Mode = 0
+	ModeRegular Mode = 1
+	ModeVerbose Mode = 2
 )
 
-// SetLevel sets current log level.
-func SetLevel(l Level) {
-	if l < LevelError || l > LevelDebug {
-		panic(fmt.Errorf("invalid log level: %#v", l))
+func init() { SetMode(ModeRegular) }
+
+var mode atomic.Int32
+
+func SetMode(m Mode) { mode.Store(int32(m)) }
+
+func SetWriter(stderr io.Writer, jsonMode bool) {
+	var l *slog.Logger
+	if jsonMode {
+		l = slog.New(slog.NewJSONHandler(stderr, &slog.HandlerOptions{
+			Level: slog.LevelInfo,
+		}))
+	} else {
+		l = slog.New(newColorHandler(stderr, slog.LevelInfo))
 	}
-	level.Store(int32(l))
+	logger.Store(l)
 }
 
-// Verbosef prints on verbose level.
-func Verbosef(format string, a ...any) {
-	if level.Load() < int32(LevelVerbose) {
+var logger atomic.Value
+
+func getLogger() *slog.Logger { return logger.Load().(*slog.Logger) }
+
+func Verbose(msg string, attrs ...any) {
+	if Mode(mode.Load()) >= ModeVerbose {
+		getLogger().Info(msg, attrs...)
+	}
+}
+
+func Info(msg string, attrs ...any) {
+	if Mode(mode.Load()) >= ModeRegular {
+		getLogger().Info(msg, attrs...)
+	}
+}
+
+func Warn(msg string, attrs ...any) {
+	if Mode(mode.Load()) >= ModeRegular {
+		getLogger().Warn(msg, attrs...)
+	}
+}
+
+func Error(msg string, err error, attrs ...any) {
+	l := getLogger()
+	if err == nil {
+		l.Error(msg, attrs...)
 		return
 	}
-	fmt.Fprintf(os.Stderr, format, a...)
+	attrs = append([]any{slog.Any("error", err.Error())}, attrs...)
+	l.Error(msg, attrs...)
 }
 
-// Debugf prints on debug level.
-func Debugf(format string, a ...any) {
-	if level.Load() < int32(LevelDebug) {
-		return
-	}
-	fmt.Fprintf(os.Stderr, format, a...)
-}
-
-// Errorf prints on error level.
-func Errorf(format string, a ...any) {
-	fmt.Fprintf(os.Stderr, format, a...)
+func FmtPos(pos token.Position) string {
+	return fmt.Sprintf("%s:%d:%d", pos.Filename, pos.Line, pos.Column)
 }

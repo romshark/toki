@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"go/format"
 	"io/fs"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -73,7 +74,7 @@ func run(osArgs []string) (result Result, exitCode int) {
 			Err: fmt.Errorf("%w, use either of: [generate,lint]", ErrNoCommand),
 		}, 2
 	}
-	log.SetLevel(log.LevelDebug)
+
 	switch osArgs[1] {
 	case "version":
 		PrintVersionInfoAndExit()
@@ -119,14 +120,17 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 	}
 	result.Config = conf
 
-	if conf.QuietMode {
-		log.SetLevel(log.LevelError)
-	} else if conf.VerboseMode {
-		log.SetLevel(log.LevelVerbose)
+	log.SetWriter(os.Stderr, conf.JSON)
+
+	switch {
+	case conf.QuietMode:
+		log.SetMode(log.ModeQuiet) // Disable logging.
+	case conf.VerboseMode:
+		log.SetMode(log.ModeVerbose)
 	}
 
 	if lintOnly {
-		log.Verbosef("linting only mode\n")
+		log.Info("linting mode")
 	}
 
 	if !lintOnly {
@@ -220,14 +224,15 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 	// Check for new messages
 	for text := range scan.Texts.Seq() {
 		if _, ok := nativeARB.Messages[text.IDHash]; !ok {
-			log.Verbosef("new TIK at %s:%d:%d\n",
-				text.Position.Filename, text.Position.Line, text.Position.Column)
 			result.NewTexts = append(result.NewTexts, text)
 			id, newMsg, err := g.newARBMsg(conf.Locale, text)
 			if err != nil {
 				result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
 				return result
 			}
+			log.Verbose("new TIK",
+				slog.String("position", log.FmtPos(text.Position)),
+				slog.String("id", id))
 			nativeARB.Messages[id] = newMsg
 			if incomplete := codeparse.IsMsgIncomplete(
 				scan, nativeARB, nativeARBFileName, &newMsg,
@@ -251,9 +256,9 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 			continue
 		}
 		text := scan.Texts.At(index)
-		log.Verbosef("unused TIK %s at %s:%d:%d\n",
-			text.IDHash, text.Position.Filename,
-			text.Position.Line, text.Position.Column,
+		log.Verbose("unused TIK",
+			slog.String("id", text.IDHash),
+			slog.String("pos", log.FmtPos(text.Position)),
 		)
 		delete(nativeARB.Messages, id)
 		for c := range scan.Catalogs.Seq() {
@@ -293,9 +298,11 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 					codeparse.ICUSelectOptions,
 					func(index int) {
 						tok := msg.ICUMessageTokens[index]
-						log.Verbosef("ICU message incomplete: %q: %s %#v\n",
-							msg.ID, tok.Type.String(),
-							tok.String(msg.ICUMessage, msg.ICUMessageTokens))
+						incompletePart := tok.String(msg.ICUMessage, msg.ICUMessageTokens)
+						log.Warn("ICU message incomplete",
+							slog.String("id", msg.ID),
+							slog.String("type", tok.Type.String()),
+							slog.String("part", incompletePart))
 					}, // On incomplete.
 					func(index int) {
 						// On rejected do nothing. This was addressed before this report.
@@ -350,7 +357,7 @@ func writeARBFiles(
 			}
 			defer func() {
 				if err := f.Close(); err != nil {
-					log.Errorf("closing catalog .arb file: %v", err)
+					log.Error("closing catalog .arb file", err)
 				}
 			}()
 			setARBMetadata(catalog.ARB)
@@ -377,7 +384,7 @@ func setARBMetadata(f *arb.File) {
 
 func prepareBundlePackageDir(bundlePkgPath string) error {
 	if _, err := os.Stat(bundlePkgPath); errors.Is(err, os.ErrNotExist) {
-		log.Verbosef("create new bundle package %q\n", bundlePkgPath)
+		log.Verbose("create new bundle package", slog.String("path", bundlePkgPath))
 	}
 	if err := os.MkdirAll(bundlePkgPath, 0o755); err != nil {
 		return fmt.Errorf("mkdir: bundle package path: %w", err)
@@ -450,17 +457,17 @@ func readOrCreateHeadTxt(
 	headFilePath := filepath.Join(conf.BundlePkgPath, "head.txt")
 	if fc, err := os.ReadFile(headFilePath); errors.Is(err, os.ErrNotExist) {
 		if !createIfNotExist {
-			log.Verbosef("head.txt not found\n")
+			log.Warn("head.txt not found")
 			return nil, nil
 		}
 
-		log.Verbosef("head.txt not found, creating a new one\n")
+		log.Warn("head.txt not found, creating a new one")
 		f, err := os.Create(headFilePath)
 		if err != nil {
 			return nil, fmt.Errorf("creating head.txt file: %w", err)
 		}
 		if err := f.Close(); err != nil {
-			log.Errorf("ERR: closing head.txt file: %v\n", err)
+			log.Error("closing head.txt file", err)
 		}
 	} else if err != nil {
 		return nil, fmt.Errorf("reading head.txt: %w", err)
@@ -555,30 +562,36 @@ func (r Result) Print() {
 	if r.Scan != nil {
 		_ = r.Scan.SourceErrors.Access(func(s []codeparse.SourceError) error {
 			if l := len(s); l > 0 {
-				log.Errorf("Source errors (%d):\n", l)
+				log.Error("source errors", nil, slog.Int("total", l))
 				for _, e := range s {
-					log.Errorf(" %s:%d:%d: %v\n", e.Filename, e.Line, e.Column, e.Err)
+					log.Error("source", e.Err, slog.String("pos", log.FmtPos(e.Position)))
 				}
 			}
 			return nil
 		})
-		log.Verbosef("TIKs: %d (unique: %d; new: %d; removed: %d)\n",
-			r.Scan.Texts.Len(), r.Scan.TextIndexByID.Len(),
-			len(r.NewTexts), len(r.RemovedTexts))
-		log.Verbosef("Scanned %d file(s) in %s\n",
-			r.Scan.FilesTraversed.Load(), time.Since(r.Start).String())
+
+		fields := []any{
+			slog.Int("tiks.total", r.Scan.Texts.Len()),
+			slog.Int("tiks.unique", r.Scan.TextIndexByID.Len()),
+			slog.Int("tiks.new", len(r.NewTexts)),
+			slog.Int("tiks.removed", len(r.RemovedTexts)),
+			slog.Int64("scan.files", r.Scan.FilesTraversed.Load()),
+			slog.String("scan.duration", time.Since(r.Start).String()),
+			slog.Int64("catalogs", int64(r.Scan.Catalogs.Len())),
+		}
 		_ = r.Scan.Catalogs.Access(func(s []*codeparse.Catalog) error {
-			log.Verbosef("Catalogs (%d):\n", len(s))
 			for _, c := range s {
+				fieldName := gengo.FileNameWithLocale(c.ARB.Locale, "catalog", ".arb")
 				completeness := completeness(c) * 100
-				log.Verbosef(" %s: %.2f%%\n",
-					c.ARB.Locale.String(), completeness)
+				fields = append(fields, slog.Group(fieldName,
+					slog.String("completeness", fmt.Sprintf("%.2f%%", completeness))))
 			}
 			return nil
 		})
+		log.Info("finished", fields...)
 	}
 	if r.Err != nil {
-		log.Verbosef("Error: %s\n", r.Err.Error())
+		log.Error(r.Err.Error(), nil)
 	}
 }
 

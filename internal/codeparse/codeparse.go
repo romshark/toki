@@ -8,6 +8,7 @@ import (
 	"go/token"
 	"go/types"
 	"iter"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -137,7 +138,7 @@ func (p *Parser) Parse(
 
 	pkgBundle := findBundlePkg(bundlePkg, pkgs)
 	if pkgBundle != nil {
-		log.Verbosef("bundle detected: %s\n", pkgBundle.Dir)
+		log.Verbose("bundle detected", slog.String("directory", pkgBundle.Dir))
 		scan.TokiVersion = getConstantValue(pkgBundle, "TokiVersion")
 		defaultLocaleString := getConstantValue(pkgBundle, "DefaultLocale")
 		defaultLocale, err := language.Parse(defaultLocaleString)
@@ -210,17 +211,16 @@ func (p *Parser) collectARBFiles(bundlePkgDir string, scan *Scan) error {
 
 		withoutExt := strings.TrimSuffix(fileName, ".arb")
 		withoutPrefix, ok := strings.CutPrefix(withoutExt, "catalog_")
-		if !ok {
-			log.Verbosef("ignoring inactive translation file: %s\n", fileName)
-			return nil
-		}
 		locale, err := language.Parse(withoutPrefix)
-		if err != nil {
-			log.Verbosef("ignoring inactive translation file: %s\n", fileName)
+		if !ok || err != nil {
+			log.Verbose("ignoring inactive translation file",
+				slog.String("file", fileName))
 			return nil
 		}
 
-		log.Verbosef("translation file detected (%s): %s\n", locale.String(), fileName)
+		log.Verbose("translation file detected",
+			slog.String("locale", locale.String()),
+			slog.String("file", fileName))
 
 		path := filepath.Join(bundlePkgDir, fileName)
 		f, err := os.OpenFile(path, os.O_RDONLY, 0o644)
@@ -352,8 +352,9 @@ func (p *Parser) collectTexts(
 					comments := findLeadingComments(fset, file, call)
 
 					id := HashMessage(p.hasher, tikVal.Raw)
-					log.Verbosef("%s at %s:%d:%d\n",
-						funcType, posCall.Filename, posCall.Line, posCall.Column)
+					log.Verbose("text",
+						slog.String("type", funcType),
+						slog.String("pos", log.FmtPos(posCall)))
 					_ = scan.TextIndexByID.Access(func(s map[string]int) error {
 						index := scan.Texts.Append(Text{
 							Position: posCall,
@@ -368,7 +369,7 @@ func (p *Parser) collectTexts(
 					return true
 				})
 			}
-			log.Verbosef("traversed file %s\n", filePath)
+			log.Verbose("traversed file", slog.String("file", filePath))
 		}
 	}
 }
