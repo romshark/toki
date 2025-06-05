@@ -459,15 +459,14 @@ func (p *Parser) parseTIK(
 				continue
 			}
 
-		case tik.TokenTypeTimeShort,
-			tik.TokenTypeTimeShortSeconds,
-			tik.TokenTypeTimeFullMonthAndDay,
-			tik.TokenTypeTimeShortMonthAndDay,
-			tik.TokenTypeTimeFullMonthAndYear,
-			tik.TokenTypeTimeWeekday,
-			tik.TokenTypeTimeDateAndShort,
-			tik.TokenTypeTimeYear,
-			tik.TokenTypeTimeFull:
+		case tik.TokenTypeDateFull,
+			tik.TokenTypeDateLong,
+			tik.TokenTypeDateMedium,
+			tik.TokenTypeDateShort,
+			tik.TokenTypeTimeFull,
+			tik.TokenTypeTimeLong,
+			tik.TokenTypeTimeMedium,
+			tik.TokenTypeTimeShort:
 			if typName, isTime := isTime(pkg, arg); !isTime {
 				onSrcErr(pos, fmt.Errorf("arg %d must be time.Time but received: %s",
 					idx, typName))

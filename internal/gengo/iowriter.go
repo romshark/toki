@@ -6,27 +6,25 @@ import (
 	"github.com/romshark/icumsg"
 )
 
-// writeFuncIOWriter writes a translation function as a map entry.
-func (w *Writer) writeFuncIOWriter(id, tik, icuMsg string, tokens []icumsg.Token) {
+// writeFunc writes a translation function as a map entry.
+func (w *Writer) writeFunc(id, icuMsg string, tokens []icumsg.Token) {
 	w.m = icuMsg
 	w.t = tokens
 	w.i = 0
 
-	w.printf("// %s\n", id)
-	w.printf("%q:\n", tik)
-	w.println("func(w io.Writer, args ...any) (written int, err error) {")
+	w.printf("%s: func(w io.Writer, args ...any) (written int, err error) {\n", id)
 	endIndex := len(w.t)
 	if s := w.literalConcat(endIndex); s != "" {
 		w.printf("return wrs(w, %q)\n", s)
 	} else {
 		w.println("var n int;")
-		w.writeExprIOWriter(endIndex)
+		w.writeExpr(endIndex)
 		w.println("return written, nil;")
 	}
 	w.println("},")
 }
 
-func (w *Writer) writeExprIOWriter(endIndex int) {
+func (w *Writer) writeExpr(endIndex int) {
 	if s := w.literalConcat(endIndex); s != "" {
 		w.println("_ = args")
 		w.printf("n, err = wrs(w, %q);\n", s)
@@ -42,13 +40,13 @@ func (w *Writer) writeExprIOWriter(endIndex int) {
 			w.println("if err != nil {return written, err}; written += n;")
 			w.i++ // Advance.
 		case icumsg.TokenTypeSimpleArg:
-			w.writeSimpleArgIOWriter()
+			w.writeSimpleArg()
 		case icumsg.TokenTypePlural, icumsg.TokenTypeSelectOrdinal:
-			w.writePluralIOWriter(false)
+			w.writePlural(false)
 		case icumsg.TokenTypeArgTypeOrdinal:
-			w.writePluralIOWriter(true)
+			w.writePlural(true)
 		case icumsg.TokenTypeSelect:
-			w.writeSelectIOWriter()
+			w.writeSelect()
 		default:
 			// This should never happen since writeExpr is always
 			// called on the above mentioned token types.
@@ -57,7 +55,7 @@ func (w *Writer) writeExprIOWriter(endIndex int) {
 	}
 }
 
-func (w *Writer) writeSimpleArgIOWriter() {
+func (w *Writer) writeSimpleArg() {
 	argNameToken := w.t[w.i+1].String(w.m, w.t)
 	arg, err := parseArgName(argNameToken)
 	if err != nil {
@@ -65,11 +63,20 @@ func (w *Writer) writeSimpleArgIOWriter() {
 		// before the Go bundle code is generated.
 		panic(err)
 	}
-	if w.i+2 <= len(w.t) || !isTokenArgType(w.t[w.i+2].Type) {
+	if w.i+2 >= len(w.t) || !isTokenArgType(w.t[w.i+2].Type) {
 		// No argument type.
 		w.printf("n, err = wrs(w, args[%d].(string));\n", arg.Index)
 		w.println("if err != nil {return written, err}; written += n;")
 		w.i += 2
+		return
+	}
+
+	switch w.t[w.i+2].Type {
+	case icumsg.TokenTypeArgTypeDate:
+		w.writeArgDate(arg.Index)
+		return
+	case icumsg.TokenTypeArgTypeTime:
+		w.writeArgTime(arg.Index)
 		return
 	}
 
@@ -131,7 +138,53 @@ func (w *Writer) writeSimpleArgIOWriter() {
 	}
 }
 
-func (w *Writer) writePluralIOWriter(ordinal bool) {
+func (w *Writer) writeArgDate(argIndex int) {
+	tokStyle := w.t[w.i+3]
+	w.i += 4
+	switch tokStyle.Type {
+	case icumsg.TokenTypeArgStyleFull:
+		w.printf("n, err = io.WriteString(w, %s.FmtDateFull(args[%d].(time.Time)));",
+			w.translatorVar, argIndex)
+	case icumsg.TokenTypeArgStyleLong:
+		w.printf("n, err = io.WriteString(w, %s.FmtDateLong(args[%d].(time.Time)));",
+			w.translatorVar, argIndex)
+	case icumsg.TokenTypeArgStyleMedium:
+		w.printf("n, err = io.WriteString(w, %s.FmtDateMedium(args[%d].(time.Time)));",
+			w.translatorVar, argIndex)
+	case icumsg.TokenTypeArgStyleShort:
+		w.printf("n, err = io.WriteString(w, %s.FmtDateShort(args[%d].(time.Time)));",
+			w.translatorVar, argIndex)
+	default:
+		// This should never happen because this switch is exhaustive.
+		panic(tokStyle.Type.String())
+	}
+	w.println("if err != nil {return written, err}; written += n;")
+}
+
+func (w *Writer) writeArgTime(argIndex int) {
+	tokStyle := w.t[w.i+3]
+	w.i += 4
+	switch tokStyle.Type {
+	case icumsg.TokenTypeArgStyleFull:
+		w.printf("n, err = io.WriteString(w, %s.FmtTimeFull(args[%d].(time.Time)));",
+			w.translatorVar, argIndex)
+	case icumsg.TokenTypeArgStyleLong:
+		w.printf("n, err = io.WriteString(w, %s.FmtTimeLong(args[%d].(time.Time)));",
+			w.translatorVar, argIndex)
+	case icumsg.TokenTypeArgStyleMedium:
+		w.printf("n, err = io.WriteString(w, %s.FmtTimeMedium(args[%d].(time.Time)));",
+			w.translatorVar, argIndex)
+	case icumsg.TokenTypeArgStyleShort:
+		w.printf("n, err = io.WriteString(w, %s.FmtTimeShort(args[%d].(time.Time)));",
+			w.translatorVar, argIndex)
+	default:
+		// This should never happen because this switch is exhaustive.
+		panic(tokStyle.Type.String())
+	}
+	w.println("if err != nil {return written, err}; written += n;")
+}
+
+func (w *Writer) writePlural(ordinal bool) {
 	t := w.t[w.i]
 	argNameToken := w.t[w.i+1].String(w.m, w.t)
 	argIndex, err := parseArgName(argNameToken)
@@ -178,38 +231,38 @@ func (w *Writer) writePluralIOWriter(ordinal bool) {
 	if iZero != 0 {
 		w.println("case locales.PluralRuleZero:")
 		w.i = iZero
-		w.writePluralOptionIOWriter(argIndex, offset)
+		w.writePluralOption(argIndex, offset)
 	}
 	if iOne != 0 {
 		w.println("case locales.PluralRuleOne:")
 		w.i = iOne
-		w.writePluralOptionIOWriter(argIndex, offset)
+		w.writePluralOption(argIndex, offset)
 	}
 	if iTwo != 0 {
 		w.println("case locales.PluralRuleTwo:")
 		w.i = iTwo
-		w.writePluralOptionIOWriter(argIndex, offset)
+		w.writePluralOption(argIndex, offset)
 	}
 	if iFew != 0 {
 		w.println("case locales.PluralRuleFew:")
 		w.i = iFew
-		w.writePluralOptionIOWriter(argIndex, offset)
+		w.writePluralOption(argIndex, offset)
 	}
 	if iMany != 0 {
 		w.println("case locales.PluralRuleMany:")
 		w.i = iMany
-		w.writePluralOptionIOWriter(argIndex, offset)
+		w.writePluralOption(argIndex, offset)
 	}
 	if iOther != 0 {
 		w.println("default:")
 		w.i = iOther
-		w.writePluralOptionIOWriter(argIndex, offset)
+		w.writePluralOption(argIndex, offset)
 	}
 	w.println("};")
 	w.i = t.IndexEnd + 1 // Skip the whole block.
 }
 
-func (w *Writer) writePluralOptionIOWriter(arg argName, offset uint64) {
+func (w *Writer) writePluralOption(arg argName, offset uint64) {
 	indexEnd := w.t[w.i].IndexEnd
 	defer func() { w.i = indexEnd + 1 }()
 	w.i++
@@ -240,11 +293,11 @@ func (w *Writer) writePluralOptionIOWriter(arg argName, offset uint64) {
 			}
 			w.i++
 		case icumsg.TokenTypeSimpleArg:
-			w.writeSimpleArgIOWriter()
+			w.writeSimpleArg()
 		case icumsg.TokenTypePlural,
 			icumsg.TokenTypeSelect,
 			icumsg.TokenTypeSelectOrdinal:
-			w.writeExprIOWriter(indexEnd)
+			w.writeExpr(indexEnd)
 			w.i = t.IndexEnd + 1
 		default:
 			w.i++
@@ -252,7 +305,7 @@ func (w *Writer) writePluralOptionIOWriter(arg argName, offset uint64) {
 	}
 }
 
-func (w *Writer) writeSelectIOWriter() {
+func (w *Writer) writeSelect() {
 	t := w.t[w.i]
 	argNameToken := w.t[w.i+1].String(w.m, w.t)
 	argIndex, err := parseArgName(argNameToken)
@@ -266,14 +319,14 @@ func (w *Writer) writeSelectIOWriter() {
 			// Default case.
 			w.println("default:")
 			w.i = i + 1
-			w.writeExprIOWriter(w.t[i].IndexEnd)
+			w.writeExpr(w.t[i].IndexEnd)
 			continue
 		}
 		// Named case.
 		optionValStr := w.t[i+1].String(w.m, w.t)
 		w.printf("case %q:\n", optionValStr)
 		w.i = i + 2
-		w.writeExprIOWriter(w.t[i].IndexEnd)
+		w.writeExpr(w.t[i].IndexEnd)
 	}
 	w.println("};")
 	w.i = t.IndexEnd + 1 // Skip the whole block.

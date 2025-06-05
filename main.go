@@ -9,11 +9,9 @@ import (
 	"fmt"
 	"go/format"
 	"io/fs"
-	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -37,7 +35,7 @@ var (
 	ErrInvalidCLIArgs  = errors.New("invalid arguments")
 )
 
-const Version = "0.4.0"
+const Version = "0.4.1"
 
 func PrintVersionInfoAndExit() {
 	defer os.Exit(0)
@@ -280,9 +278,7 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 		}
 
 		// Generate go bundle.
-		if err := generateGoBundle(
-			conf.BundlePkgPath, conf.Locale, scan, headTxt,
-		); err != nil {
+		if err := generateGoBundle(conf.BundlePkgPath, scan, headTxt); err != nil {
 			result.Err = err
 			return result
 		}
@@ -390,8 +386,7 @@ func prepareBundlePackageDir(bundlePkgPath string) error {
 }
 
 func generateGoBundle(
-	bundlePkgPath string, srcLocale language.Tag, scan *codeparse.Scan,
-	headTxtLines []string,
+	bundlePkgPath string, scan *codeparse.Scan, headTxtLines []string,
 ) error {
 	pkgName := filepath.Base(bundlePkgPath)
 
@@ -401,7 +396,7 @@ func generateGoBundle(
 	}
 
 	bundleGoFilePath := filepath.Join(bundlePkgPath, "bundle_gen.go")
-	writer := gengo.NewWriter(Version)
+	writer := gengo.NewWriter(Version, scan)
 	{
 		f, err := os.OpenFile(bundleGoFilePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
@@ -409,18 +404,8 @@ func generateGoBundle(
 		}
 
 		// Generate the main Go bundle file.
-		var translationLocales []language.Tag
-		_ = scan.Catalogs.Access(func(s []*codeparse.Catalog) error {
-			translationLocales = make([]language.Tag, len(s))
-			for i, catalog := range s {
-				translationLocales[i] = catalog.ARB.Locale
-			}
-			return nil
-		})
 		var buf bytes.Buffer
-		writer.WritePackageBundle(
-			&buf, pkgName, srcLocale, translationLocales, headTxtLines,
-		)
+		writer.WritePackageBundle(&buf, pkgName, headTxtLines)
 
 		formatted, err := format.Source(buf.Bytes())
 		if err != nil {
@@ -443,22 +428,7 @@ func generateGoBundle(
 			}
 
 			var buf bytes.Buffer
-			writer.WritePackageCatalog(&buf, locale, pkgName, headTxtLines,
-				func(yield func(gengo.Message) bool) {
-					sorted := slices.Sorted(maps.Keys(catalog.ARB.Messages))
-					for _, msgID := range sorted {
-						m := catalog.ARB.Messages[msgID]
-						txt := scan.Texts.At(scan.TextIndexByID.GetValue(msgID))
-						if !yield(gengo.Message{
-							ID:        txt.IDHash,
-							TIK:       txt.TIK.Raw,
-							ICUMsg:    m.ICUMessage,
-							ICUTokens: m.ICUMessageTokens,
-						}) {
-							break
-						}
-					}
-				})
+			writer.WritePackageCatalog(&buf, locale, pkgName, headTxtLines)
 
 			formatted, err := format.Source(buf.Bytes())
 			if err != nil {
@@ -653,19 +623,20 @@ func (g *Generate) newARBMsg(
 			pl.Description = "ordinal plural"
 			pl.Type = arb.PlaceholderNum
 			pl.Example = "4"
-		case tik.TokenTypeTimeShort,
-			tik.TokenTypeTimeShortSeconds,
-			tik.TokenTypeTimeFullMonthAndDay,
-			tik.TokenTypeTimeShortMonthAndDay,
-			tik.TokenTypeTimeFullMonthAndYear,
-			tik.TokenTypeTimeWeekday,
-			tik.TokenTypeTimeDateAndShort,
-			tik.TokenTypeTimeYear,
-			tik.TokenTypeTimeFull:
+		case tik.TokenTypeDateFull,
+			tik.TokenTypeDateLong,
+			tik.TokenTypeDateMedium,
+			tik.TokenTypeDateShort:
+			pl.Description = "date"
+			pl.IsCustomDateFormat = true
+			pl.Type = arb.PlaceholderDateTime
+		case tik.TokenTypeTimeFull,
+			tik.TokenTypeTimeLong,
+			tik.TokenTypeTimeMedium,
+			tik.TokenTypeTimeShort:
 			pl.Description = "time"
 			pl.IsCustomDateFormat = true
 			pl.Type = arb.PlaceholderDateTime
-			pl.Example = "RFC3339(2025-04-27T21:16:32+00:00)"
 		case tik.TokenTypeCurrencyCodeFull, tik.TokenTypeCurrencyFull:
 			pl.Description = "currency with amount"
 			pl.Type = arb.PlaceholderNum
