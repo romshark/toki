@@ -159,6 +159,10 @@ func (g *Generate) Run(osArgs []string, lintOnly bool) (result Result) {
 		return result
 	}
 	result.Scan = scan
+	if scan.SourceErrors.Len() > 0 {
+		result.Err = ErrSourceErrors
+		return result
+	}
 
 	if conf.Locale != language.Und {
 		// Locale parameter provided.
