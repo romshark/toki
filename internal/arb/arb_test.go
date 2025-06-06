@@ -8,8 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/romshark/icumsg"
 	"github.com/romshark/toki/internal/arb"
+
+	"github.com/romshark/icumsg"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/language"
 )

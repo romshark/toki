@@ -1,10 +1,12 @@
 package codeparse
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"go/ast"
 	"go/constant"
+	"go/format"
 	"go/token"
 	"go/types"
 	"iter"
@@ -14,12 +16,13 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/cespare/xxhash/v2"
-	"github.com/romshark/icumsg"
-	tik "github.com/romshark/tik/tik-go"
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/log"
 	"github.com/romshark/toki/internal/sync"
+
+	"github.com/cespare/xxhash/v2"
+	"github.com/romshark/icumsg"
+	tik "github.com/romshark/tik/tik-go"
 	"golang.org/x/text/language"
 	"golang.org/x/tools/go/packages"
 )
@@ -375,6 +378,15 @@ func (p *Parser) collectTexts(
 	}
 }
 
+func mustFmtExpr(e ast.Expr) string {
+	var b bytes.Buffer
+	err := format.Node(&b, token.NewFileSet(), e)
+	if err != nil {
+		panic(err)
+	}
+	return b.String()
+}
+
 func (p *Parser) parseTIK(
 	fileset *token.FileSet, pkg *packages.Package, call *ast.CallExpr,
 	methodArgumentOffset int, onSrcErr FnOnSrcErr,
@@ -428,7 +440,10 @@ func (p *Parser) parseTIK(
 		idx := index
 		index++
 		if idx >= len(placeholders) {
-			onSrcErr(pos, fmt.Errorf("arg %v doesn't match any TIK placeholder", arg))
+			onSrcErr(pos, fmt.Errorf(
+				"arg %s doesn't match any TIK placeholder",
+				mustFmtExpr(arg),
+			))
 			ok = false
 			continue
 		}

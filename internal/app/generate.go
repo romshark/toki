@@ -14,15 +14,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cespare/xxhash/v2"
-	"github.com/romshark/icumsg"
-	"github.com/romshark/tik/tik-go"
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/config"
 	"github.com/romshark/toki/internal/gengo"
 	"github.com/romshark/toki/internal/log"
 	"github.com/romshark/toki/internal/sync"
+
+	"github.com/cespare/xxhash/v2"
+	"github.com/romshark/icumsg"
+	"github.com/romshark/tik/tik-go"
 	"golang.org/x/text/language"
 )
 

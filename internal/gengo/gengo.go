@@ -11,8 +11,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/romshark/icumsg"
 	"github.com/romshark/toki/internal/codeparse"
+
+	"github.com/romshark/icumsg"
 	"golang.org/x/text/language"
 )
 

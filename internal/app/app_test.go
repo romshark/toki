@@ -251,6 +251,33 @@ func TestTokiGenerateErrSource(t *testing.T) {
 				}},
 			},
 		},
+		{
+			name: "ERR lint extra argument unexpected",
+			setup: Setup{
+				InitGoMod: true, InitBundle: true,
+				FilesAfterInit: map[string]string{
+					"main.go": `
+					package main
+					import "fmt"
+					import "time"
+					import "tstmod/tokibundle"
+					import "golang.org/x/text/language"
+					func main() {
+						r, _ := tokibundle.Match(language.English)
+						fmt.Println(r.String(
+							"There are no magic constants here",
+							int(42),
+						))
+					}
+					`,
+				},
+			},
+			args: []string{"lint", "-l=en"},
+			expectSrcErrs: []SourceError{
+				{"main.go:9:8",
+					errHasMsg("TIK: arg int(42) doesn't match any TIK placeholder")},
+			},
+		},
 	}
 
 	for _, tt := range tests {
