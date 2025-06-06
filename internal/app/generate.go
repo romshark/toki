@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"go/format"
+	"io"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -33,7 +34,9 @@ type Generate struct {
 	tikICUTranslator *tik.ICUTranslator
 }
 
-func (g *Generate) Run(osArgs []string, lintOnly bool, now time.Time) (result Result) {
+func (g *Generate) Run(
+	osArgs []string, lintOnly bool, stderr io.Writer, now time.Time,
+) (result Result) {
 	result.Start = now
 	conf, err := config.ParseCLIArgsGenerate(osArgs)
 	if err != nil {
@@ -42,7 +45,7 @@ func (g *Generate) Run(osArgs []string, lintOnly bool, now time.Time) (result Re
 	}
 	result.Config = conf
 
-	log.SetWriter(os.Stderr, conf.JSON)
+	log.SetWriter(stderr, conf.JSON)
 
 	switch {
 	case conf.QuietMode:

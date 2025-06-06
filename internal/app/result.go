@@ -22,35 +22,37 @@ type Result struct {
 	Err          error
 }
 
+type ResultJSONCatalog struct {
+	Locale       string  `json:"locale"`
+	Completeness float64 `json:"completeness"`
+}
+type ResultJSONSourceError struct {
+	Error string `json:"error"`
+	File  string `json:"file"`
+	Line  int    `json:"line"`
+	Col   int    `json:"col"`
+}
+
+type ResultJSON struct {
+	Error          string                  `json:"error,omitempty"`
+	StringCalls    int64                   `json:"string-calls"`
+	WriteCalls     int64                   `json:"write-calls"`
+	TIKs           int                     `json:"tiks"`
+	TIKsUnique     int                     `json:"tiks-unique"`
+	TIKsNew        int                     `json:"tiks-new"`
+	FilesTraversed int                     `json:"files-traversed"`
+	SourceErrors   []ResultJSONSourceError `json:"source-errors,omitempty"`
+	TimeMS         int64                   `json:"time-ms"`
+	Catalogs       []ResultJSONCatalog     `json:"catalogs"`
+}
+
 func (r Result) mustPrintJSON() {
 	enc := json.NewEncoder(os.Stderr)
-
-	type Catalog struct {
-		Locale       string  `json:"locale"`
-		Completeness float64 `json:"completeness"`
-	}
-	type SourceError struct {
-		Error string `json:"error"`
-		File  string `json:"file"`
-		Line  int    `json:"line"`
-		Col   int    `json:"col"`
-	}
 	var errMsg string
 	if r.Err != nil {
 		errMsg = r.Err.Error()
 	}
-	data := struct {
-		Error          string        `json:"error,omitempty"`
-		StringCalls    int64         `json:"string-calls"`
-		WriteCalls     int64         `json:"write-calls"`
-		TIKs           int           `json:"tiks"`
-		TIKsUnique     int           `json:"tiks-unique"`
-		TIKsNew        int           `json:"tiks-new"`
-		FilesTraversed int           `json:"files-traversed"`
-		SourceErrors   []SourceError `json:"source-errors,omitempty"`
-		TimeMS         int64         `json:"time-ms"`
-		Catalogs       []Catalog     `json:"catalogs"`
-	}{
+	data := ResultJSON{
 		Error:          errMsg,
 		StringCalls:    r.Scan.StringCalls.Load(),
 		WriteCalls:     r.Scan.WriteCalls.Load(),
@@ -61,9 +63,9 @@ func (r Result) mustPrintJSON() {
 		TimeMS:         time.Since(r.Start).Milliseconds(),
 	}
 	_ = r.Scan.SourceErrors.Access(func(s []codeparse.SourceError) error {
-		data.SourceErrors = make([]SourceError, len(s))
+		data.SourceErrors = make([]ResultJSONSourceError, len(s))
 		for i, serr := range s {
-			data.SourceErrors[i] = SourceError{
+			data.SourceErrors[i] = ResultJSONSourceError{
 				Error: serr.Err.Error(),
 				File:  serr.Filename,
 				Line:  serr.Line,
@@ -73,10 +75,10 @@ func (r Result) mustPrintJSON() {
 		return nil
 	})
 	_ = r.Scan.Catalogs.Access(func(s []*codeparse.Catalog) error {
-		data.Catalogs = make([]Catalog, len(s))
+		data.Catalogs = make([]ResultJSONCatalog, len(s))
 		for i, c := range s {
 			completeness := completeness(c)
-			data.Catalogs[i] = Catalog{
+			data.Catalogs[i] = ResultJSONCatalog{
 				Locale:       c.ARB.Locale.String(),
 				Completeness: completeness,
 			}
@@ -90,7 +92,10 @@ func (r Result) mustPrintJSON() {
 }
 
 func (r Result) Print() {
-	if r.Config != nil && r.Config.JSON {
+	if r.Config == nil {
+		return
+	}
+	if r.Config.JSON {
 		r.mustPrintJSON()
 		return
 	}

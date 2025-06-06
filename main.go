@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	r, exitCode := app.Run(os.Args, time.Now())
+	r, exitCode := app.Run(os.Args, os.Stderr, os.Stdout, time.Now())
 	r.Print()
 	os.Exit(exitCode)
 }

@@ -4,6 +4,7 @@ import (
 	"debug/buildinfo"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"time"
@@ -29,7 +30,9 @@ const Version = "0.5.2"
 
 const MainBundleFileGo = "bundle_gen.go"
 
-func Run(osArgs []string, now time.Time) (result Result, exitCode int) {
+func Run(
+	osArgs []string, stderr, stdout io.Writer, now time.Time,
+) (result Result, exitCode int) {
 	if len(osArgs) < 2 {
 		return Result{
 			Err: fmt.Errorf("%w, use either of: [generate,lint]", ErrNoCommand),
@@ -38,7 +41,7 @@ func Run(osArgs []string, now time.Time) (result Result, exitCode int) {
 
 	switch osArgs[1] {
 	case "version":
-		printVersionInfoAndExit()
+		return Result{}, printVersionInfoAndExit(stderr, stdout)
 
 	case "lint", "generate":
 		g := Generate{
@@ -48,7 +51,7 @@ func Run(osArgs []string, now time.Time) (result Result, exitCode int) {
 			tikICUTranslator: tik.NewICUTranslator(defaultTIKConfig),
 		}
 		lintOnly := osArgs[1] == "lint"
-		r := g.Run(osArgs, lintOnly, now)
+		r := g.Run(osArgs, lintOnly, stderr, now)
 		switch {
 		case errors.Is(r.Err, ErrInvalidCLIArgs):
 			return r, 2
@@ -63,28 +66,27 @@ func Run(osArgs []string, now time.Time) (result Result, exitCode int) {
 	}, 2
 }
 
-func printVersionInfoAndExit() {
-	defer os.Exit(0)
-
+func printVersionInfoAndExit(stderr, stdout io.Writer) (exitCode int) {
 	p, err := exec.LookPath(os.Args[0])
 	if err != nil {
-		fmt.Printf("resolving executable file path: %v\n", err)
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "resolving executable file path: %v\n", err)
+		return 1
 	}
 
 	f, err := os.Open(p)
 	if err != nil {
-		fmt.Printf("opening executable file %q: %v\n", os.Args[0], err)
-		os.Exit(1)
+		_, _ = fmt.Fprintf(stderr, "opening executable file %q: %v\n", os.Args[0], err)
+		return 1
 	}
 
 	info, err := buildinfo.Read(f)
 	if err != nil {
-		fmt.Printf("reading build information: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "reading build information: %v\n", err)
 	}
 
-	fmt.Printf("Toki v%s\n\n", Version)
-	fmt.Printf("%v\n", info)
+	_, _ = fmt.Fprintf(stdout, "Toki v%s\n\n", Version)
+	_, _ = fmt.Fprintf(stdout, "%v\n", info)
+	return 0
 }
 
 var defaultTIKConfig = tik.DefaultConfig()
