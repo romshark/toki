@@ -151,6 +151,8 @@ func TestTokiGenerateErr(t *testing.T) {
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
 				require.ErrorIs(tt, err, arb.ErrMissingRequiredLocale)
+				require.Equal(t, "analyzing sources: searching .arb files: "+
+					"parsing .arb file: missing required @@locale", err.Error())
 			},
 		},
 		{
@@ -166,6 +168,8 @@ func TestTokiGenerateErr(t *testing.T) {
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
 				require.ErrorIs(tt, err, app.ErrAnalyzingSource)
+				require.Equal(t, "analyzing sources: invalid DefaultLocale value: "+
+					"language: tag is not well-formed", err.Error())
 			},
 		},
 		{
@@ -176,6 +180,48 @@ func TestTokiGenerateErr(t *testing.T) {
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
 				require.ErrorIs(tt, err, app.ErrMissingLocaleParam)
+				require.Equal(t, "please provide a valid BCP 47 locale for the "+
+					"default language of your original code base "+
+					"using the 'l' parameter", err.Error())
+			},
+		},
+		{
+			name: "catalog has wrong locale metafield",
+			setup: Setup{
+				InitGoMod: true, InitBundle: true,
+				FilesAfterInit: map[string]string{
+					"main.go": `
+						package main
+						import "fmt"
+						import "tstmod/tokibundle"
+						import "golang.org/x/text/language"
+						func main() {
+							r, _ := tokibundle.Match(language.English)
+							fmt.Println(r.String("localized string"))
+						}
+					`,
+					// The @@locale field must be "de", not "en".
+					"tokibundle/catalog_de.arb": `
+						{
+							"@@locale": "en",
+							"@@last_modified": "2025-06-06T01:29:56+02:00",
+							"@@x-generator": "github.com/romshark/toki",
+							"@@x-generator-version": "0.5.3",
+							"msg1bf544c92a992298": "übersetzt",
+							"@msg1bf544c92a992298": {
+								"type": "text"
+							}
+						}
+					`,
+				},
+			},
+			args:           []string{"-l=en"},
+			expectExitCode: 1,
+			expectErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorIs(tt, err, app.ErrAnalyzingSource)
+				require.Equal(t, "analyzing sources: searching .arb files: "+
+					"locale in ARB file (en) differs from file name (de): "+
+					"catalog_de.arb", err.Error())
 			},
 		},
 	}

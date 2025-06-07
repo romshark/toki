@@ -113,14 +113,14 @@ func (g *Generate) Run(
 	parser := codeparse.NewParser(g.hasher, g.tikParser, g.tikICUTranslator)
 
 	// Parse source code and bundle.
-	scan, err := parser.Parse(
+	result.Scan, result.Err = parser.Parse(
 		conf.ModPath, conf.BundlePkgPath, conf.Locale, conf.TrimPath,
 	)
-	if err != nil {
-		result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
+	if result.Err != nil {
+		result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, result.Err)
 		return result
 	}
-	result.Scan = scan
+	scan := result.Scan
 	if scan.SourceErrors.Len() > 0 {
 		result.Err = ErrSourceErrors
 		return result
