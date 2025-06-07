@@ -1,4 +1,4 @@
-package app_test
+package main
 
 import (
 	"bytes"
@@ -20,7 +20,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-func TestTokiVersion(t *testing.T) {
+func TestVersion(t *testing.T) {
 	var stderr, stdout bytes.Buffer
 
 	res, exitCode := app.Run([]string{"toki", "version"}, &stderr, &stdout, TimeNow)
@@ -31,8 +31,8 @@ func TestTokiVersion(t *testing.T) {
 	require.Contains(t, stdout.String(), "Toki v"+app.Version)
 }
 
-// TestTokiGenerate tests success for `toki generate` and `toki lint`.
-func TestTokiGenerate(t *testing.T) {
+// TestGenerate tests success for `toki generate` and `toki lint`.
+func TestGenerate(t *testing.T) {
 	tests := []struct {
 		name        string
 		setup       Setup
@@ -129,8 +129,8 @@ type SourceError struct {
 	ExpectErr      require.ErrorAssertionFunc
 }
 
-// TestTokiGenerateErr tests errors for `toki generate` and `toki lint`.
-func TestTokiGenerateErr(t *testing.T) {
+// TestGenerateErr tests errors for `toki generate` and `toki lint`.
+func TestGenerateErr(t *testing.T) {
 	tests := []struct {
 		name           string
 		setup          Setup
@@ -246,9 +246,9 @@ func TestTokiGenerateErr(t *testing.T) {
 	}
 }
 
-// TestTokiGenerateErrSource tests source errors for
+// TestGenerateErrSource tests source errors for
 // `toki generate` and `toki lint`.
-func TestTokiGenerateErrSource(t *testing.T) {
+func TestGenerateErrSource(t *testing.T) {
 	errHasMsg := func(expectMsg string) require.ErrorAssertionFunc {
 		return func(tt require.TestingT, err error, i ...any) {
 			require.EqualError(t, err, expectMsg)
