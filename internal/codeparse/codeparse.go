@@ -32,8 +32,10 @@ const (
 	FuncTypeWrite  = "Write"
 )
 
-var ErrUnsupportedSelectOption = errors.New("unsupported select option")
-var ErrCantUnpackCompositeLiteral = errors.New("can't unpack composite literal")
+var (
+	ErrUnsupportedSelectOption    = errors.New("unsupported select option")
+	ErrCantUnpackCompositeLiteral = errors.New("can't unpack composite literal")
+)
 
 type Statistics struct {
 	StringCalls    atomic.Int64
@@ -356,8 +358,7 @@ func (p *Parser) collectTexts(
 					comments := findLeadingComments(fset, file, call)
 
 					id := HashMessage(p.hasher, tikVal.Raw)
-					log.Verbose("text",
-						slog.String("type", funcType),
+					log.Verbose(funcType,
 						slog.String("pos", log.FmtPos(posCall)))
 					_ = scan.TextIndexByID.Access(func(s map[string]int) error {
 						index := scan.Texts.Append(Text{
