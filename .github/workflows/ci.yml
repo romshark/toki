@@ -18,6 +18,9 @@ jobs:
       - name: Install gofumpt
         run: go install mvdan.cc/gofumpt@latest
 
+      - name: Run govulncheck
+        run: make vulncheck
+
       - name: Check gofumpt formatting
         run: make fmtcheck
 

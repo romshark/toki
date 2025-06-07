@@ -1,3 +1,6 @@
+vulncheck:
+	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
 fmtcheck:
 	@unformatted=$$(go run mvdan.cc/gofumpt@latest -l .); \
 	if [ -n "$$unformatted" ]; then \
