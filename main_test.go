@@ -284,11 +284,16 @@ func TestGenerateErrSource(t *testing.T) {
 			},
 			args: []string{"lint", "-l=en"},
 			expectSrcErrs: []SourceError{
-				{"main.go:8:28",
-					errHasMsg("TIK: arg 0 must be a string but received: int")},
-				{"main.go:9:28",
-					errHasMsg("TIK: arg 0 must be numeric but received: string")},
-				{"main.go:10:28",
+				{
+					"main.go:8:28",
+					errHasMsg("TIK: arg 0 must be a string but received: int"),
+				},
+				{
+					"main.go:9:28",
+					errHasMsg("TIK: arg 0 must be numeric but received: string"),
+				},
+				{
+					"main.go:10:28",
 					errHasMsg("TIK: arg 0 must be time.Time but received: string"),
 				},
 				{"main.go:11:28", func(tt require.TestingT, err error, i ...any) {
@@ -320,8 +325,10 @@ func TestGenerateErrSource(t *testing.T) {
 			},
 			args: []string{"lint", "-l=en"},
 			expectSrcErrs: []SourceError{
-				{"main.go:9:8",
-					errHasMsg("TIK: arg int(42) doesn't match any TIK placeholder")},
+				{
+					"main.go:9:8",
+					errHasMsg("TIK: arg int(42) doesn't match any TIK placeholder"),
+				},
 			},
 		},
 	}
@@ -413,7 +420,7 @@ func writeFiles(tb testing.TB, dir string, files map[string]string) {
 		err := os.MkdirAll(filepath.Dir(path), 0o755)
 		require.NoError(tb, err)
 		contents := []byte(strings.TrimSpace(content))
-		err = os.WriteFile(path, contents, 0644)
+		err = os.WriteFile(path, contents, 0o644)
 		require.NoError(tb, err)
 	}
 }

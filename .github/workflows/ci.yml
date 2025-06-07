@@ -11,10 +11,16 @@ jobs:
         with:
           go-version: "1.24.4"
           check-latest: true
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Test
+      - name: Install gofumpt
+        run: go install mvdan.cc/gofumpt@latest
+
+      - name: Check gofumpt formatting
+        run: make fmtcheck
+
       - name: Run tests with coverage
         run: go test -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
 
