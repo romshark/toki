@@ -201,18 +201,18 @@ func TestGenerateErr(t *testing.T) {
 						}
 					`,
 					// The @@locale field must be "de", not "en".
-					"tokibundle/catalog_de.arb": `
+					"tokibundle/catalog_de.arb": fmt.Sprintf(`
 						{
 							"@@locale": "en",
 							"@@last_modified": "2025-06-06T01:29:56+02:00",
 							"@@x-generator": "github.com/romshark/toki",
-							"@@x-generator-version": "0.5.3",
+							"@@x-generator-version": %q,
 							"msg1bf544c92a992298": "übersetzt",
 							"@msg1bf544c92a992298": {
 								"type": "text"
 							}
 						}
-					`,
+					`, app.Version),
 				},
 			},
 			args:           []string{"-l=en"},

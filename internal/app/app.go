@@ -26,7 +26,7 @@ var (
 	)
 )
 
-const Version = "0.5.3"
+const Version = "0.5.4"
 
 const MainBundleFileGo = "bundle_gen.go"
 
