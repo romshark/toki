@@ -56,7 +56,7 @@ func main() {
 with default language set to `en` (English):
 
 ```sh
-go run github.com/romshark/toki@latest -l en && go mod tidy
+go run github.com/romshark/toki@latest generate -l en && go mod tidy
 ```
 
 2. Second, you'll need to adjust your messages in the source code to TIKs.
@@ -92,7 +92,7 @@ func main() {
 3. Now regenerate your Toki bundle to include the new localized message:
 
 ```sh
-go run github.com/romshark/toki@latest
+go run github.com/romshark/toki@latest generate
 ```
 
 This will update your `catalog_en.arb` file and add the new message to it.
@@ -117,7 +117,7 @@ You can also make it a bit better by adding a special case for `0`:
 4. After tweaking the catalog files, rerun the generator to update your bundle once again:
 
 ```sh
-go run github.com/romshark/toki@latest
+go run github.com/romshark/toki@latest generate
 ```
 
 ### 3. Localize your application for other languages and regions.
@@ -125,7 +125,7 @@ go run github.com/romshark/toki@latest
 1. Run the generator, but this time, add a new parameter `-t en-US -t de -t fr`
 
 ```sh
-go run github.com/romshark/toki@latest -t en-US -t de -t fr
+go run github.com/romshark/toki@latest generate -t en-US -t de -t fr
 ```
 
 This will create three new catalogs for
@@ -138,7 +138,7 @@ American English (`en-US`), German (`de`) and French (`fr`).
    Toki bundle package and rerun the generator to update it:
 
 ```sh
-go run github.com/romshark/toki@latest
+go run github.com/romshark/toki@latest generate
 ```
 
 **Coming Soon: LLM-based auto-translator.**
@@ -154,7 +154,7 @@ You've now (mostly) mastered the entire i18n workflow for Toki.
 However, to make sure you never deploy broken or unfinished localizations,
 add Toki to your CI/CD setup:
 
-```
+```sh
 go run github.com/romshark/toki@latest lint -require-complete
 ```
 
