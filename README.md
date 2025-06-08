@@ -114,6 +114,9 @@ You can also make it a bit better by adding a special case for `0`:
 "msga5a0f2138b9d6598": "It''s {var0, date, full} and you have {var1, plural, =0{no messages} one{# message} other {# messages}}",
 ```
 
+**TIP:** The double apostrophe `''` is not a typo, it's
+[ICU's escape for a single quote](https://unicode-org.github.io/icu/userguide/format_parse/messages/#quotingescaping).
+
 4. After tweaking the catalog files, rerun the generator to update your bundle once again:
 
 ```sh
