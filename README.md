@@ -22,6 +22,12 @@ files are used as intermediate translation storage for
 [ICU messages](https://unicode-org.github.io/icu/userguide/format_parse/messages/)
 generated from [TIKs](https://github.com/romshark/tik) extracted from the source code.
 
+- [Quick Start Guide](#quick-start-guide)
+  - [1. Create a new Go project.](#1-create-a-new-go-project)
+  - [2. Prepare your Go project for internationalization.](#2-prepare-your-go-project-for-internationalization)
+  - [3. Localize your application for other languages and regions.](#3-localize-your-application-for-other-languages-and-regions)
+  - [4. Integrate Toki into your CI/CD pipeline.](#4-integrate-toki-into-your-cicd-pipeline)
+- [Bundle File Structure](#bundle-file-structure)
 
 ## Quick Start Guide
 
