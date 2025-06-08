@@ -152,24 +152,14 @@ default locale and will report any missing options.
 
 You've now (mostly) mastered the entire i18n workflow for Toki.
 However, to make sure you never deploy broken or unfinished localizations,
-add Toki to your CI/CD setup. Just run Toki `generate` with the `-json` parameter
-and query the interesting bits, for example using [jq](https://jqlang.org/):
+add Toki to your CI/CD setup:
 
 ```
-jq -e '
-  if has("error") then
-    .error as $err | "ERROR: \($err)\n" | halt_error(1)
-  elif (.catalogs[] | select(.completeness < 1.0)) then
-    .catalogs[] | select(.completeness < 1.0) |
-    "INCOMPLETE CATALOG: \(.locale) (\(.completeness))\n" | halt_error(1)
-  else
-    empty
-  end
-' | go run github.com/romshark/toki@latest
+go run github.com/romshark/toki@latest lint -require-complete
 ```
 
-You may also add a check in your pipeline that makes sure running `toki generate`
-didn't cause a git diff to ensure your generated Toki bundle package is up to date.
+You may also use `toki generate -require-complete` and additionally git diff
+to ensure your generated Toki bundle package is up to date.
 
 ## Bundle File Structure
 

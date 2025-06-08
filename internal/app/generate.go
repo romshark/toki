@@ -27,6 +27,8 @@ import (
 	"golang.org/x/text/language"
 )
 
+var ErrBundleIncomplete = errors.New("bundle contains incomplete catalogs")
+
 // Generate implements both the `toki generate` and the `toki lint` commands.
 type Generate struct {
 	hasher           *xxhash.Digest
@@ -299,6 +301,15 @@ func (g *Generate) Run(
 						// On rejected do nothing. This was addressed before this report.
 					},
 				)
+			}
+		}
+	}
+
+	if conf.RequireComplete && result.Err == nil {
+		for catalog := range scan.Catalogs.Seq() {
+			if catalog.MessagesIncomplete.Load() > 0 {
+				result.Err = ErrBundleIncomplete
+				return result
 			}
 		}
 	}

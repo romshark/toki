@@ -11,14 +11,15 @@ import (
 )
 
 type ConfigGenerate struct {
-	Locale        language.Tag
-	Translations  []language.Tag
-	ModPath       string
-	TrimPath      bool
-	JSON          bool
-	QuietMode     bool
-	VerboseMode   bool
-	BundlePkgPath string
+	Locale          language.Tag
+	Translations    []language.Tag
+	ModPath         string
+	TrimPath        bool
+	JSON            bool
+	QuietMode       bool
+	VerboseMode     bool
+	BundlePkgPath   string
+	RequireComplete bool
 }
 
 var ErrLocaleNotBCP47 = errors.New("must be a valid BCP 47 locale")
@@ -44,6 +45,8 @@ func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
 	cli.BoolVar(&c.VerboseMode, "v", false, "enables verbose console logging")
 	cli.StringVar(&c.BundlePkgPath, "b", "tokibundle",
 		"path to generated Go bundle package relative to module path (-m)")
+	cli.BoolVar(&c.RequireComplete, "require-complete", false,
+		"fails the command if any active catalog has a completeness < 1.0 (under 100%)")
 
 	if err := cli.Parse(osArgs[2:]); err != nil {
 		return nil, fmt.Errorf("parsing: %w", err)

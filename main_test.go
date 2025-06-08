@@ -255,6 +255,28 @@ func TestGenerateErr(t *testing.T) {
 					"catalog_de.arb", err.Error())
 			},
 		},
+		{
+			name: "require completeness",
+			setup: Setup{
+				InitGoMod: true, InitBundle: true,
+				Files: map[string]string{
+					"main.go": `
+						package main
+						import "tstmod/tokibundle"
+						func main() {
+							r := tokibundle.Default()
+							print(r.String("There are {2 errors}", 0))
+						}
+					`,
+				},
+			},
+			args:           []string{"-require-complete"},
+			expectExitCode: 1,
+			expectErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorIs(tt, err, app.ErrBundleIncomplete)
+				require.Equal(t, "bundle contains incomplete catalogs", err.Error())
+			},
+		},
 	}
 
 	for _, tt := range tests {
