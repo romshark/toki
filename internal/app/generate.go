@@ -126,17 +126,6 @@ func (g *Generate) Run(
 		return result
 	}
 
-	var nativeCatalog *codeparse.Catalog
-	var nativeARB *arb.File
-	var nativeARBFileName string
-	for catalog := range scan.Catalogs.Seq() {
-		if catalog.ARB.Locale == conf.Locale {
-			nativeCatalog = catalog
-			nativeARB = catalog.ARB
-			nativeARBFileName = catalog.ARBFileName
-		}
-	}
-
 	if conf.Locale != language.Und {
 		// Locale parameter provided.
 		if scan.DefaultLocale != language.Und && conf.Locale != scan.DefaultLocale {
@@ -155,18 +144,27 @@ func (g *Generate) Run(
 			result.Err = ErrMissingLocaleParam
 			return result
 		}
-		// Use the default locale of the bundle.
-		conf.Locale = scan.DefaultLocale
+	}
+
+	var nativeCatalog *codeparse.Catalog
+	var nativeARB *arb.File
+	var nativeARBFileName string
+	for catalog := range scan.Catalogs.Seq() {
+		if catalog.ARB.Locale == scan.DefaultLocale {
+			nativeCatalog = catalog
+			nativeARB = catalog.ARB
+			nativeARBFileName = catalog.ARBFileName
+		}
 	}
 
 	if nativeARB == nil {
 		nativeARBFileName = filepath.Join(
 			conf.BundlePkgPath,
-			gengo.FileNameWithLocale(conf.Locale, "catalog", ".arb"),
+			gengo.FileNameWithLocale(scan.DefaultLocale, "catalog", ".arb"),
 		)
 		// Make a new one.
 		nativeARB = &arb.File{
-			Locale:       conf.Locale,
+			Locale:       scan.DefaultLocale,
 			LastModified: now,
 			Messages:     make(map[string]arb.Message, scan.TextIndexByID.Len()),
 		}
@@ -185,7 +183,7 @@ func (g *Generate) Run(
 			// Text not in native catalog.
 			text := scan.Texts.At(index)
 			result.NewTexts = append(result.NewTexts, text)
-			newMsg, err := g.newARBMsg(conf.Locale, text)
+			newMsg, err := g.newARBMsg(scan.DefaultLocale, text)
 			if err != nil {
 				result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
 				return result
@@ -203,7 +201,7 @@ func (g *Generate) Run(
 		}
 		for catalog := range scan.Catalogs.Seq() {
 			// Check in all other catalogs.
-			if catalog.ARB.Locale == conf.Locale {
+			if catalog.ARB.Locale == scan.DefaultLocale {
 				// Skip native catalog. It was already handled above.
 				continue
 			}
@@ -215,7 +213,7 @@ func (g *Generate) Run(
 				slog.String("id", id))
 			// Message missing in this catalog.
 			text := scan.Texts.At(index)
-			newMsg, err := g.newARBMsg(conf.Locale, text)
+			newMsg, err := g.newARBMsg(scan.DefaultLocale, text)
 			if err != nil {
 				result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
 				return result
