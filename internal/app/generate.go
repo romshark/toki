@@ -27,8 +27,6 @@ import (
 	"golang.org/x/text/language"
 )
 
-var ErrBundleIncomplete = errors.New("bundle contains incomplete catalogs")
-
 // Generate implements both the `toki generate` and the `toki lint` commands.
 type Generate struct {
 	hasher           *xxhash.Digest

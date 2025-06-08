@@ -24,6 +24,7 @@ var (
 		"please provide a valid BCP 47 locale for the default language of your " +
 			"original code base using the 'l' parameter",
 	)
+	ErrBundleIncomplete = errors.New("bundle contains incomplete catalogs")
 )
 
 const Version = "0.6.0"
