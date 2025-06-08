@@ -275,8 +275,10 @@ func TestGenerateErrSource(t *testing.T) {
 					func main() {
 						r, _ := tokibundle.Match(language.English)
 						fmt.Println(r.String("Expect {\"string\"}", int(42)))
-						fmt.Println(r.String("Expect {3}", "a string"))
-						fmt.Println(r.String("Expect {10:30 pm}", "a string"))
+						fmt.Println(r.String("Expect {7}", "a string"))
+						fmt.Println(r.String("Expect {7}", 2.5))
+						fmt.Println(r.String("Expect {3.14}", int(42)))
+						fmt.Println(r.String("Expect {10:30 pm}", "2025-06-08T10:02:06+00:00"))
 						fmt.Println(r.String("Broken TIK: {10:40 pm}", time.Now()))
 					}
 					`,
@@ -290,13 +292,21 @@ func TestGenerateErrSource(t *testing.T) {
 				},
 				{
 					"main.go:9:28",
-					errHasMsg("TIK: arg 0 must be numeric but received: string"),
+					errHasMsg("TIK: arg 0 must be an integer but received: string"),
 				},
 				{
 					"main.go:10:28",
+					errHasMsg("TIK: arg 0 must be an integer but received: float64"),
+				},
+				{
+					"main.go:11:28",
+					errHasMsg("TIK: arg 0 must be a float but received: int"),
+				},
+				{
+					"main.go:12:28",
 					errHasMsg("TIK: arg 0 must be time.Time but received: string"),
 				},
-				{"main.go:11:28", func(tt require.TestingT, err error, i ...any) {
+				{"main.go:13:28", func(tt require.TestingT, err error, i ...any) {
 					require.ErrorAs(t, err, &tik.ErrParser{})
 					require.Equal(t, "TIK: at index 12: unknown placeholder", err.Error())
 				}},

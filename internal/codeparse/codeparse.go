@@ -459,11 +459,19 @@ func (p *Parser) parseTIK(
 				continue
 			}
 
+		case tik.TokenTypeInteger:
+			if typName, isInt := isInteger(pkg, arg); !isInt {
+				onSrcErr(pos, fmt.Errorf("arg %d must be an integer but received: %s",
+					idx, typName))
+				ok = false
+				continue
+			}
+
 		case tik.TokenTypeNumber,
 			tik.TokenTypeCardinalPluralStart,
 			tik.TokenTypeOrdinalPlural:
-			if typName, isNum := isNumeric(pkg, arg); !isNum {
-				onSrcErr(pos, fmt.Errorf("arg %d must be numeric but received: %s",
+			if typName, isNum := isFloat(pkg, arg); !isNum {
+				onSrcErr(pos, fmt.Errorf("arg %d must be a float but received: %s",
 					idx, typName))
 				ok = false
 				continue
@@ -564,7 +572,7 @@ func isString(pkg *packages.Package, expr ast.Expr) (actualTypeName string, ok b
 	return tv.Type.String(), false
 }
 
-func isNumeric(pkg *packages.Package, expr ast.Expr) (actualTypeName string, ok bool) {
+func isInteger(pkg *packages.Package, expr ast.Expr) (actualTypeName string, ok bool) {
 	tv, ok := pkg.TypesInfo.Types[expr]
 	if !ok || tv.Type == nil {
 		return tv.Type.String(), false
@@ -574,8 +582,24 @@ func isNumeric(pkg *packages.Package, expr ast.Expr) (actualTypeName string, ok 
 	case *types.Basic:
 		switch t.Kind() {
 		case types.Int, types.Int8, types.Int16, types.Int32, types.Int64,
-			types.Uint, types.Uint8, types.Uint16, types.Uint32, types.Uint64, types.Uintptr,
-			types.Float32, types.Float64:
+			types.Uint, types.Uint8, types.Uint16, types.Uint32, types.Uint64,
+			types.Uintptr:
+			return tv.Type.String(), true
+		}
+	}
+	return tv.Type.String(), false
+}
+
+func isFloat(pkg *packages.Package, expr ast.Expr) (actualTypeName string, ok bool) {
+	tv, ok := pkg.TypesInfo.Types[expr]
+	if !ok || tv.Type == nil {
+		return tv.Type.String(), false
+	}
+
+	switch t := tv.Type.Underlying().(type) {
+	case *types.Basic:
+		switch t.Kind() {
+		case types.Float32, types.Float64:
 			return tv.Type.String(), true
 		}
 	}
