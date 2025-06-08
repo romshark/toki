@@ -172,22 +172,20 @@ to ensure your generated Toki bundle package is up to date.
 
 ## Bundle File Structure
 
-- `bundle_gen.go` contains the generated `Bundle` type, helper functions and
-  overwritable fallback functions (`MissingTranslationString`, `MissingTranslationWrite`).
-  `Bundle` contains all catalogs and implements the `toki.Bundler` interface.
-  - **Not editable** 🤖 Any manual change is always overwritten.
-- `catalog_<locale>_gen.go` contains the catalog type for a particular locale
-  implementing the `toki.Reader` interface.
-  - **Not editable** 🤖 Any manual change is always overwritten.
-- `catalog.<locale>.arb` is an app resource bundle file containing actual translations
-  for a particular locale.
+- `bundle_gen.go` contains Toki's core source code and package API.
+  - **Not editable** 🤖 Any manual change is always overwritten. DO NOT EDIT.
+- `catalog_<locale>_gen.go` contains the localized catalog and message writers.
+  - **Not editable** 🤖 Any manual change is always overwritten. DO NOT EDIT.
+- `catalog_<locale>.arb` is an app resource bundle file containing translations
+  in the ICU message format.
   - **Editable 📝**
-  - Changed translations are preserved.
-  - If a new text isn't found in the translation file it's automatically added.
-  - If a text is no longer used in the source code it's removed from this file.
+  - Changed translations are preserved. You may edit translations.
+  - If a new message isn't found in the translation file it's automatically added.
+  - If a message is no longer used in the source code it's removed from this file.
 - `head.txt` is a text file defining the head comment to use in generated files.
   - **Editable 📝**
   - If this file isn't found a new blank file is always automatically created.
+    Use this file for any copyright notices and similar purposes.
 - `context.txt` is a text file defining the overall global context for translators.
   - **Editable 📝**
   - If this file isn't found a new blank file is always automatically created.
