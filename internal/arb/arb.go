@@ -46,6 +46,60 @@ type File struct {
 	Messages         map[string]Message
 }
 
+// Copy returns a partially deep copy of src calling onMsg for every new cloned message.
+//
+// WARNING: Message.CustomAttributes and Placeholder.OptionalParameters
+// won't be deep copied! If you want those to be deeply copied - do it yourself in onMsg.
+func (src *File) Copy(onMsg func(m *Message)) (dst *File) {
+	if src == nil {
+		return dst
+	}
+	dst = new(File)
+	dst.Locale = src.Locale
+	dst.Context = src.Context
+	dst.LastModified = src.LastModified
+	dst.Author = src.Author
+	dst.Comment = src.Comment
+	dst.CustomAttributes = maps.Clone(src.CustomAttributes)
+	if src.Messages == nil {
+		return dst
+	}
+	dst.Messages = make(map[string]Message, len(src.Messages))
+	for id, msg := range src.Messages {
+		msgCopy := Message{
+			ID:               msg.ID,
+			ICUMessage:       msg.ICUMessage,
+			Description:      msg.Description,
+			Comment:          msg.Comment,
+			Type:             msg.Type,
+			Context:          msg.Context,
+			CustomAttributes: maps.Clone(msg.CustomAttributes),
+		}
+		if msg.ICUMessageTokens != nil {
+			msgCopy.ICUMessageTokens = make([]icumsg.Token, len(msg.ICUMessageTokens))
+			copy(msgCopy.ICUMessageTokens, msg.ICUMessageTokens)
+		}
+		if msg.Placeholders != nil {
+			msgCopy.Placeholders = make(map[string]Placeholder, len(msg.Placeholders))
+			for k, v := range msg.Placeholders {
+				msgCopy.Placeholders[k] = Placeholder{
+					Type:               v.Type,
+					Description:        v.Description,
+					Example:            v.Example,
+					Format:             v.Format,
+					IsCustomDateFormat: v.IsCustomDateFormat,
+					OptionalParameters: maps.Clone(v.OptionalParameters),
+				}
+			}
+		}
+		if onMsg != nil {
+			onMsg(&msgCopy)
+		}
+		dst.Messages[id] = msgCopy
+	}
+	return dst
+}
+
 type Message struct {
 	ID               string // "greeting"
 	ICUMessage       string // "Hello, {name}!"

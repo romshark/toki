@@ -59,9 +59,7 @@ func TestGenerate(t *testing.T) {
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339),
-					app.Version,
-				),
+					TimeNow.Format(time.RFC3339), app.Version),
 			},
 		},
 		{
@@ -77,9 +75,7 @@ func TestGenerate(t *testing.T) {
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339),
-					app.Version,
-				),
+					TimeNow.Format(time.RFC3339), app.Version),
 			},
 		},
 		{
@@ -96,9 +92,43 @@ func TestGenerate(t *testing.T) {
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339),
-					app.Version,
-				),
+					TimeNow.Format(time.RFC3339), app.Version),
+			},
+		},
+		{
+			name: "provide multiple translation parameters",
+			setup: Setup{
+				InitGoMod: true,
+			},
+			args: []string{
+				"-l=en", "-b=pkg/i18n/toki",
+				"-t=de", "-t=en-US",
+				"-t=de", // Intentional duplicate.
+			},
+			// TODO: make sure the .go files exist too.
+			expectFiles: map[string]string{
+				"pkg/i18n/toki/head.txt": ``,
+				"pkg/i18n/toki/catalog_en.arb": fmt.Sprintf(`{
+					"@@locale": "en",
+					"@@last_modified": %q,
+					"@@x-generator": "github.com/romshark/toki",
+					"@@x-generator-version": %q
+				}`,
+					TimeNow.Format(time.RFC3339), app.Version),
+				"pkg/i18n/toki/catalog_de.arb": fmt.Sprintf(`{
+					"@@locale": "de",
+					"@@last_modified": %q,
+					"@@x-generator": "github.com/romshark/toki",
+					"@@x-generator-version": %q
+				}`,
+					TimeNow.Format(time.RFC3339), app.Version),
+				"pkg/i18n/toki/catalog_en_us.arb": fmt.Sprintf(`{
+					"@@locale": "en-US",
+					"@@last_modified": %q,
+					"@@x-generator": "github.com/romshark/toki",
+					"@@x-generator-version": %q
+				}`,
+					TimeNow.Format(time.RFC3339), app.Version),
 			},
 		},
 	}
@@ -120,6 +150,7 @@ func TestGenerate(t *testing.T) {
 			check(t, resLint)
 			check(t, resGenerate)
 			checkFiles(t, tmp, tt.expectFiles)
+			// TODO: make sure the program is compilable.
 		})
 	}
 }

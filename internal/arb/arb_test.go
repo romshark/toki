@@ -15,6 +15,68 @@ import (
 	"golang.org/x/text/language"
 )
 
+func TestCopy(t *testing.T) {
+	f := func(t *testing.T, expect, source *arb.File, onMsg func(m *arb.Message)) {
+		t.Helper()
+		actual := source.Copy(onMsg)
+		require.Equal(t, expect, actual)
+	}
+
+	makeTestFile := func() *arb.File {
+		return &arb.File{
+			Messages: map[string]arb.Message{
+				"msg1abc": {
+					ID:          "msg1abc",
+					Description: "test test test",
+					Comment:     "test comment",
+					CustomAttributes: map[string]any{
+						"bazz": 42,
+					},
+				},
+				"msg2abc": {
+					ID:         "msg2abc",
+					ICUMessage: "hello {var0}",
+					ICUMessageTokens: []icumsg.Token{
+						{IndexStart: 0, IndexEnd: 6, Type: icumsg.TokenTypeLiteral},
+						{IndexStart: 6, IndexEnd: 11, Type: icumsg.TokenTypeSimpleArg},
+						{IndexStart: 7, IndexEnd: 10, Type: icumsg.TokenTypeArgName},
+					},
+					Context: "test test test",
+					Type:    arb.MessageTypeText,
+					Placeholders: map[string]arb.Placeholder{
+						"var0": {
+							Type:               arb.PlaceholderString,
+							Description:        "some",
+							Example:            "world",
+							Format:             "none",
+							IsCustomDateFormat: true,
+							OptionalParameters: map[string]any{
+								"foo": "bar",
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	f(t, nil, nil, nil)
+	f(t, &arb.File{}, &arb.File{}, nil)
+	f(t, makeTestFile(), makeTestFile(), nil)
+	{
+		source := makeTestFile()
+		expect := makeTestFile()
+		msg := expect.Messages["msg1abc"]
+		msg.Comment = "mutated comment"
+		expect.Messages["msg1abc"] = msg
+		f(t, expect, source, func(m *arb.Message) {
+			if m.ID == "msg1abc" {
+				m.Comment = "mutated comment"
+			}
+		})
+	}
+}
+
 func TestDecode(t *testing.T) {
 	t.Parallel()
 	arbDecoder := arb.NewDecoder()

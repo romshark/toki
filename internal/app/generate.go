@@ -259,6 +259,14 @@ func (g *Generate) Run(
 			return result
 		}
 
+		if err := writeMissingARBFilesAndUpdateCatalogs(
+			now, conf.BundlePkgPath, scan.DefaultLocale, conf.Translations,
+			nativeARB, scan.Catalogs,
+		); err != nil {
+			result.Err = err
+			return result
+		}
+
 		if scan.TokiVersion == "" || scan.TokiVersion != Version {
 			// Clear generated files on version mismatch.
 			if err := deleteAllTokiGeneratedFiles(conf.BundlePkgPath); err != nil {
@@ -327,13 +335,12 @@ func deleteAllTokiGeneratedFiles(dir string) error {
 	})
 }
 
-func writeARBFiles(
-	bundlePkgPath string, catalogs *sync.Slice[*codeparse.Catalog],
-) error {
+func writeARBFiles(bundlePkgPath string, catalogs *sync.Slice[*codeparse.Catalog]) error {
 	for catalog := range catalogs.Seq() {
 		locale := catalog.ARB.Locale
 		name := gengo.FileNameWithLocale(locale, "catalog", ".arb")
 		filePath := filepath.Join(bundlePkgPath, name)
+
 		err := func() error {
 			f, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 			if err != nil {
@@ -350,6 +357,69 @@ func writeARBFiles(
 				return fmt.Errorf("encoding .arb catalog (%q): %w",
 					locale.String(), err)
 			}
+			return nil
+		}()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeMissingARBFilesAndUpdateCatalogs(
+	now time.Time, bundlePkgPath string, defaultLocale language.Tag,
+	translations []language.Tag, nativeARB *arb.File,
+	catalogs *sync.Slice[*codeparse.Catalog],
+) error {
+	missing := make(map[language.Tag]struct{}, len(translations))
+	for _, tr := range translations {
+		missing[tr] = struct{}{}
+	}
+	delete(missing, defaultLocale) // Ignore the default locale, it's the native catalog.
+
+	for catalog := range catalogs.Seq() {
+		// Ignore locales of already existing catalogs.
+		delete(missing, catalog.ARB.Locale)
+	}
+	for locale := range missing {
+		log.Info("generate new catalog", slog.String("locale", locale.String()))
+
+		name := gengo.FileNameWithLocale(locale, "catalog", ".arb")
+		filePath := filepath.Join(bundlePkgPath, name)
+
+		err := func() error {
+			f, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+			if err != nil {
+				return fmt.Errorf("opening new .arb catalog (%q): %w",
+					locale.String(), err)
+			}
+			defer func() {
+				if err := f.Close(); err != nil {
+					log.Error("closing new catalog .arb file", err)
+				}
+			}()
+
+			newFile := nativeARB.Copy(func(m *arb.Message) {
+				// Reset the message, don't copy from native.
+				m.ICUMessage = ""
+				m.ICUMessageTokens = nil
+			})
+			newFile.Locale = locale
+			newFile.LastModified = now
+			setARBMetadata(newFile)
+			if err := arb.Encode(f, newFile, "\t"); err != nil {
+				return fmt.Errorf("encoding new .arb catalog (%q): %w",
+					locale.String(), err)
+			}
+
+			// Add a new catalog.
+			newCatalog := &codeparse.Catalog{
+				ARB:         newFile,
+				ARBFileName: filePath,
+			}
+			newCatalog.MessagesIncomplete.Store(int64(len(newFile.Messages)))
+			catalogs.Append(newCatalog)
+
 			return nil
 		}()
 		if err != nil {
