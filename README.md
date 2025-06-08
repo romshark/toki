@@ -25,13 +25,43 @@ generated from [TIKs](https://github.com/romshark/tik) extracted from the source
 
 ## Quick Start Guide
 
-1. Make yourself familiar with
-   [Textual Internationalization Key](https://github.com/romshark/tik) syntax.
-2. Create new project directory `mkdir tokiexample && cd tokiexample`.
-3. Initialize the Go module by running `go mod init tokiexample && go mod tidy`.
-4. Run `go run github.com/romshark/toki@latest -l en && go mod tidy`
-   which will create a new Toki bundle package with default language set to `en`.
-5. Import the bundle package in your program and add some TIKs:
+### 1. Create a new Go project.
+
+```sh
+mkdir tokiexample && cd tokiexample;
+go mod init tokiexample;
+```
+
+**tokiexample/main.go**
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main() {
+	now, numMsgs := time.Now(), 42
+	fmt.Printf(
+		"It's %s and you have %d message(s)\n",
+		now.Format("Monday, Jan 2, 2006"), numMsgs,
+	)
+}
+```
+
+### 2. Prepare your Go project for internationalization.
+
+1. First, we need to generate a new Toki bundle package
+with default language set to `en` (English):
+
+```sh
+go run github.com/romshark/toki@latest -l en && go mod tidy
+```
+
+2. Second, you'll need to adjust your messages in the source code to TIKs.
+Use the [TIK cheatsheet](https://romshark.github.io/tik-cheatsheet/)
+for help and guidance.
 
 ```go
 package main
@@ -45,17 +75,101 @@ import (
 )
 
 func main() {
+	now, numMsgs := time.Now(), 42
+
 	// Get a localized reader for British English.
 	// Toki will automatically select the most appropriate translation catalog available.
 	reader, _ := tokibundle.Match(language.BritishEnglish)
 
 	// This comment describes the text below and is included in the translator context.
-	fmt.Println(reader.String(`{"Framework"} is powerful yet easy to use!`, "Toki"))
+	fmt.Println(reader.String(
+		`It's {Friday, July 16, 1999} and you have {2 messages}`,
+		now, numMsgs,
+	))
 }
 ```
 
-6. Run `go run github.com/romshark/toki@latest -l en` again to update the bundle.
-7. Done! Your setup is now ready and you can run your program with `go run .`.
+3. Now regenerate your Toki bundle to include the new localized message:
+
+```sh
+go run github.com/romshark/toki@latest
+```
+
+This will update your `catalog_en.arb` file and add the new message to it.
+However, Toki can't translate your messages fully so you will see in the generator report
+that your translations for `en` are incomplete yet.
+
+To manually complete the translation, add the missing `one {# message}`
+[plural option](https://cldr.unicode.org/index/cldr-spec/plural-rules) to the
+[ICU message](https://unicode-org.github.io/icu/userguide/format_parse/messages/)
+such that it becomes:
+
+```
+"msga5a0f2138b9d6598": "It''s {var0, date, full} and you have {var1, plural, one{# message} other {# messages}}",
+```
+
+You can also make it a bit better by adding a special case for `0`:
+
+```
+"msga5a0f2138b9d6598": "It''s {var0, date, full} and you have {var1, plural, =0{no messages} one{# message} other {# messages}}",
+```
+
+4. After tweaking the catalog files, rerun the generator to update your bundle once again:
+
+```sh
+go run github.com/romshark/toki@latest
+```
+
+### 3. Localize your application for other languages and regions.
+
+1. Run the generator, but this time, add a new parameter `-t en-US -t de -t fr`
+
+```sh
+go run github.com/romshark/toki@latest -t en-US -t de -t fr
+```
+
+This will create three new catalogs for
+American English (`en-US`), German (`de`) and French (`fr`).
+
+2. You can now provide your translators with the new generated `.arb` files
+   or repeat the same procedure as we did for `en` yourself.
+
+3. Once you get your hands on translated `.arb` files, simply replace the ones in the
+   Toki bundle package and rerun the generator to update it:
+
+```sh
+go run github.com/romshark/toki@latest
+```
+
+**Coming Soon: LLM-based auto-translator.**
+
+**TIP:** If you're writing your TIKs in a different language than English you may find the
+[CLDR plural rules table](https://www.unicode.org/cldr/charts/47/supplemental/language_plural_rules.html)
+helpful. Don't worry, Toki will make sure you're not using illegal options for your
+default locale and will report any missing options.
+
+### 4. Integrate Toki into your CI/CD pipeline.
+
+You've now (mostly) mastered the entire i18n workflow for Toki.
+However, to make sure you never deploy broken or unfinished localizations,
+add Toki to your CI/CD setup. Just run Toki `generate` with the `-json` parameter
+and query the interesting bits, for example using [jq](https://jqlang.org/):
+
+```
+jq -e '
+  if has("error") then
+    .error as $err | "ERROR: \($err)\n" | halt_error(1)
+  elif (.catalogs[] | select(.completeness < 1.0)) then
+    .catalogs[] | select(.completeness < 1.0) |
+    "INCOMPLETE CATALOG: \(.locale) (\(.completeness))\n" | halt_error(1)
+  else
+    empty
+  end
+' | go run github.com/romshark/toki@latest
+```
+
+You may also add a check in your pipeline that makes sure running `toki generate`
+didn't cause a git diff to ensure your generated Toki bundle package is up to date.
 
 ## Bundle File Structure
 
