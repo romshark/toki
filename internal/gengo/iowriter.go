@@ -15,7 +15,7 @@ func (w *Writer) writeFunc(id, icuMsg string, tokens []icumsg.Token) {
 	w.printf("%s: func(w io.Writer, args ...any) (written int, err error) {\n", id)
 	endIndex := len(w.t)
 	if s := w.literalConcat(endIndex); s != "" {
-		w.printf("return wrs(w, %q)\n", s)
+		w.printf("return wrs(w, %q)\n", unescapeICULiteral(s))
 	} else {
 		w.println("var n int;")
 		w.writeExpr(endIndex)
@@ -36,7 +36,7 @@ func (w *Writer) writeExpr(endIndex int) {
 		t := w.t[w.i]
 		switch t.Type {
 		case icumsg.TokenTypeLiteral:
-			w.printf("n, err = wrs(w, %q)\n", t.String(w.m, w.t))
+			w.printf("n, err = wrs(w, %q)\n", unescapeICULiteral(t.String(w.m, w.t)))
 			w.println("if err != nil {return written, err}; written += n;")
 			w.i++ // Advance.
 		case icumsg.TokenTypeSimpleArg:
@@ -292,7 +292,7 @@ func (w *Writer) writePluralOption(arg argName, offset uint64) {
 						continue
 					}
 				}
-				w.printf("n, err = wrs(w, %q);\n", s)
+				w.printf("n, err = wrs(w, %q);\n", unescapeICULiteral(s))
 				w.println("if err != nil {return written, err}; written += n;")
 			}
 			w.i++

@@ -31,6 +31,46 @@ func TestVersion(t *testing.T) {
 	require.Contains(t, stdout.String(), "Toki v"+app.Version)
 }
 
+func TestGenerateAndRun(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, "tstmod")
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				fmt.Println(r.String("just text"))
+				fmt.Println(r.String("It's okay!"))
+				fmt.Println(r.String("with {\"placeholder\"}", "something"))
+			}
+		`,
+	})
+
+	runInDir(t, dir, func() {
+		args := []string{"toki", "generate", "-l=en"}
+		result, exitCode := app.Run(args, io.Discard, io.Discard, TimeNow)
+		require.Zero(t, exitCode)
+		require.NoError(t, result.Err)
+	})
+
+	tidyGoMod(t, dir)
+
+	cmd := exec.Command("go", "run", ".")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %q", string(out))
+	expect := stripLeadingSpaces(strings.TrimSpace(`
+		just text
+		It's okay!
+		with something
+	`))
+	actual := stripLeadingSpaces(strings.TrimSpace(string(out)))
+	require.Equal(t, expect, actual)
+}
+
 // TestGenerate tests success for `toki generate` and `toki lint`.
 func TestGenerate(t *testing.T) {
 	tests := []struct {
@@ -453,26 +493,40 @@ func initGoMod(tb testing.TB, dir, name string) {
 	require.NoError(tb, err)
 }
 
+func tidyGoMod(tb testing.TB, dir string) {
+	tb.Helper()
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = dir
+	err := cmd.Run()
+	require.NoError(tb, err)
+}
+
 var TimeNow = time.Date(2025, 1, 1, 1, 1, 1, 0, time.UTC)
 
 const ModName = "tstmod"
 
+func runInDir(t testing.TB, dir string, fn func()) {
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	defer func() { _ = os.Chdir(wd) }()
+	require.NoError(t, os.Chdir(dir))
+	fn()
+}
+
 func initBundle(
 	tb testing.TB, dir string, locale language.Tag, bundlePkg string,
 	stderr, stdout io.Writer,
-) app.Result {
+) (result app.Result) {
 	tb.Helper()
 
-	wd, err := os.Getwd()
-	require.NoError(tb, err)
-	defer func() { _ = os.Chdir(wd) }()
-	require.NoError(tb, os.Chdir(dir))
-
-	res, exitCode := app.Run([]string{
-		"toki", "generate", "-l", locale.String(), "-b", bundlePkg,
-	}, stderr, stdout, TimeNow)
-	require.Zero(tb, exitCode)
-	return res
+	runInDir(tb, dir, func() {
+		var exitCode int
+		result, exitCode = app.Run([]string{
+			"toki", "generate", "-l", locale.String(), "-b", bundlePkg,
+		}, stderr, stdout, TimeNow)
+		require.Zero(tb, exitCode)
+	})
+	return result
 }
 
 func writeFiles(tb testing.TB, dir string, files map[string]string) {
@@ -526,21 +580,18 @@ func (s Setup) generate(
 	}
 	writeFiles(tb, dir, s.FilesAfterInit)
 
-	wd, err := os.Getwd()
-	require.NoError(tb, err)
-	defer func() { _ = os.Chdir(wd) }()
-	require.NoError(tb, os.Chdir(dir))
+	runInDir(tb, dir, func() {
+		ss := snapshotFiles(tb, dir)
 
-	ss := snapshotFiles(tb, dir)
+		cmd := append([]string{"toki", "lint"}, args...)
 
-	cmd := append([]string{"toki", "lint"}, args...)
+		lintResult.Result, lintResult.ExitCode = app.Run(cmd, stderr, stdout, now)
 
-	lintResult.Result, lintResult.ExitCode = app.Run(cmd, stderr, stdout, now)
+		ss.RequireUnchanged(tb, dir)
 
-	ss.RequireUnchanged(tb, dir)
-
-	cmd = append([]string{"toki", "generate"}, args...)
-	generateResult.Result, generateResult.ExitCode = app.Run(cmd, stderr, stdout, now)
+		cmd = append([]string{"toki", "generate"}, args...)
+		generateResult.Result, generateResult.ExitCode = app.Run(cmd, stderr, stdout, now)
+	})
 	return dir, lintResult, generateResult
 }
 

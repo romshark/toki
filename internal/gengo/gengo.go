@@ -303,3 +303,27 @@ func iterPluralLiteralParts(s string) iter.Seq[string] {
 		}
 	}
 }
+
+func unescapeICULiteral(raw string) string {
+	var b strings.Builder
+	b.Grow(len(raw))
+	inQuote := false
+	for i := 0; i < len(raw); {
+		switch raw[i] {
+		case '\'':
+			// doubled quote → single quote
+			if i+1 < len(raw) && raw[i+1] == '\'' {
+				b.WriteByte('\'')
+				i += 2
+				continue
+			}
+			// toggle quoted section (ICU rule)
+			inQuote = !inQuote
+			i++
+		default:
+			b.WriteByte(raw[i])
+			i++
+		}
+	}
+	return b.String()
+}
