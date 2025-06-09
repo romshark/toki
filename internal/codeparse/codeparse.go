@@ -575,7 +575,6 @@ func HashMessage(hash *xxhash.Digest, tik string) string {
 func isString(pkg *packages.Package, expr ast.Expr) (actualTypeName string, ok bool) {
 	tv, found := pkg.TypesInfo.Types[expr]
 	if !found || tv.Type == nil {
-		fmt.Printf("FCK? %#v\n", tv)
 		return tv.Type.String(), false
 	}
 
