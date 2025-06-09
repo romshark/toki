@@ -23,7 +23,9 @@ import (
 func TestVersion(t *testing.T) {
 	var stderr, stdout bytes.Buffer
 
-	res, exitCode := app.Run([]string{"toki", "version"}, &stderr, &stdout, TimeNow)
+	res, exitCode := app.Run(
+		[]string{"toki", "version"}, osEnv(), &stderr, &stdout, TimeNow,
+	)
 	require.Equal(t, 0, exitCode)
 	require.Zero(t, res)
 
@@ -51,12 +53,10 @@ func TestGenerateAndRun(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en"}
-		result, exitCode := app.Run(args, io.Discard, io.Discard, TimeNow)
-		require.Zero(t, exitCode)
+		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
+		require.Zero(t, exitCode)
 	})
-
-	tidyGoMod(t, dir)
 
 	cmd := exec.Command("go", "run", ".")
 	cmd.Dir = dir
@@ -82,6 +82,7 @@ func TestGenerate(t *testing.T) {
 		{
 			name: "generate minimal bundle",
 			setup: Setup{
+				InitGoMod: true,
 				Files: map[string]string{
 					"main.go": `
 						package main
@@ -239,8 +240,37 @@ func TestGenerateErr(t *testing.T) {
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
 				require.ErrorIs(tt, err, app.ErrAnalyzingSource)
-				require.Equal(t, "analyzing sources: invalid DefaultLocale value: "+
-					"language: tag is not well-formed", err.Error())
+				require.ErrorContains(t, err, "analyzing sources: errors in package")
+				require.ErrorContains(t, err, "expected 'package'")
+			},
+		},
+		{
+			name: "main.go file broken",
+			setup: Setup{
+				InitGoMod: true,
+				Files: map[string]string{
+					// A closing " is missing before `, "something"`.
+					"main.go": `
+						package main
+						import (
+							"fmt"
+							"example/i18n/tokibundle"
+						)
+						func main() {
+							reader, _ := tokibundle.Default()
+							fmt.Println(reader.String("with {\"placeholder\"}, "something"))
+						}
+					`,
+				},
+			},
+			args:           []string{"-l=en"},
+			expectExitCode: 1,
+			expectErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorIs(tt, err, app.ErrAnalyzingSource)
+				require.ErrorContains(t, err,
+					`analyzing sources: errors in package "main"`)
+				require.ErrorContains(t, err,
+					`main.go:8:60: missing ',' in argument list`)
 			},
 		},
 		{
@@ -413,12 +443,9 @@ func TestGenerateErrSource(t *testing.T) {
 					"main.go": `
 					package main
 					import "fmt"
-					import "time"
 					import "tstmod/tokibundle"
-					import "golang.org/x/text/language"
 					func main() {
-						r, _ := tokibundle.Match(language.English)
-						fmt.Println(r.String(
+						fmt.Println(tokibundle.Default().String(
 							"There are no magic constants here",
 							int(42),
 						))
@@ -429,7 +456,7 @@ func TestGenerateErrSource(t *testing.T) {
 			args: []string{"lint", "-l=en"},
 			expectSrcErrs: []SourceError{
 				{
-					"main.go:9:8",
+					"main.go:6:8",
 					errHasMsg("TIK: arg int(42) doesn't match any TIK placeholder"),
 				},
 			},
@@ -475,7 +502,7 @@ func BenchmarkOKGenerate(b *testing.B) {
 
 	args := []string{"toki", "generate", "-l=en", "-q"}
 	for b.Loop() {
-		res, exitCode := app.Run(args, os.Stderr, os.Stdout, TimeNow)
+		res, exitCode := app.Run(args, osEnv(), os.Stderr, os.Stdout, TimeNow)
 		if res.Err != nil {
 			b.Fatalf("unexpected error: %v", res.Err)
 		}
@@ -488,14 +515,6 @@ func BenchmarkOKGenerate(b *testing.B) {
 func initGoMod(tb testing.TB, dir, name string) {
 	tb.Helper()
 	cmd := exec.Command("go", "mod", "init", name)
-	cmd.Dir = dir
-	err := cmd.Run()
-	require.NoError(tb, err)
-}
-
-func tidyGoMod(tb testing.TB, dir string) {
-	tb.Helper()
-	cmd := exec.Command("go", "mod", "tidy")
 	cmd.Dir = dir
 	err := cmd.Run()
 	require.NoError(tb, err)
@@ -523,7 +542,7 @@ func initBundle(
 		var exitCode int
 		result, exitCode = app.Run([]string{
 			"toki", "generate", "-l", locale.String(), "-b", bundlePkg,
-		}, stderr, stdout, TimeNow)
+		}, osEnv(), stderr, stdout, TimeNow)
 		require.Zero(tb, exitCode)
 	})
 	return result
@@ -581,16 +600,17 @@ func (s Setup) generate(
 	writeFiles(tb, dir, s.FilesAfterInit)
 
 	runInDir(tb, dir, func() {
+		a := append([]string{"toki", "generate"}, args...)
+		generateResult.Result, generateResult.ExitCode = app.Run(
+			a, osEnv(), stderr, stdout, now,
+		)
+
 		ss := snapshotFiles(tb, dir)
-
-		cmd := append([]string{"toki", "lint"}, args...)
-
-		lintResult.Result, lintResult.ExitCode = app.Run(cmd, stderr, stdout, now)
-
+		a = append([]string{"toki", "lint"}, args...)
+		lintResult.Result, lintResult.ExitCode = app.Run(
+			a, osEnv(), stderr, stdout, now,
+		)
 		ss.RequireUnchanged(tb, dir)
-
-		cmd = append([]string{"toki", "generate"}, args...)
-		generateResult.Result, generateResult.ExitCode = app.Run(cmd, stderr, stdout, now)
 	})
 	return dir, lintResult, generateResult
 }
@@ -658,4 +678,14 @@ func stripLeadingSpaces(s string) string {
 		lines[i] = strings.TrimLeft(line, " \t")
 	}
 	return strings.Join(lines, "\n")
+}
+
+func osEnv() []string {
+	// go test sets GOFLAGS to “-mod=readonly”, which prevents any nested go commands
+	// (those run by packages.Load, `go list`, or `go run` inside this test) from
+	// updating go.mod when new imports appear in the files generated by Toki.
+	// Overriding it with “-mod=mod” lets those inner commands record the missing
+	// dependencies automatically, so the second analysis pass and the final `go run`
+	// succeed.
+	return append(os.Environ(), "GOFLAGS=-mod=mod")
 }

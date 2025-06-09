@@ -32,7 +32,7 @@ const Version = "0.6.0"
 const MainBundleFileGo = "bundle_gen.go"
 
 func Run(
-	osArgs []string, stderr, stdout io.Writer, now time.Time,
+	osArgs, env []string, stderr, stdout io.Writer, now time.Time,
 ) (result Result, exitCode int) {
 	if len(osArgs) < 2 {
 		return Result{
@@ -52,7 +52,7 @@ func Run(
 			tikICUTranslator: tik.NewICUTranslator(defaultTIKConfig),
 		}
 		lintOnly := osArgs[1] == "lint"
-		r := g.Run(osArgs, lintOnly, stderr, now)
+		r := g.Run(osArgs, env, lintOnly, stderr, now)
 		switch {
 		case errors.Is(r.Err, ErrInvalidCLIArgs):
 			return r, 2

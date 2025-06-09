@@ -111,7 +111,7 @@ type Scan struct {
 }
 
 func (p *Parser) Parse(
-	pathPattern, bundlePkgPath string,
+	env []string, pathPattern, bundlePkgPath string,
 	locale language.Tag,
 	trimpath bool,
 ) (scan *Scan, err error) {
@@ -126,10 +126,16 @@ func (p *Parser) Parse(
 			packages.NeedDeps |
 			packages.NeedName |
 			packages.NeedModule,
-		Fset: fset,
+		Fset:  fset,
+		Tests: true,
+		Env:   env,
 	}
-	conf.Tests = true
 	pkgs, err := packages.Load(conf, pathPattern+"/...")
+	for _, pkg := range pkgs {
+		if len(pkg.Errors) > 0 {
+			return nil, fmt.Errorf("errors in package %q: %v", pkg.Name, pkg.Errors)
+		}
+	}
 	if err != nil {
 		return nil, fmt.Errorf("loading packages: %w", err)
 	}
@@ -569,6 +575,7 @@ func HashMessage(hash *xxhash.Digest, tik string) string {
 func isString(pkg *packages.Package, expr ast.Expr) (actualTypeName string, ok bool) {
 	tv, found := pkg.TypesInfo.Types[expr]
 	if !found || tv.Type == nil {
+		fmt.Printf("FCK? %#v\n", tv)
 		return tv.Type.String(), false
 	}
 

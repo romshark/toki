@@ -36,7 +36,7 @@ type Generate struct {
 }
 
 func (g *Generate) Run(
-	osArgs []string, lintOnly bool, stderr io.Writer, now time.Time,
+	osArgs, env []string, lintOnly bool, stderr io.Writer, now time.Time,
 ) (result Result) {
 	result.Start = now
 	conf, err := config.ParseCLIArgsGenerate(osArgs)
@@ -114,7 +114,7 @@ func (g *Generate) Run(
 
 	// Parse source code and bundle.
 	result.Scan, result.Err = parser.Parse(
-		conf.ModPath, conf.BundlePkgPath, conf.Locale, conf.TrimPath,
+		env, conf.ModPath, conf.BundlePkgPath, conf.Locale, conf.TrimPath,
 	)
 	if result.Err != nil {
 		result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, result.Err)
