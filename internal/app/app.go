@@ -48,8 +48,8 @@ func Run(
 		g := Generate{
 			hasher:           xxhash.New(),
 			icuTokenizer:     new(icumsg.Tokenizer),
-			tikParser:        tik.NewParser(defaultTIKConfig),
-			tikICUTranslator: tik.NewICUTranslator(defaultTIKConfig),
+			tikParser:        tik.NewParser(tik.DefaultConfig),
+			tikICUTranslator: tik.NewICUTranslator(tik.DefaultConfig),
 		}
 		lintOnly := osArgs[1] == "lint"
 		r := g.Run(osArgs, env, lintOnly, stderr, now)
@@ -89,5 +89,3 @@ func printVersionInfoAndExit(stderr, stdout io.Writer) (exitCode int) {
 	_, _ = fmt.Fprintf(stdout, "%v\n", info)
 	return 0
 }
-
-var defaultTIKConfig = tik.DefaultConfig()

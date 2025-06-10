@@ -89,7 +89,7 @@ func main() {
 
 	// This comment describes the text below and is included in the translator context.
 	fmt.Println(reader.String(
-		`It's {Friday, July 16, 1999} and you have {2 messages}`,
+		`It's {date-full} and you have {# messages}`,
 		now, numMsgs,
 	))
 }

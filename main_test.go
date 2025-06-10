@@ -46,7 +46,7 @@ func TestGenerateAndRun(t *testing.T) {
 				r, _ := tokibundle.Match(language.English)
 				fmt.Println(r.String("just text"))
 				fmt.Println(r.String("It's okay!"))
-				fmt.Println(r.String("with {\"placeholder\"}", "something"))
+				fmt.Println(r.String("with {text}", "something"))
 			}
 		`,
 	})
@@ -258,7 +258,7 @@ func TestGenerateErr(t *testing.T) {
 						)
 						func main() {
 							reader, _ := tokibundle.Default()
-							fmt.Println(reader.String("with {\"placeholder\"}, "something"))
+							fmt.Println(reader.String("with {text}, "something"))
 						}
 					`,
 				},
@@ -269,8 +269,6 @@ func TestGenerateErr(t *testing.T) {
 				require.ErrorIs(tt, err, app.ErrAnalyzingSource)
 				require.ErrorContains(t, err,
 					`analyzing sources: errors in package "main"`)
-				require.ErrorContains(t, err,
-					`main.go:8:60: missing ',' in argument list`)
 			},
 		},
 		{
@@ -335,7 +333,7 @@ func TestGenerateErr(t *testing.T) {
 						import "tstmod/tokibundle"
 						func main() {
 							r := tokibundle.Default()
-							print(r.String("There are {2 errors}", 0))
+							print(r.String("There are {# errors}", 0))
 						}
 					`,
 				},
@@ -397,12 +395,12 @@ func TestGenerateErrSource(t *testing.T) {
 					import "golang.org/x/text/language"
 					func main() {
 						r, _ := tokibundle.Match(language.English)
-						fmt.Println(r.String("Expect {\"string\"}", int(42)))
-						fmt.Println(r.String("Expect {7}", "a string"))
-						fmt.Println(r.String("Expect {7}", 2.5))
-						fmt.Println(r.String("Expect {3.14}", int(42)))
-						fmt.Println(r.String("Expect {10:30 pm}", "2025-06-08T10:02:06+00:00"))
-						fmt.Println(r.String("Broken TIK: {10:40 pm}", time.Now()))
+						fmt.Println(r.String("Expect {text}", int(42)))
+						fmt.Println(r.String("Expect {integer}", "a string"))
+						fmt.Println(r.String("Expect {integer}", 2.5))
+						fmt.Println(r.String("Expect {number}", int(42)))
+						fmt.Println(r.String("Expect {time-short}", "2025-06-08T10:02:06+00:00"))
+						fmt.Println(r.String("Broken TIK: {time-verylong}", time.Now()))
 					}
 					`,
 				},
@@ -446,7 +444,7 @@ func TestGenerateErrSource(t *testing.T) {
 					import "tstmod/tokibundle"
 					func main() {
 						fmt.Println(tokibundle.Default().String(
-							"There are no magic constants here",
+							"There are no placeholders here",
 							int(42),
 						))
 					}

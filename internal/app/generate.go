@@ -552,7 +552,7 @@ func completeness(catalog *codeparse.Catalog) float64 {
 func (g *Generate) newARBMsg(
 	locale language.Tag, text codeparse.Text,
 ) (msg arb.Message, err error) {
-	icuMsg := g.tikICUTranslator.TIK2ICU(text.TIK, nil)
+	icuMsg := g.tikICUTranslator.TIK2ICU(text.TIK)
 
 	description := strings.Join(text.Comments, " ")
 
@@ -563,15 +563,12 @@ func (g *Generate) newARBMsg(
 		var pl arb.Placeholder
 		name := fmt.Sprintf("var%d", i)
 		switch placeholder.Type {
-		case tik.TokenTypeStringPlaceholder:
+		case tik.TokenTypeText:
 			pl.Description = "arbitrary string"
 			pl.Type = arb.PlaceholderString
-			example := placeholder.String(text.TIK.Raw)
-			pl.Example = example[2 : len(example)-2] // Strip away the {""}.
-		case tik.TokenTypeGenderPronoun:
-			pl.Description = "gender pronoun"
+		case tik.TokenTypeTextWithGender:
+			pl.Description = "arbitrary string with gender information"
 			pl.Type = arb.PlaceholderString
-			pl.Example = "female"
 		case tik.TokenTypeCardinalPluralStart:
 			pl.Description = "cardinal plural"
 			pl.Type = arb.PlaceholderNum

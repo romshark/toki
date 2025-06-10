@@ -65,7 +65,7 @@ func (w *Writer) writeSimpleArg() {
 	}
 	if w.i+2 >= len(w.t) || !isTokenArgType(w.t[w.i+2].Type) {
 		// No argument type.
-		w.printf("n, err = wrs(w, args[%d].(string));\n", arg.Index)
+		w.printf("{s, _ := sv(args[%d]); n, err = wrs(w, s)};\n", arg.Index)
 		w.println("if err != nil {return written, err}; written += n;")
 		w.i += 2
 		return

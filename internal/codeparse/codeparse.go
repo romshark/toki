@@ -457,7 +457,15 @@ func (p *Parser) parseTIK(
 
 		placeholder := placeholders[idx]
 		switch placeholder.Type {
-		case tik.TokenTypeStringPlaceholder:
+		case tik.TokenTypeTextWithGender:
+			if typName, isStr := p.isStringValue(pkg, arg); !isStr {
+				onSrcErr(pos, fmt.Errorf(
+					"arg %d must be a String with gender but received: %s",
+					idx, typName))
+				ok = false
+				continue
+			}
+		case tik.TokenTypeText:
 			if typName, isStr := isString(pkg, arg); !isStr {
 				onSrcErr(pos, fmt.Errorf("arg %d must be a string but received: %s",
 					idx, typName))
@@ -485,14 +493,6 @@ func (p *Parser) parseTIK(
 			tik.TokenTypeOrdinalPlural:
 			if typName, isNum := isNumeric(pkg, arg); !isNum {
 				onSrcErr(pos, fmt.Errorf("arg %d must be numeric but received: %s",
-					idx, typName))
-				ok = false
-				continue
-			}
-
-		case tik.TokenTypeGenderPronoun:
-			if typName, isGender := p.isTokiGender(pkg, arg); !isGender {
-				onSrcErr(pos, fmt.Errorf("arg %d must be toki.Gender but received: %s",
 					idx, typName))
 				ok = false
 				continue
@@ -585,6 +585,60 @@ func isString(pkg *packages.Package, expr ast.Expr) (actualTypeName string, ok b
 	return tv.Type.String(), false
 }
 
+func (p *Parser) isStringValue(
+	pkg *packages.Package, e ast.Expr,
+) (actualTypeName string, ok bool) {
+	tv, found := pkg.TypesInfo.Types[e]
+	if !found || tv.Type == nil {
+		return tv.Type.String(), false
+	}
+
+	named, ok := tv.Type.(*types.Named)
+	if !ok {
+		return tv.Type.String(), false
+	}
+
+	obj := named.Obj()
+	objPkg := obj.Pkg()
+	if objPkg == nil || obj.Name() != "String" {
+		return tv.Type.String(), false
+	}
+
+	st, ok := named.Underlying().(*types.Struct)
+	if !ok {
+		return tv.Type.String(), false
+	}
+
+	var hasValue, hasGender bool
+	for i := range st.NumFields() {
+		f := st.Field(i)
+		switch f.Name() {
+		case "Value":
+			b, ok := f.Type().Underlying().(*types.Basic)
+			if ok && b.Kind() == types.String {
+				hasValue = true
+			}
+		case "Gender":
+			if p.isTypeTokiGender(f.Type()) {
+				hasGender = true
+			}
+		}
+	}
+
+	return tv.Type.String(), hasValue && hasGender
+}
+
+func (p *Parser) isTypeTokiGender(t types.Type) bool {
+	named, ok := t.(*types.Named)
+	if !ok {
+		return false
+	}
+	obj := named.Obj()
+	return obj != nil &&
+		obj.Pkg() != nil &&
+		obj.Pkg().Path()+"."+obj.Name() == p.genderType // e.g. ".../bundle.Gender"
+}
+
 func isInteger(pkg *packages.Package, expr ast.Expr) (actualTypeName string, ok bool) {
 	tv, ok := pkg.TypesInfo.Types[expr]
 	if !ok || tv.Type == nil {
@@ -659,33 +713,6 @@ func isTime(pkg *packages.Package, expr ast.Expr) (actualTypeName string, ok boo
 
 	// It's a named type, but not time.Time
 	return obj.Pkg().Name() + "." + obj.Name(), false
-}
-
-func (p *Parser) isTokiGender(
-	pkg *packages.Package, expr ast.Expr,
-) (actualTypeName string, ok bool) {
-	tv, found := pkg.TypesInfo.Types[expr]
-	if !found || tv.Type == nil {
-		return tv.Type.String(), false
-	}
-
-	named, ok := tv.Type.(*types.Named)
-	if !ok {
-		return tv.Type.String(), false
-	}
-
-	obj := named.Obj()
-	objPkg := obj.Pkg()
-	if objPkg == nil {
-		return tv.Type.String(), false
-	}
-
-	if objPkg.Path() == p.genderType {
-		return objPkg.Name() + "." + obj.Name(), true // "toki.Gender"
-	}
-
-	// Named type but not the one we want
-	return objPkg.Name() + "." + obj.Name(), false
 }
 
 func isCurrencyAmount(
