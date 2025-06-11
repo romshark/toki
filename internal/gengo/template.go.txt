@@ -289,7 +289,7 @@ func sv(v any) (string, Gender) {
 	case String:
 		return v.Value, v.Gender
 	}
-	return fmt.Sprintf("%s", v), GenderNeutral // Safe fallback.
+	return fmt.Sprintf("%%v", v), GenderNeutral // Safe fallback.
 }
 
 // Reader reads localized messages.
