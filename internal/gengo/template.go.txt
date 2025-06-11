@@ -188,6 +188,7 @@ func subtract(number any, amount uint) any {
 var _ = pluralRuleCardinal(nil, maxInt53)
 var _ = pluralRuleOrdinal(nil, maxInt53)
 var _ = subtract(0, 0)
+var _, _ = sv(nil)
 
 /*** INTERNALS ***/
 
