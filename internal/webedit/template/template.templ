@@ -1,0 +1,454 @@
+package template
+
+import (
+	"strconv"
+	"iter"
+	"slices"
+)
+
+templ htmlMain() {
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Toki</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta charset="UTF-8">
+	<meta name="description" content="Toki web GUI for editing catalogs">
+	<script src="/static/htmx_min.js"></script>
+	<style>
+		html {
+			height: 100%;
+		}
+
+		body {
+			margin: 0;
+			display: flex;
+			flex-direction: row;
+			height: 100%;
+			font-family: sans-serif;
+		}
+
+		a.selected {
+			font-weight: bold;
+		}
+
+		textarea {
+			resize: vertical;
+			max-block-size: 20lh;
+		}
+
+		input,
+		textarea,
+		button {
+			border: none;
+			padding: .3rem;
+		}
+
+		.tik {
+			font-size: 1.4rem;
+			line-height: 1.8rem;
+		}
+
+		sidebar {
+			min-width: 10rem;
+			display: flex;
+			flex-direction: column;
+			padding: 1rem;
+			gap: 1rem;
+			overflow: auto;
+		}
+
+		sidebar a {
+			text-decoration: none;
+		}
+
+		sidebar > div {
+			display: flex;
+			flex-direction: column;
+			gap: .2rem;
+		}
+
+		sidebar h1 {
+			font-size: 1.2rem;
+		}
+
+		sidebar h2 {
+			font-size: 1rem;
+		}
+
+		sidebar label input {
+			margin: 0;
+		}
+
+		sidebar label {
+			display: flex;
+			flex-direction: row;
+			height: 1.5rem;
+			align-items: center;
+		}
+
+		sidebar label span {
+			margin-left: .5rem;
+		}
+
+		main {
+			padding: 1rem;
+			display: flex;
+			flex-direction: column;
+			gap: 2rem;
+			flex-grow: 1;
+			overflow: auto;
+		}
+
+		.changes button {
+			padding: .5rem;
+			padding-left: 1rem;
+			padding-right: 1rem;
+			border-radius: .2rem;
+			background-color: lightgreen;
+			cursor: pointer;
+		}
+
+		main .contents {
+			display: flex;
+			flex-direction: column;
+			gap: 2rem;
+			height: fit-content;
+			min-height: 100%;
+		}
+
+		main .contents .no-results {
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			height: 100%;
+		}
+
+		form {
+			display: flex;
+			flex-direction: column;
+			gap: .5rem;
+		}
+
+		label {
+			display: flex;
+			flex-direction: column;
+		}
+
+		label>span {
+			font-weight: bold;
+			font-size: .8rem;
+		}
+
+		section label>span {
+			margin-bottom: .5rem;
+		}
+
+		label .msg-id {
+			display: inline;
+			margin-left: .5rem;
+			color: grey;
+		}
+
+		label p {
+			margin: 0;
+		}
+
+		.error {
+			background: rgba(255, 0, 0, .3);
+			color: black;
+			padding: .5rem;
+			border-radius: .2rem;
+			width: fit-content;
+			margin-top: .25rem;
+		}
+
+		main section {
+			max-width: 100%;
+			display: flex;
+			flex-direction: column;
+			gap: 1rem;
+			border: 1px solid rgba(0, 0, 0, .3);
+			border-radius: .2rem;
+		}
+
+		main section>header {
+			display: flex;
+			flex-direction: column;
+			padding: 1rem;
+			gap: 1rem;
+			background-color: rgba(0,0,0,0.03);
+		}
+
+		main section ol {
+			display: flex;
+			flex-direction: row;
+			gap: 1rem;
+			overflow: scroll;
+			list-style: none;
+			margin: 0;
+			padding: 1rem;
+			max-width: 100%;
+			position: relative;
+		}
+
+		main section .icu-message {
+			min-width: 24rem;
+			flex-grow: 1;
+		}
+
+		main section li>div {
+			display: flex;
+			flex-direction: row;
+			justify-content: left;
+			align-items: center;
+			gap: 1rem;
+			margin-bottom: 1rem;
+		}
+
+		.message-incomplete, .message-empty {
+			padding: 1rem;
+			background-color: beige;
+		}
+
+		.message-incomplete ul {
+			padding: 0;
+			padding-left: 1rem;
+			box-sizing: border-box;
+		}
+
+		@media (prefers-color-scheme: dark) {
+			body {
+				background-color: black;
+				color: white;
+			}
+
+			a {
+				color: #8f8fff;
+			}
+
+			textarea,
+			button {
+				background-color: rgba(255, 255, 255, .15);
+				color: white;
+				border: 1px solid grey;
+			}
+
+			input[type="submit"] {
+				background-color: rgba(255, 255, 255, .15);
+				color: white;
+			}
+
+			main section {
+				border: 1px solid rgba(255, 255, 255, 0.3);
+			}
+
+			main section>header {
+				background-color: rgba(255, 255, 255, 0.11);
+			}
+
+			label>span {
+				color: rgba(255, 255, 255, .5);
+			}
+
+			.error {
+				background: rgba(255, 0, 0, .7);
+				color: white;
+			}
+
+			.message-incomplete, .message-empty {
+				background-color: #4c4c10;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	{ children... }
+</body>
+
+</html>
+}
+
+templ pageIndex(
+	tiks iter.Seq[TIK], catalogs []*Catalog, catalogsDisplayed []*Catalog,
+	filterTIKs FilterTIKs,
+	numChanges, numAll, numEmpty, numComplete, numIncomplete, numInvalid int,
+) {
+@htmlMain() {
+	@viewIndex(tiks, catalogs, catalogsDisplayed, filterTIKs,
+		numChanges, numAll, numEmpty, numComplete, numIncomplete, numInvalid,
+	)
+}
+}
+
+templ viewIndex(
+	tiks iter.Seq[TIK], catalogs []*Catalog, catalogsDisplayed []*Catalog,
+	filterTIKs FilterTIKs,
+	numChanges, numAll, numEmpty, numComplete, numIncomplete, numInvalid int,
+) {
+@htmlMain() {
+	<sidebar>
+		<form id="filters"
+			method="get"
+			hx-get="/"
+			hx-trigger="change"
+			hx-target="body"
+			hx-push-url="true">
+			<h1>Toki Edit</h1>
+			<div class="changes">
+				if numChanges > 0 {
+					<button>
+						✅ Apply { strconv.FormatInt(int64(numChanges), 10) } Changes
+					</button>
+				}
+			</div>
+			<div>
+				<label>
+					<input
+						type="radio" name="t" value="all"
+						if filterTIKs == FilterTIKsAll {
+							checked class="selected"
+						}>
+					<span>All ({ numAll })</span>
+				</label>
+				<label>
+					<input
+						type="radio" name="t" value="complete"
+						if filterTIKs == FilterTIKsComplete {
+							checked class="selected"
+						}>
+					<span>Complete ({ numComplete })</span>
+				</label>
+				<label>
+					<input
+						type="radio" name="t" value="incomplete"
+						if filterTIKs == FilterTIKsIncomplete {
+							checked class="selected"
+						}>
+					<span>Incomplete ({ numIncomplete })</span>
+				</label>
+				<label>
+					<input
+						type="radio" name="t" value="empty"
+						if filterTIKs == FilterTIKsEmpty {
+							checked class="selected"
+						}>
+					<span>Empty ({ numEmpty })</span>
+				</label>
+				<label>
+					<input
+						type="radio" name="t" value="invalid"
+						if filterTIKs == FilterTIKsInvalid {
+							checked class="selected"
+						}>
+					<span>Invalid ({ numInvalid })</span>
+				</label>
+			</div>
+			<div>
+				<h2>Hide Catalogs</h2>
+				for _, catalog := range catalogs {
+					if !catalog.Default {
+						<label>
+							<input
+								type="checkbox"
+								name="hl"
+								value={catalog.Locale}
+								if !slices.Contains(catalogsDisplayed, catalog) {
+									checked
+								}>
+							<span>hide { catalog.Locale }</span>
+						</label>
+					}
+				}
+			</div>
+		</form>
+	</sidebar>
+	<main>
+		<div class="contents">
+			switch {
+			case filterTIKs == FilterTIKsAll && numAll == 0:
+				<div class="no-results">
+					No TIKs found.
+				</div>
+			case filterTIKs == FilterTIKsEmpty && numEmpty == 0:
+				<div class="no-results">
+					No empty translations 🤩
+				</div>
+			case filterTIKs == FilterTIKsComplete && numComplete == 0:
+				<div class="no-results">
+					No complete TIKs found.
+				</div>
+			case filterTIKs == FilterTIKsIncomplete && numIncomplete == 0:
+				<div class="no-results">
+					All TIKs are complete 🤩
+				</div>
+			case filterTIKs == FilterTIKsInvalid && numInvalid == 0:
+				<div class="no-results">
+					All TIKs are valid 🤩
+				</div>
+			}
+			for tik := range tiks {
+				@section(tik, catalogsDisplayed)
+			}
+		</div>
+	</main>
+}
+}
+
+templ section(tik TIK, catalogsDisplayed []*Catalog) {
+	<section>
+		<header>
+			<label class="tik">
+				<span>TIK <span class="msg-id">{ tik.ID }</span></span>
+				<p placeholder="Empty">{ tik.TIK }</p>
+			</label>
+			if tik.Description != "" {
+				<label>
+					<span>Description</span>
+					<p>{ tik.Description }</p>
+				</label>
+			}
+		</header>
+		<ol>
+			for _, msg := range tik.ICU {
+				<li class="icu-message">
+					<form>
+						<label>
+							if isCatalogDefault(catalogsDisplayed, msg.Locale) {
+								<span>ICU Message [{ msg.Locale } - Default]</span>
+							} else {
+								<span>ICU Message [{ msg.Locale }]</span>
+							}
+							<textarea placeholder="No translation">
+								{ msg.Message }
+							</textarea>
+						</label>
+						if msg.Message == "" {
+							<span class="message-empty">⚠️ Missing Translation</span>
+						}
+						if msg.Error != "" {
+							<label>
+								<span>🚫 Message Invalid</span>
+								<p>{ msg.Error }</p>
+							</label>
+						}
+						if len(msg.IncompleteReports) > 0 {
+							<label class="message-incomplete">
+								<span>⚠️ Message Incomplete</span>
+								<ul>
+									for _, r := range msg.IncompleteReports {
+										<li>{ r }</li>
+									}
+								</ul>
+							</label>
+						}
+						<input type="submit" value="Save">
+					</form>
+				</li>
+			}
+		</ol>
+	</section>
+}
