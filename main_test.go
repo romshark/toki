@@ -71,6 +71,8 @@ func TestGenerateAndRun(t *testing.T) {
 	require.Equal(t, expect, actual)
 }
 
+// TestGenerateAndRunFallback tests fallback to available catalogs when no catalog
+// matches a particular locale.
 func TestGenerateAndRunFallback(t *testing.T) {
 	dir := t.TempDir()
 	initGoMod(t, dir, "tstmod")
@@ -126,6 +128,58 @@ func TestGenerateAndRunFallback(t *testing.T) {
 		EN: translated
 		DE: übersetzt
 		ES: übersetzt
+		ZU: translated
+	`))
+	actual := stripLeadingSpaces(strings.TrimSpace(string(out)))
+	require.Equal(t, expect, actual)
+}
+
+// TestGenerateAndRunNoTranslationFallback tests falling back to default language
+// when no translation is avaiable for a particular TIK.
+func TestGenerateAndRunNoTranslationFallback(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, "tstmod")
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				rEN, _ := tokibundle.Match(language.English)
+				rDE, _ := tokibundle.Match(language.German)
+				rES, _ := tokibundle.Match(language.Spanish) // Fall back to German.
+				rZU, _ := tokibundle.Match(language.Zulu) // Fall back to English.
+				fmt.Println("EN:", rEN.String("translated")) // translated
+				fmt.Println("DE:", rDE.String("translated")) // übersetzt
+				fmt.Println("ES:", rES.String("translated")) // fallback to DE
+				fmt.Println("ZU:", rZU.String("translated")) // fallback to EN
+			}
+		`,
+	})
+
+	runInDir(t, dir, func() {
+		args := []string{"toki", "generate", "-l=en", "-t=de"}
+		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		require.NoError(t, result.Err)
+		require.Zero(t, exitCode)
+	})
+
+	runInDir(t, dir, func() {
+		args := []string{"toki", "generate"}
+		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		require.NoError(t, result.Err)
+		require.Zero(t, exitCode)
+	})
+
+	cmd := exec.Command("go", "run", ".")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %q", string(out))
+	expect := stripLeadingSpaces(strings.TrimSpace(`
+		EN: translated
+		DE: translated
+		ES: translated
 		ZU: translated
 	`))
 	actual := stripLeadingSpaces(strings.TrimSpace(string(out)))
