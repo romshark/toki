@@ -39,14 +39,18 @@ func TestGenerateAndRun(t *testing.T) {
 	writeFiles(t, dir, map[string]string{
 		"main.go": `
 			package main
-			import "fmt"
-			import "tstmod/tokibundle"
-			import "golang.org/x/text/language"
+			import (
+				"os"
+				"fmt"
+				"tstmod/tokibundle"
+				"golang.org/x/text/language"
+			)
 			func main() {
 				r, _ := tokibundle.Match(language.English)
 				fmt.Println(r.String("just text"))
 				fmt.Println(r.String("It's okay!"))
 				fmt.Println(r.String("with {text}", "something"))
+				_, _ = r.Write(os.Stdout, "write to stdout writer")
 			}
 		`,
 	})
@@ -66,6 +70,7 @@ func TestGenerateAndRun(t *testing.T) {
 		just text
 		It's okay!
 		with something
+		write to stdout writer
 	`))
 	actual := stripLeadingSpaces(strings.TrimSpace(string(out)))
 	require.Equal(t, expect, actual)
