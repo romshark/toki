@@ -46,7 +46,7 @@ func (m *Map[K, V]) Delete(k K) {
 	delete(m.items, k)
 }
 
-func (m *Map[K, V]) Clear(k K) {
+func (m *Map[K, V]) Clear() {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	clear(m.items)
