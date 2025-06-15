@@ -394,9 +394,63 @@ func TestGenerateErr(t *testing.T) {
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
 				require.ErrorIs(tt, err, app.ErrMissingLocaleParam)
-				require.Equal(t, "please provide a valid BCP 47 locale for the "+
+				require.Equal(t, "please provide a valid non-und BCP 47 locale for the "+
 					"default language of your original code base "+
 					"using the 'l' parameter", err.Error())
+			},
+		},
+		{
+			name: "invalid default locale parameter",
+			setup: Setup{
+				InitGoMod: true,
+			},
+			expectExitCode: 2,
+			args:           []string{"-l=invalid"},
+			expectErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorIs(tt, err, app.ErrInvalidCLIArgs)
+				require.Equal(t, `invalid arguments: argument l="invalid": `+
+					"must be a valid non-und BCP 47 locale: "+
+					"language: tag is not well-formed", err.Error())
+			},
+		},
+		{
+			name: "default locale parameter is und",
+			setup: Setup{
+				InitGoMod: true,
+			},
+			expectExitCode: 2,
+			args:           []string{"-l=und"},
+			expectErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorIs(tt, err, app.ErrInvalidCLIArgs)
+				require.Equal(t, `invalid arguments: argument l="und": `+
+					"must be a valid non-und BCP 47 locale: is und", err.Error())
+			},
+		},
+		{
+			name: "invalid translation locale parameter",
+			setup: Setup{
+				InitGoMod: true,
+			},
+			expectExitCode: 2,
+			args:           []string{"-l=en", "-t=invalid"},
+			expectErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorIs(tt, err, app.ErrInvalidCLIArgs)
+				require.Equal(t, `invalid arguments: argument t="invalid": `+
+					"must be a valid non-und BCP 47 locale: "+
+					"language: tag is not well-formed", err.Error())
+			},
+		},
+		{
+			name: "translation locale parameter is und",
+			setup: Setup{
+				InitGoMod: true,
+			},
+			expectExitCode: 2,
+			args:           []string{"-l=en", "-t=und"},
+			expectErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorIs(tt, err, app.ErrInvalidCLIArgs)
+				require.Equal(t, `invalid arguments: argument t="und": `+
+					"must be a valid non-und BCP 47 locale: is und", err.Error())
 			},
 		},
 		{

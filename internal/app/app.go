@@ -21,7 +21,7 @@ var (
 	ErrAnalyzingSource    = errors.New("analyzing sources")
 	ErrInvalidCLIArgs     = errors.New("invalid arguments")
 	ErrMissingLocaleParam = errors.New(
-		"please provide a valid BCP 47 locale for the default language of your " +
+		"please provide a valid non-und BCP 47 locale for the default language of your " +
 			"original code base using the 'l' parameter",
 	)
 	ErrBundleIncomplete = errors.New("bundle contains incomplete catalogs")
