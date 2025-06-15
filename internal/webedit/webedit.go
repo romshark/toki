@@ -100,7 +100,6 @@ func (h *handler) handleGetIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) handlePostSet(w http.ResponseWriter, r *http.Request) {
-
 }
 
 func parseFilterTIKs(w http.ResponseWriter, q url.Values) (tp template.FilterTIKs, ok bool) {

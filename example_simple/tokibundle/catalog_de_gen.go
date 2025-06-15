@@ -13,17 +13,20 @@ import (
 )
 
 // This prevents the "imported and not used" error when some features are not used.
-var _ fmt.Formatter = nil
-var _ time.Time
+var (
+	_ fmt.Formatter = nil
+	_ time.Time
 
-var tr_de = locale.New()
+	tr_de  = locale.New()
+	loc_de = language.MustParse("de")
+)
 
 type catalog_de struct{}
 
 var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
 	msg62489e1e07578e6e: func(w io.Writer, args ...any) (written int, err error) {
 		var n int
-		n, err = wrs(w, "Nothing found in folder ")
+		n, err = wrs(w, "Im Ordner ")
 		if err != nil {
 			return written, err
 		}
@@ -36,35 +39,17 @@ var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
 			return written, err
 		}
 		written += n
+		n, err = wrs(w, " wurde nichts gefunden")
+		if err != nil {
+			return written, err
+		}
+		written += n
 		return written, nil
 	},
 	msg6aa44c2f549ae5e8: func(w io.Writer, args ...any) (written int, err error) {
-		return wrs(w, "translated text")
+		return wrs(w, "übersetzter Text")
 	},
-	msgd2497314df5ae7e6: func(w io.Writer, args ...any) (written int, err error) {
-		var n int
-		n, err = wrs(w, "It was finished on ")
-		if err != nil {
-			return written, err
-		}
-		written += n
-		n, err = io.WriteString(w, tr_de.FmtDateFull(args[0].(time.Time)))
-		if err != nil {
-			return written, err
-		}
-		written += n
-		n, err = wrs(w, " at ")
-		if err != nil {
-			return written, err
-		}
-		written += n
-		n, err = io.WriteString(w, tr_de.FmtTimeFull(args[1].(time.Time)))
-		if err != nil {
-			return written, err
-		}
-		written += n
-		return written, nil
-	},
+	msgd2497314df5ae7e6: nil,
 	msgdc0a1830b671625c: func(w io.Writer, args ...any) (written int, err error) {
 		var n int
 		n, err = wrs(w, "searched ")
@@ -114,33 +99,13 @@ var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
 				return written, err
 			}
 			written += n
-			n, err = wrs(w, " projects were")
+			n, err = wrs(w, " Projekte wurden")
 			if err != nil {
 				return written, err
 			}
 			written += n
 		}
-		n, err = wrs(w, " finished on ")
-		if err != nil {
-			return written, err
-		}
-		written += n
-		n, err = io.WriteString(w, tr_de.FmtDateFull(args[1].(time.Time)))
-		if err != nil {
-			return written, err
-		}
-		written += n
-		n, err = wrs(w, " at ")
-		if err != nil {
-			return written, err
-		}
-		written += n
-		n, err = io.WriteString(w, tr_de.FmtTimeFull(args[2].(time.Time)))
-		if err != nil {
-			return written, err
-		}
-		written += n
-		n, err = wrs(w, " by ")
+		n, err = wrs(w, " von ")
 		if err != nil {
 			return written, err
 		}
@@ -153,11 +118,36 @@ var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
 			return written, err
 		}
 		written += n
+		n, err = wrs(w, " am ")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		n, err = io.WriteString(w, tr_de.FmtDateFull(args[1].(time.Time)))
+		if err != nil {
+			return written, err
+		}
+		written += n
+		n, err = wrs(w, " um ")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		n, err = io.WriteString(w, tr_de.FmtTimeFull(args[2].(time.Time)))
+		if err != nil {
+			return written, err
+		}
+		written += n
+		n, err = wrs(w, " fertiggestellt")
+		if err != nil {
+			return written, err
+		}
+		written += n
 		return written, nil
 	},
 }
 
-func (catalog_de) Locale() language.Tag { return language.MustParse("de") }
+func (catalog_de) Locale() language.Tag { return loc_de }
 
 func (catalog_de) Translator() locales.Translator { return tr_de }
 
@@ -166,7 +156,7 @@ func (catalog_de) String(tik string, args ...any) string {
 	defer poolBufPut(b)
 	f := writers_de[tik]
 	if f == nil {
-		_, _ = MissingTranslation(b, tik, args...)
+		_, _ = MissingTranslation(b, loc_de, tik, args...)
 	} else {
 		_, _ = f(b, args...)
 	}
@@ -178,7 +168,7 @@ func (catalog_de) Write(
 ) (written int, err error) {
 	f := writers_de[tik]
 	if f == nil {
-		return MissingTranslation(writer, tik, args...)
+		return MissingTranslation(writer, loc_de, tik, args...)
 	}
 	return f(writer, args...)
 }

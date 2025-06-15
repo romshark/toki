@@ -13,10 +13,13 @@ import (
 )
 
 // This prevents the "imported and not used" error when some features are not used.
-var _ fmt.Formatter = nil
-var _ time.Time
+var (
+	_ fmt.Formatter = nil
+	_ time.Time
 
-var tr_en = locale.New()
+	tr_en  = locale.New()
+	loc_en = language.MustParse("en")
+)
 
 type catalog_en struct{}
 
@@ -157,7 +160,7 @@ var writers_en = map[string]func(w io.Writer, args ...any) (int, error){
 	},
 }
 
-func (catalog_en) Locale() language.Tag { return language.MustParse("en") }
+func (catalog_en) Locale() language.Tag { return loc_en }
 
 func (catalog_en) Translator() locales.Translator { return tr_en }
 
@@ -166,7 +169,7 @@ func (catalog_en) String(tik string, args ...any) string {
 	defer poolBufPut(b)
 	f := writers_en[tik]
 	if f == nil {
-		_, _ = MissingTranslation(b, tik, args...)
+		_, _ = MissingTranslation(b, loc_en, tik, args...)
 	} else {
 		_, _ = f(b, args...)
 	}
@@ -178,7 +181,7 @@ func (catalog_en) Write(
 ) (written int, err error) {
 	f := writers_en[tik]
 	if f == nil {
-		return MissingTranslation(writer, tik, args...)
+		return MissingTranslation(writer, loc_en, tik, args...)
 	}
 	return f(writer, args...)
 }
