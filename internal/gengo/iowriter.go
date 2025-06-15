@@ -12,6 +12,11 @@ func (w *Writer) writeFunc(id, icuMsg string, tokens []icumsg.Token) {
 	w.t = tokens
 	w.i = 0
 
+	if icuMsg == "" {
+		w.printf("%s: nil,\n", id)
+		return
+	}
+
 	w.printf("%s: func(w io.Writer, args ...any) (written int, err error) {\n", id)
 	endIndex := len(w.t)
 	if s := w.literalConcat(endIndex); s != "" {

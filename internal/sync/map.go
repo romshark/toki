@@ -11,7 +11,7 @@ func NewMap[K comparable, V any](size int) *Map[K, V] {
 
 // Map is a mutex synchronized map for concurrent use.
 type Map[K comparable, V any] struct {
-	lock  sync.Mutex
+	lock  sync.RWMutex
 	items map[K]V
 }
 
@@ -64,6 +64,18 @@ func (m *Map[K, V]) Access(fn func(s map[K]V) error) error {
 func (m *Map[K, V]) Seq() iter.Seq2[K, V] {
 	m.lock.Lock()
 	defer m.lock.Unlock()
+	return func(yield func(K, V) bool) {
+		for k, v := range m.items {
+			if !yield(k, v) {
+				break
+			}
+		}
+	}
+}
+
+func (m *Map[K, V]) SeqRead() iter.Seq2[K, V] {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
 	return func(yield func(K, V) bool) {
 		for k, v := range m.items {
 			if !yield(k, v) {

@@ -149,7 +149,7 @@ func (g *Generate) Run(
 	var nativeCatalog *codeparse.Catalog
 	var nativeARB *arb.File
 	var nativeARBFileName string
-	for catalog := range scan.Catalogs.Seq() {
+	for catalog := range scan.Catalogs.SeqRead() {
 		if catalog.ARB.Locale == scan.DefaultLocale {
 			nativeCatalog = catalog
 			nativeARB = catalog.ARB
@@ -178,7 +178,7 @@ func (g *Generate) Run(
 	}
 
 	// Check for new messages.
-	for id, index := range scan.TextIndexByID.Seq() {
+	for id, index := range scan.TextIndexByID.SeqRead() {
 		if _, ok := nativeARB.Messages[id]; !ok {
 			// Text not in native catalog.
 			text := scan.Texts.At(index)
@@ -199,7 +199,7 @@ func (g *Generate) Run(
 			}
 			continue
 		}
-		for catalog := range scan.Catalogs.Seq() {
+		for catalog := range scan.Catalogs.SeqRead() {
 			// Check in all other catalogs.
 			if catalog.ARB.Locale == scan.DefaultLocale {
 				// Skip native catalog. It was already handled above.
@@ -282,7 +282,7 @@ func (g *Generate) Run(
 
 	if !conf.QuietMode && conf.VerboseMode {
 		// Report incomplete messages in verbose mode.
-		for catalog := range scan.Catalogs.Seq() {
+		for catalog := range scan.Catalogs.SeqRead() {
 			for _, msg := range catalog.ARB.Messages {
 				_ = icumsg.Completeness(
 					msg.ICUMessage, msg.ICUMessageTokens, catalog.ARB.Locale,
@@ -304,7 +304,7 @@ func (g *Generate) Run(
 	}
 
 	if conf.RequireComplete && result.Err == nil {
-		for catalog := range scan.Catalogs.Seq() {
+		for catalog := range scan.Catalogs.SeqRead() {
 			if catalog.MessagesIncomplete.Load() > 0 {
 				result.Err = ErrBundleIncomplete
 				return result
@@ -343,7 +343,7 @@ func deleteAllTokiGeneratedFiles(dir string) error {
 }
 
 func writeARBFiles(bundlePkgPath string, catalogs *sync.Slice[*codeparse.Catalog]) error {
-	for catalog := range catalogs.Seq() {
+	for catalog := range catalogs.SeqRead() {
 		locale := catalog.ARB.Locale
 		name := gengo.FileNameWithLocale(locale, "catalog", ".arb")
 		filePath := filepath.Join(bundlePkgPath, name)
@@ -384,7 +384,7 @@ func writeMissingARBFilesAndUpdateCatalogs(
 	}
 	delete(missing, defaultLocale) // Ignore the default locale, it's the native catalog.
 
-	for catalog := range catalogs.Seq() {
+	for catalog := range catalogs.SeqRead() {
 		// Ignore locales of already existing catalogs.
 		delete(missing, catalog.ARB.Locale)
 	}
@@ -486,29 +486,27 @@ func generateGoBundle(
 	}
 
 	// Generate Go catalog files.
-	return scan.Catalogs.Access(func(s []*codeparse.Catalog) error {
-		for _, catalog := range s {
-			locale := catalog.ARB.Locale
-			fileName := gengo.FileNameWithLocale(locale, "catalog", "_gen.go")
-			filePath := filepath.Join(bundlePkgPath, fileName)
-			f, err := os.OpenFile(filePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o644)
-			if err != nil {
-				return err
-			}
-
-			var buf bytes.Buffer
-			writer.WritePackageCatalog(&buf, locale, pkgName, headTxtLines)
-
-			formatted, err := format.Source(buf.Bytes())
-			if err != nil {
-				return fmt.Errorf("formatting package catalog: %w", err)
-			}
-			if _, err := f.Write(formatted); err != nil {
-				return fmt.Errorf("writing formatted code to file: %w", err)
-			}
+	for catalog := range scan.Catalogs.SeqRead() {
+		locale := catalog.ARB.Locale
+		fileName := gengo.FileNameWithLocale(locale, "catalog", "_gen.go")
+		filePath := filepath.Join(bundlePkgPath, fileName)
+		f, err := os.OpenFile(filePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o644)
+		if err != nil {
+			return err
 		}
-		return nil
-	})
+
+		var buf bytes.Buffer
+		writer.WritePackageCatalog(&buf, locale, pkgName, headTxtLines)
+
+		formatted, err := format.Source(buf.Bytes())
+		if err != nil {
+			return fmt.Errorf("formatting package catalog: %w", err)
+		}
+		if _, err := f.Write(formatted); err != nil {
+			return fmt.Errorf("writing formatted code to file: %w", err)
+		}
+	}
+	return nil
 }
 
 // readOrCreateHeadTxt reads the head.txt file if it exists, otherwise creates it.

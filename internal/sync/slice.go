@@ -11,7 +11,7 @@ func NewSlice[T any](capacity int) *Slice[T] {
 
 // Slice is a mutex synchronized slice for concurrent use.
 type Slice[T any] struct {
-	lock  sync.Mutex
+	lock  sync.RWMutex
 	items []T
 }
 
@@ -48,6 +48,18 @@ func (a *Slice[T]) Seq() iter.Seq[T] {
 	return func(yield func(T) bool) {
 		a.lock.Lock()
 		defer a.lock.Unlock()
+		for _, i := range a.items {
+			if !yield(i) {
+				break
+			}
+		}
+	}
+}
+
+func (a *Slice[T]) SeqRead() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		a.lock.RLock()
+		defer a.lock.RUnlock()
 		for _, i := range a.items {
 			if !yield(i) {
 				break

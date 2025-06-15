@@ -1,15 +1,15 @@
 package %s
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"iter"
-	"bytes"
 	"sync"
 	"unsafe"
 
-	"golang.org/x/text/language"
 	"github.com/go-playground/locales"
+	"golang.org/x/text/language"
 )
 
 /*** HELPERS ***/
@@ -248,11 +248,13 @@ const DefaultLocale = %q
 // BufferCap defines the default buffer capacity of 8KiB.
 var BufferCap = 8 * 1024
 
-// MissingTranslation is the default missing translation handler.
+// MissingTranslation is the default missing translation handler which
+// by default falls back to the default locale.
 var MissingTranslation = func(
-	w io.Writer, tik string, _ ...any,
+	w io.Writer, locale language.Tag, tik string, args ...any,
 ) (written int, err error) {
-	return fmt.Fprintf(w, "[missing translation: %%q]", tik)
+	d, _ := Match(language.MustParse(DefaultLocale))
+	return d.Write(w, tik, args...)
 }
 
 /*** PUBLIC API ***/
