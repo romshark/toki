@@ -10,6 +10,7 @@ import (
 	"unsafe"
 
 	"github.com/go-playground/locales"
+	"github.com/go-playground/locales/currency"
 	"golang.org/x/text/language"
 )
 
@@ -288,6 +289,12 @@ type String struct {
 	Gender Gender
 }
 
+// Currency is an amount of money of a certain currency.
+type Currency struct {
+	Amount float64
+	Type   currency.Type
+}
+
 func sv(v any) (string, Gender) {
 	switch v := v.(type) {
 	case string:
@@ -350,10 +357,10 @@ func Readers() []Reader { return readers }
 // Catalogs returns an iterator over all enabled catalogs.
 func Catalogs() iter.Seq[Reader] {
 	return func(yield func(Reader) bool) {
-		if !yield(catalog_de{}) {
+		if !yield(catalog_en{}) {
 			return
 		}
-		if !yield(catalog_en{}) {
+		if !yield(catalog_de{}) {
 			return
 		}
 		if !yield(catalog_ru{}) {

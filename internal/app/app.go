@@ -15,12 +15,13 @@ import (
 )
 
 var (
-	ErrSourceErrors       = errors.New("source code contains errors")
-	ErrNoCommand          = errors.New("no command")
-	ErrUnknownCommand     = errors.New("unknown command")
-	ErrAnalyzingSource    = errors.New("analyzing sources")
-	ErrInvalidCLIArgs     = errors.New("invalid arguments")
-	ErrMissingLocaleParam = errors.New(
+	ErrGenerateBundleFirst = errors.New("first generate a bundle using `toki generate`")
+	ErrSourceErrors        = errors.New("source code contains errors")
+	ErrNoCommand           = errors.New("no command")
+	ErrUnknownCommand      = errors.New("unknown command")
+	ErrAnalyzingSource     = errors.New("analyzing sources")
+	ErrInvalidCLIArgs      = errors.New("invalid arguments")
+	ErrMissingLocaleParam  = errors.New(
 		"please provide a valid non-und BCP 47 locale for the default language of your " +
 			"original code base using the 'l' parameter",
 	)
