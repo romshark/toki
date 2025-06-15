@@ -42,7 +42,6 @@ func (g *Generate) Run(
 	conf, err := config.ParseCLIArgsGenerate(osArgs)
 	if err != nil {
 		result.Err = fmt.Errorf("%w: %w", ErrInvalidCLIArgs, err)
-		fmt.Println("ERRROR", result.Err.Error())
 		return result
 	}
 	result.Config = conf

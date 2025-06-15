@@ -514,9 +514,9 @@ func (p *Parser) parseTIK(
 			}
 
 		case tik.TokenTypeCurrency:
-			if typName, isCurrency := isCurrencyAmount(pkg, arg); !isCurrency {
+			if typName, isCurrency := p.isCurrencyAmount(pkg, arg); !isCurrency {
 				onSrcErr(pos, fmt.Errorf(
-					"arg %d must be currency.Amount but received: %s",
+					"arg %d must be Currency but received: %s",
 					idx, typName))
 				ok = false
 				continue
@@ -715,10 +715,10 @@ func isTime(pkg *packages.Package, expr ast.Expr) (actualTypeName string, ok boo
 	return obj.Pkg().Name() + "." + obj.Name(), false
 }
 
-func isCurrencyAmount(
-	pkg *packages.Package, expr ast.Expr,
+func (p *Parser) isCurrencyAmount(
+	pkg *packages.Package, e ast.Expr,
 ) (actualTypeName string, ok bool) {
-	tv, found := pkg.TypesInfo.Types[expr]
+	tv, found := pkg.TypesInfo.Types[e]
 	if !found || tv.Type == nil {
 		return tv.Type.String(), false
 	}
@@ -730,15 +730,39 @@ func isCurrencyAmount(
 
 	obj := named.Obj()
 	objPkg := obj.Pkg()
-	if objPkg == nil {
+	if objPkg == nil || obj.Name() != "Currency" {
 		return tv.Type.String(), false
 	}
 
-	if obj.Name() == "Amount" && objPkg.Path() == "golang.org/x/text/currency" {
-		return objPkg.Name() + "." + obj.Name(), true // "currency.Amount"
+	st, ok := named.Underlying().(*types.Struct)
+	if !ok {
+		return tv.Type.String(), false
 	}
 
-	return objPkg.Name() + "." + obj.Name(), false
+	var hasValue, hasType bool
+	for i := range st.NumFields() {
+		f := st.Field(i)
+		switch f.Name() {
+		case "Amount":
+			b, ok := f.Type().Underlying().(*types.Basic)
+			if ok && b.Kind() == types.Float64 {
+				hasValue = true
+			}
+		case "Type":
+			n, ok := f.Type().(*types.Named)
+			if !ok {
+				break
+			}
+			obj := n.Obj()
+			pkg := obj.Pkg()
+			if obj.Name() == "Type" && pkg != nil &&
+				pkg.Path() == "github.com/go-playground/locales/currency" {
+				hasType = true
+			}
+		}
+	}
+
+	return tv.Type.String(), hasValue && hasType
 }
 
 func isPkgBundle(bundlePkg string, pkg *packages.Package) bool {

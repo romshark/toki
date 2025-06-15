@@ -1,6 +1,7 @@
 package gengo
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/romshark/icumsg"
@@ -77,6 +78,40 @@ func (w *Writer) writeSimpleArg() {
 	}
 
 	switch w.t[w.i+2].Type {
+	case icumsg.TokenTypeArgTypeNumber:
+		if w.i+3 < len(w.t) {
+			switch tp := w.t[w.i+3].Type; tp {
+			case icumsg.TokenTypeArgStyleSkeleton:
+				switch s := w.t[w.i+3].String(w.m, w.t); s {
+				case "::currency/auto":
+					w.println("{")
+					w.printf("c := args[%d].(Currency);\n", arg.Index)
+					w.printf("s := %s.FmtCurrency(c.Amount, 2, c.Type);\n",
+						w.translatorVar)
+					w.println("n, err = wrs(w, s);")
+					w.println("if err != nil {return written, err}; written += n;")
+					w.println("}")
+				default:
+					panic(fmt.Errorf("unsupported number skeleton: %q", s))
+				}
+			case icumsg.TokenTypeArgStyleInteger:
+				w.printf("switch a := args[%d].(type) {\n", arg.Index)
+				w.printf("case int,uint,int8,uint8,int16,uint16,int32,uint32,int64,uint64:"+
+					"n, err = fmt.Fprintf(w, \"%s\", a);\n", "%d")
+				w.printf("}\n")
+				w.println("if err != nil {return written, err}; written += n;")
+			default:
+				panic(fmt.Errorf("unsupported number style: %q", tp.String()))
+			}
+			w.i += 4
+			return
+		}
+		w.printf("switch a := args[%d].(type) {\n", arg.Index)
+		w.printf("case float32,float64: n, err = fmt.Fprintf(w, \"%s\", a);\n", "%g")
+		w.printf("}\n")
+		w.println("if err != nil {return written, err}; written += n;")
+		w.i += 3
+		return
 	case icumsg.TokenTypeArgTypeDate:
 		w.writeArgDate(arg.Index)
 		return
@@ -93,58 +128,8 @@ func (w *Writer) writeSimpleArg() {
 		w.println("if err != nil {return written, err}; written += n;")
 		return
 	}
-	// Has argument type and style parameters.
-	w.i += 4
-	switch tokStyle.Type {
-	case icumsg.TokenTypeArgStyleShort:
-		// TODO
-		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += n;")
-		return
-	case icumsg.TokenTypeArgStyleMedium:
-		// TODO
-		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += n;")
-		return
-	case icumsg.TokenTypeArgStyleLong:
-		// TODO
-		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += n;")
-		return
-	case icumsg.TokenTypeArgStyleFull:
-		// TODO
-		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += n;")
-		return
-	case icumsg.TokenTypeArgStyleInteger:
-		// TODO
-		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += n;")
-		return
-	case icumsg.TokenTypeArgStyleCurrency:
-		// TODO
-		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += n;")
-		return
-	case icumsg.TokenTypeArgStylePercent:
-		// TODO
-		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += n;")
-		return
-	case icumsg.TokenTypeArgStyleCustom:
-		// TODO
-		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += n;")
-		return
-	case icumsg.TokenTypeArgStyleSkeleton:
-		// TODO
-		w.printf("n, err = fmt.Fprintf(w, %q, args[%d]);\n", `%v`, arg.Index)
-		w.println("if err != nil {return written, err}; written += n;")
-		return
-	default:
-		// This should never happen because this switch is exhaustive.
-		panic(tokStyle.Type.String())
-	}
+	// This should never happen
+	panic(tokStyle.Type.String())
 }
 
 func (w *Writer) writeArgDate(argIndex int) {

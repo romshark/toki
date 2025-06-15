@@ -40,17 +40,51 @@ func TestGenerateAndRun(t *testing.T) {
 		"main.go": `
 			package main
 			import (
-				"os"
 				"fmt"
+				"os"
+				"time"
 				"tstmod/tokibundle"
+
+				"github.com/go-playground/locales/currency"
 				"golang.org/x/text/language"
 			)
 			func main() {
 				r, _ := tokibundle.Match(language.English)
 				fmt.Println(r.String("just text"))
-				fmt.Println(r.String("It's okay!"))
-				fmt.Println(r.String("with {text}", "something"))
+				fmt.Println(r.String("It's okay!")) // Escaping single quote.
 				_, _ = r.Write(os.Stdout, "write to stdout writer")
+
+				fmt.Println(r.String("text: {text}", "something"))
+
+				fmt.Println(r.String("number: {number}", 3.1415912))
+				fmt.Println(r.String("number: {number}", float64(10.1000)))
+				fmt.Println(r.String("number: {number}", float32(123)))
+
+				fmt.Println(r.String("integer: {integer}", 1024))
+				fmt.Println(r.String("integer: {integer}", byte(42)))
+				fmt.Println(r.String("integer: {integer}", int8(42)))
+				fmt.Println(r.String("integer: {integer}", uint8(42)))
+				fmt.Println(r.String("integer: {integer}", int16(42)))
+				fmt.Println(r.String("integer: {integer}", uint16(42)))
+				fmt.Println(r.String("integer: {integer}", int32(42)))
+				fmt.Println(r.String("integer: {integer}", uint32(42)))
+				fmt.Println(r.String("integer: {integer}", int64(42)))
+				fmt.Println(r.String("integer: {integer}", uint64(42)))
+				fmt.Println(r.String("integer: {integer}", int(42)))
+				fmt.Println(r.String("integer: {integer}", uint(42)))
+
+				tm := time.Date(2025, 7, 14, 10, 11, 12, 0, time.UTC)
+				fmt.Println(r.String("date-full: {date-full}", tm))
+				fmt.Println(r.String("date-long: {date-long}", tm))
+				fmt.Println(r.String("date-medium: {date-medium}", tm))
+				fmt.Println(r.String("date-short: {date-short}", tm))
+				fmt.Println(r.String("time-full: {time-full}", tm))
+				fmt.Println(r.String("time-long: {time-long}", tm))
+				fmt.Println(r.String("time-medium: {time-medium}", tm))
+				fmt.Println(r.String("time-short: {time-short}", tm))
+
+				fmt.Println(r.String("currency: {currency}",
+					tokibundle.Currency{Amount: 3.99, Type: currency.USD}))
 			}
 		`,
 	})
@@ -69,8 +103,31 @@ func TestGenerateAndRun(t *testing.T) {
 	expect := stripLeadingSpaces(strings.TrimSpace(`
 		just text
 		It's okay!
-		with something
-		write to stdout writer
+		write to stdout writertext: something
+		number: 3.1415912
+		number: 10.1
+		number: 123
+		integer: 1024
+		integer: 42
+		integer: 42
+		integer: 42
+		integer: 42
+		integer: 42
+		integer: 42
+		integer: 42
+		integer: 42
+		integer: 42
+		integer: 42
+		integer: 42
+		date-full: Monday, July 14, 2025
+		date-long: July 14, 2025
+		date-medium: Jul 14, 2025
+		date-short: 7/14/25
+		time-full: 10:11:12 am UTC
+		time-long: 10:11:12 am UTC
+		time-medium: 10:11:12 am
+		time-short: 10:11 am
+		currency: $3.99
 	`))
 	actual := stripLeadingSpaces(strings.TrimSpace(string(out)))
 	require.Equal(t, expect, actual)
