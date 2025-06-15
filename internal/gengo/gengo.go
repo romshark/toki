@@ -39,15 +39,12 @@ func NewWriter(tokiVersion string, scan *codeparse.Scan) *Writer {
 	}
 }
 
-var lineBreak = []byte("\n")
-
 func (w *Writer) printf(format string, a ...any) {
 	_, _ = fmt.Fprintf(w.w, format, a...)
 }
 
 func (w *Writer) print(format string) {
 	_, _ = fmt.Fprint(w.w, format)
-	_, _ = w.w.Write(lineBreak)
 }
 
 func (w *Writer) println(a ...any) {
@@ -152,9 +149,9 @@ func (w *Writer) WritePackageCatalog(
 	}
 	w.printf("\npackage %s\n", packageName)
 	w.println("import (")
-	w.println("\t" + `"fmt"`)
-	w.println("\t" + `"io"`)
-	w.println("\t" + `"time"`)
+	w.println(`"fmt"`)
+	w.println(`"io"`)
+	w.println(`"time"`)
 	w.println("")
 	w.printf("\tlocales \"github.com/go-playground/locales\"\n")
 	w.printf("\t locale \"github.com/go-playground/locales/%s\"\n",
@@ -168,15 +165,17 @@ func (w *Writer) WritePackageCatalog(
 func (w *Writer) writeCatalogType(locale language.Tag) {
 	localeCatalogSuffix := localeToCatalogSuffix(w.l)
 	w.translatorVar = fmt.Sprintf("tr_%s", localeCatalogSuffix)
+	localeVarName := "loc_" + localeCatalogSuffix
+
 	w.printf("\n// This prevents the \"imported and not used\" error " +
 		"when some features are not used.\n")
-	w.printf("var _ fmt.Formatter = nil\n")
-	w.printf("var _ time.Time\n")
-	w.printf("\nvar %s = locale.New()\n", w.translatorVar)
-
-	// Type definition.
-	localeVarName := "loc_" + localeCatalogSuffix
-	w.printf("var %s = language.MustParse(%q)\n", localeVarName, locale.String())
+	w.println("var (")
+	w.println("_ fmt.Formatter = nil")
+	w.println("_ time.Time")
+	w.println("")
+	w.printf("%s = locale.New()\n", w.translatorVar)
+	w.printf("%s = language.MustParse(%q)\n", localeVarName, locale.String())
+	w.println(")")
 
 	// Type definition.
 	catalogTypeName := TypePrefixCatalog + localeCatalogSuffix
@@ -220,7 +219,7 @@ func (w *Writer) writeCatalogType(locale language.Tag) {
 	w.printf("f := %s[tik];\n", writersMapName)
 	w.printf(`if f == nil { return MissingTranslation(writer, %s, tik, args...) };`,
 		localeVarName)
-	w.print("return f(writer, args...)")
+	w.println("return f(writer, args...)")
 	w.print("}\n\n")
 }
 

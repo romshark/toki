@@ -85,14 +85,7 @@ func (g *Generate) Run(
 				result.Err = ErrMissingLocaleParam
 				return result
 			}
-			scan := &codeparse.Scan{
-				DefaultLocale: conf.Locale,
-				TokiVersion:   Version,
-				Texts:         sync.NewSlice[codeparse.Text](0),
-				TextIndexByID: sync.NewMap[string, int](0),
-				SourceErrors:  sync.NewSlice[codeparse.SourceError](0),
-				Catalogs:      sync.NewSlice[*codeparse.Catalog](0),
-			}
+			scan := codeparse.NewScan(conf.Locale, Version)
 			// Need to generate an empty bundle package first.
 			// Otherwise if the bundle existed and was imported before, later got removed
 			// and then toki generate was rerun it will first generate an incorrect bundle
@@ -114,7 +107,7 @@ func (g *Generate) Run(
 
 	// Parse source code and bundle.
 	result.Scan, result.Err = parser.Parse(
-		env, conf.ModPath, conf.BundlePkgPath, conf.Locale, conf.TrimPath,
+		env, conf.ModPath, conf.BundlePkgPath, conf.TrimPath,
 	)
 	if result.Err != nil {
 		result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, result.Err)
