@@ -70,7 +70,7 @@ func TestMap(t *testing.T) {
 	require.Zero(t, m.Len())
 
 	{
-		var errTest = errors.New("test error")
+		errTest := errors.New("test error")
 		err := m.Access(func(s map[int]string) error {
 			s[5] = "fifth"
 			return errTest

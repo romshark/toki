@@ -15,7 +15,7 @@ func TestSlice(t *testing.T) {
 	require.Panics(t, func() { s.At(0) })
 
 	{
-		var errTest = errors.New("test error")
+		errTest := errors.New("test error")
 		err := s.Access(func(s []int) error {
 			require.Len(t, s, 0)
 			return errTest
