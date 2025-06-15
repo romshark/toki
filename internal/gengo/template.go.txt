@@ -9,6 +9,7 @@ import (
 	"unsafe"
 
 	"github.com/go-playground/locales"
+	"github.com/go-playground/locales/currency"
 	"golang.org/x/text/language"
 )
 
@@ -285,6 +286,12 @@ const (
 type String struct {
 	Value  string
 	Gender Gender
+}
+
+// Currency is an amount of money of a certain currency.
+type Currency struct {
+	Amount float64
+	Type   currency.Type
 }
 
 func sv(v any) (string, Gender) {

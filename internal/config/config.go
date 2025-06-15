@@ -27,7 +27,7 @@ type ConfigGenerate struct {
 	RequireComplete bool
 }
 
-var ErrLocaleNotBCP47 = errors.New("must be a valid BCP 47 locale")
+var ErrLocaleNotBCP47 = errors.New("must be a valid non-und BCP 47 locale")
 
 func ParseCLIArgsWeb(osArgs []string) (*ConfigWeb, error) {
 	c := &ConfigWeb{}
@@ -50,9 +50,9 @@ func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
 
 	cli := flag.NewFlagSet(osArgs[0], flag.ExitOnError)
 	cli.StringVar(&locale, "l", "",
-		"default locale of the original source code texts in BCP 47")
+		"default locale of the original source code texts in non-und BCP 47")
 	cli.Var(&translations, "t",
-		"translation locale in BCP 47 "+
+		"translation locale in non-und BCP 47 "+
 			"(multiple are accepted and duplicates are ignored). "+
 			"Creates new catalogs for locales for which no catalogs exist yet.")
 	cli.StringVar(&c.ModPath, "m", ".", "path to Go module")
@@ -77,6 +77,11 @@ func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
 				"argument l=%q: %w: %w", locale, ErrLocaleNotBCP47, err,
 			)
 		}
+		if c.Locale == language.Und {
+			return nil, fmt.Errorf(
+				"argument l=%q: %w: is und", locale, ErrLocaleNotBCP47,
+			)
+		}
 	}
 
 	slices.Sort(translations)
@@ -90,6 +95,9 @@ func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
 		c.Translations[i], err = language.Parse(s)
 		if err != nil {
 			return nil, fmt.Errorf("argument t=%q: %w: %w", s, ErrLocaleNotBCP47, err)
+		}
+		if c.Translations[i] == language.Und {
+			return nil, fmt.Errorf("argument t=%q: %w: is und", s, ErrLocaleNotBCP47)
 		}
 	}
 
