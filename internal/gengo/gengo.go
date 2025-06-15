@@ -39,8 +39,6 @@ func NewWriter(tokiVersion string, scan *codeparse.Scan) *Writer {
 	}
 }
 
-var lineBreak = []byte("\n")
-
 func (w *Writer) printf(format string, a ...any) {
 	_, _ = fmt.Fprintf(w.w, format, a...)
 }
