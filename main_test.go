@@ -182,7 +182,7 @@ func TestGenerate(t *testing.T) {
 				require.NoError(t, res.Err)
 				require.Equal(t, 0, res.ExitCode)
 				if res.Scan.SourceErrors.Len() > 0 {
-					for err := range res.Scan.SourceErrors.Seq() {
+					for err := range res.Scan.SourceErrors.SeqRead() {
 						t.Errorf("unexpected source error: %v", err)
 					}
 				}
@@ -469,7 +469,7 @@ func TestGenerateErrSource(t *testing.T) {
 				require.ErrorIs(t, res.Err, app.ErrSourceErrors)
 				require.Equal(t, 1, res.ExitCode)
 				index := 0
-				for err := range res.Scan.SourceErrors.Seq() {
+				for err := range res.Scan.SourceErrors.SeqRead() {
 					if index >= len(tt.expectSrcErrs) {
 						t.Errorf("expect source error at index %d", index)
 						continue

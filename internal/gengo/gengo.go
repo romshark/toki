@@ -22,13 +22,12 @@ const TypePrefixCatalog = "catalog_"
 type Writer struct {
 	tokiVersion string
 
-	scan    *codeparse.Scan
-	msgIter iter.Seq[Message]
-	w       io.Writer      // Destination writer.
-	l       language.Tag   // Locale
-	m       string         // ICU message.
-	t       []icumsg.Token // ICU tokens.
-	i       int            // Current index in t.
+	scan *codeparse.Scan
+	w    io.Writer      // Destination writer.
+	l    language.Tag   // Locale
+	m    string         // ICU message.
+	t    []icumsg.Token // ICU tokens.
+	i    int            // Current index in t.
 
 	translatorVar string
 }
@@ -37,7 +36,6 @@ func NewWriter(tokiVersion string, scan *codeparse.Scan) *Writer {
 	return &Writer{
 		tokiVersion: tokiVersion,
 		scan:        scan,
-		msgIter:     newMsgIter(scan),
 	}
 }
 
@@ -63,21 +61,21 @@ type Message struct {
 	ICUTokens []icumsg.Token
 }
 
-func newMsgIter(scan *codeparse.Scan) iter.Seq[Message] {
-	var nativeCatalog *codeparse.Catalog
-	for c := range scan.Catalogs.Seq() {
-		if c.ARB.Locale == scan.DefaultLocale {
-			nativeCatalog = c
+func newMsgIter(scan *codeparse.Scan, locale language.Tag) iter.Seq[Message] {
+	var cat *codeparse.Catalog
+	for c := range scan.Catalogs.SeqRead() {
+		if c.ARB.Locale == locale {
+			cat = c
 			break
 		}
 	}
-	if nativeCatalog == nil {
+	if cat == nil {
 		return func(yield func(Message) bool) {}
 	}
 	return func(yield func(Message) bool) {
-		sorted := slices.Sorted(maps.Keys(nativeCatalog.ARB.Messages))
+		sorted := slices.Sorted(maps.Keys(cat.ARB.Messages))
 		for _, msgID := range sorted {
-			m := nativeCatalog.ARB.Messages[msgID]
+			m := cat.ARB.Messages[msgID]
 			txt := scan.Texts.At(scan.TextIndexByID.GetValue(msgID))
 			if !yield(Message{
 				ID:        txt.IDHash,
@@ -122,7 +120,7 @@ func (w *Writer) WritePackageBundle(
 	w.println("// Catalogs returns an iterator over all enabled catalogs.")
 	w.println("func Catalogs() iter.Seq[Reader] {")
 	w.println("return func(yield func(Reader) bool) {")
-	for c := range w.scan.Catalogs.Seq() {
+	for c := range w.scan.Catalogs.SeqRead() {
 		suffix := localeToCatalogSuffix(c.ARB.Locale)
 		typeName := TypePrefixCatalog + suffix
 		w.printf("if !yield(%s{}) { return }\n", typeName)
@@ -132,7 +130,7 @@ func (w *Writer) WritePackageBundle(
 	// TIKs
 	w.println("// TIKs")
 	w.printf("const (\n")
-	for msg := range w.msgIter {
+	for msg := range newMsgIter(w.scan, w.scan.DefaultLocale) {
 		w.printf("\t%s = `%s`\n", msg.ID, msg.TIK)
 	}
 	w.println(`)`)
@@ -164,10 +162,10 @@ func (w *Writer) WritePackageCatalog(
 	w.println("\tlanguage" + `"golang.org/x/text/language"`)
 	w.println(")") // End of imports.
 
-	w.writeCatalogType(w.msgIter)
+	w.writeCatalogType(locale)
 }
 
-func (w *Writer) writeCatalogType(msgIter iter.Seq[Message]) {
+func (w *Writer) writeCatalogType(locale language.Tag) {
 	localeCatalogSuffix := localeToCatalogSuffix(w.l)
 	w.translatorVar = fmt.Sprintf("tr_%s", localeCatalogSuffix)
 	w.printf("\n// This prevents the \"imported and not used\" error " +
@@ -175,6 +173,10 @@ func (w *Writer) writeCatalogType(msgIter iter.Seq[Message]) {
 	w.printf("var _ fmt.Formatter = nil\n")
 	w.printf("var _ time.Time\n")
 	w.printf("\nvar %s = locale.New()\n", w.translatorVar)
+
+	// Type definition.
+	localeVarName := "loc_" + localeCatalogSuffix
+	w.printf("var %s = language.MustParse(%q)\n", localeVarName, locale.String())
 
 	// Type definition.
 	catalogTypeName := TypePrefixCatalog + localeCatalogSuffix
@@ -185,14 +187,14 @@ func (w *Writer) writeCatalogType(msgIter iter.Seq[Message]) {
 	w.printf(
 		"var %s = map[string]func(w io.Writer, args ...any) (int, error) {\n",
 		writersMapName)
-	for msg := range msgIter {
+	for msg := range newMsgIter(w.scan, locale) {
 		w.writeFunc(msg.ID, msg.ICUMsg, msg.ICUTokens)
 	}
 	w.println(`}`)
 
 	// Method Locale.
-	w.printf("func (%s) Locale() language.Tag { return language.MustParse(%q) }\n\n",
-		catalogTypeName, localeCatalogSuffix)
+	w.printf("func (%s) Locale() language.Tag { return %s }\n\n",
+		catalogTypeName, localeVarName)
 
 	// Method Translator.
 	w.printf("func (%s) Translator() locales.Translator { return %s }\n\n",
@@ -204,7 +206,8 @@ func (w *Writer) writeCatalogType(msgIter iter.Seq[Message]) {
 	w.println(`b := poolBufGet()`)
 	w.println(`defer poolBufPut(b)`)
 	w.printf("f := %s[tik];\n", writersMapName)
-	w.println(`if f == nil { _, _ = MissingTranslation(b, tik, args...);`)
+	w.printf(`if f == nil { _, _ = MissingTranslation(b, %s, tik, args...);`,
+		localeVarName)
 	w.println(`} else { _, _ = f(b, args...);`)
 	w.println(`}`)
 	w.println(`return b.String()`)
@@ -215,7 +218,8 @@ func (w *Writer) writeCatalogType(msgIter iter.Seq[Message]) {
 		" (written int, err error) {\n",
 		catalogTypeName)
 	w.printf("f := %s[tik];\n", writersMapName)
-	w.println(`if f == nil { return MissingTranslation(writer, tik, args...) }`)
+	w.printf(`if f == nil { return MissingTranslation(writer, %s, tik, args...) };`,
+		localeVarName)
 	w.print("return f(writer, args...)")
 	w.print("}\n\n")
 }
