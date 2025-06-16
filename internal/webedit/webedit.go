@@ -64,6 +64,7 @@ func NewServer(host string) *Server {
 		))
 	m.Handle("GET /", http.HandlerFunc(s.handleGetIndex))
 	m.Handle("POST /set", http.HandlerFunc(s.handlePostSet))
+	m.Handle("POST /apply-changes", http.HandlerFunc(s.handlePostApplyChanges))
 	s.httpServer.Handler = m
 
 	return s
@@ -279,6 +280,7 @@ func (s *Server) newDataIndex(
 		Catalogs:          s.catalogs,
 		FilterTIKs:        filterType,
 		CatalogsDisplayed: make([]*template.Catalog, 0, len(hideCatalogLocales)),
+		CanApplyChanges:   s.canApplyChanges(),
 	}
 	for _, cat := range s.catalogs {
 		if !isCatalogHidden(cat.Locale) {
@@ -396,6 +398,28 @@ func (s *Server) newDataIndex(
 		}
 	}
 	return data
+}
+
+func (s *Server) canApplyChanges() bool {
+	for _, c := range s.changed {
+		if c.Error != "" {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *Server) handlePostApplyChanges(w http.ResponseWriter, r *http.Request) {
+	if !s.canApplyChanges() {
+		http.Error(w, "can't apply changes", http.StatusBadRequest)
+		return
+	}
+
+	// TODO
+	fmt.Println("APPLY CHANGES")
+
+	w.Header().Set("HX-Redirect", "/")
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func noCacheHeaders(w http.ResponseWriter) {

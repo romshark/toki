@@ -320,7 +320,12 @@ templ viewIndex(data DataIndex) {
 @htmlMain() {
 	<sidebar>
 		if data.TotalChanges > 0 {
-			<button hx-post="/apply-changes" class="apply-changes">
+			<button
+				hx-post="/apply-changes"
+				if !data.CanApplyChanges {
+					disabled
+				}
+				class="apply-changes">
 				Apply Changes ({ data.TotalChanges })
 			</button>
 			<hr>

@@ -58,6 +58,7 @@ type DataIndex struct {
 	NumIncomplete     int
 	NumInvalid        int
 	TotalChanges      int
+	CanApplyChanges   bool
 }
 
 func RenderPageIndex(w http.ResponseWriter, r *http.Request, data DataIndex) {
