@@ -100,6 +100,17 @@ type Catalog struct {
 	ARBFileName string
 }
 
+func NewScan(defaultLocale language.Tag, tokiVersion string) *Scan {
+	return &Scan{
+		DefaultLocale: defaultLocale,
+		TokiVersion:   tokiVersion,
+		Texts:         sync.NewSlice[Text](0),
+		TextIndexByID: sync.NewMap[string, int](0),
+		SourceErrors:  sync.NewSlice[SourceError](0),
+		Catalogs:      sync.NewSlice[*Catalog](0),
+	}
+}
+
 type Scan struct {
 	Statistics
 	TokiVersion   string
@@ -111,9 +122,7 @@ type Scan struct {
 }
 
 func (p *Parser) Parse(
-	env []string, pathPattern, bundlePkgPath string,
-	locale language.Tag,
-	trimpath bool,
+	env []string, pathPattern, bundlePkgPath string, trimpath bool,
 ) (scan *Scan, err error) {
 	fset := token.NewFileSet()
 
@@ -159,7 +168,7 @@ func (p *Parser) Parse(
 		}
 		scan.DefaultLocale = defaultLocale
 
-		err = p.collectARBFiles(pkgBundle.Dir, scan)
+		err = p.CollectARBFiles(pkgBundle.Dir, scan)
 		if err != nil {
 			return scan, fmt.Errorf("searching .arb files: %w", err)
 		}
@@ -215,7 +224,7 @@ func ICUSelectOptions(argName string) (
 	return nil, 0, 0
 }
 
-func (p *Parser) collectARBFiles(bundlePkgDir string, scan *Scan) error {
+func (p *Parser) CollectARBFiles(bundlePkgDir string, scan *Scan) error {
 	return forFileInDir(bundlePkgDir, func(fileName string) error {
 		if filepath.Ext(fileName) != ".arb" {
 			return nil
