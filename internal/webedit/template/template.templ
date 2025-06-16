@@ -1,9 +1,8 @@
 package template
 
 import (
-	"strconv"
-	"iter"
 	"slices"
+	"fmt"
 )
 
 templ htmlMain() {
@@ -29,8 +28,20 @@ templ htmlMain() {
 			font-family: sans-serif;
 		}
 
-		a.selected {
+		hr {
+			width: 100%;
+			border: 0;
+			border-bottom: 1px solid rgba(0,0,0,.1)
+		}
+
+		button, input[type="submit"], textarea, .message-changed,
+			.message-empty, .message-incomplete, .message-error {
+			border-radius: .2rem;
+		}
+
+		.selected {
 			font-weight: bold;
+			color: black;
 		}
 
 		textarea {
@@ -51,7 +62,7 @@ templ htmlMain() {
 		}
 
 		sidebar {
-			min-width: 10rem;
+			min-width: 8rem;
 			display: flex;
 			flex-direction: column;
 			padding: 1rem;
@@ -92,30 +103,23 @@ templ htmlMain() {
 			margin-left: .5rem;
 		}
 
+		sidebar .apply-changes {
+			background-color: lightgreen;
+		}
+
 		main {
 			padding: 1rem;
 			display: flex;
 			flex-direction: column;
-			gap: 2rem;
 			flex-grow: 1;
 			overflow: auto;
-		}
-
-		.changes button {
-			padding: .5rem;
-			padding-left: 1rem;
-			padding-right: 1rem;
-			border-radius: .2rem;
-			background-color: lightgreen;
-			cursor: pointer;
 		}
 
 		main .contents {
 			display: flex;
 			flex-direction: column;
-			gap: 2rem;
+			gap: 1rem;
 			height: fit-content;
-			min-height: 100%;
 		}
 
 		main .contents .no-results {
@@ -123,7 +127,7 @@ templ htmlMain() {
 			flex-direction: column;
 			justify-content: center;
 			align-items: center;
-			height: 100%;
+			min-height: 10rem;
 		}
 
 		form {
@@ -169,7 +173,6 @@ templ htmlMain() {
 			max-width: 100%;
 			display: flex;
 			flex-direction: column;
-			gap: 1rem;
 			border: 1px solid rgba(0, 0, 0, .3);
 			border-radius: .2rem;
 		}
@@ -178,7 +181,6 @@ templ htmlMain() {
 			display: flex;
 			flex-direction: column;
 			padding: 1rem;
-			gap: 1rem;
 			background-color: rgba(0,0,0,0.03);
 		}
 
@@ -209,8 +211,23 @@ templ htmlMain() {
 		}
 
 		.message-incomplete, .message-empty {
-			padding: 1rem;
+			padding: .5rem;
 			background-color: beige;
+		}
+
+		.message-changed {
+			padding: .5rem;
+			background-color: lightblue;
+		}
+
+		.message-error {
+			padding: .5rem;
+			background-color: #ffc1c1;
+		}
+
+		.message-changed .no-translation {
+			font-style: italic;
+			opacity: 0.5;
 		}
 
 		.message-incomplete ul {
@@ -227,6 +244,10 @@ templ htmlMain() {
 
 			a {
 				color: #8f8fff;
+			}
+
+			hr {
+				border-color: rgba(255,255,255,0.1);
 			}
 
 			textarea,
@@ -261,6 +282,23 @@ templ htmlMain() {
 			.message-incomplete, .message-empty {
 				background-color: #4c4c10;
 			}
+
+			.message-changed {
+				background-color: #00212c;
+			}
+
+			.message-error {
+				background-color: darkred;
+			}
+
+			.selected {
+				font-weight: bold;
+				color: white;
+			}
+
+			sidebar .apply-changes {
+				background-color: darkgreen;
+			}
 		}
 	</style>
 </head>
@@ -272,25 +310,21 @@ templ htmlMain() {
 </html>
 }
 
-templ pageIndex(
-	tiks iter.Seq[TIK], catalogs []*Catalog, catalogsDisplayed []*Catalog,
-	filterTIKs FilterTIKs,
-	numChanges, numAll, numEmpty, numComplete, numIncomplete, numInvalid int,
-) {
+templ pageIndex(data DataIndex) {
 @htmlMain() {
-	@viewIndex(tiks, catalogs, catalogsDisplayed, filterTIKs,
-		numChanges, numAll, numEmpty, numComplete, numIncomplete, numInvalid,
-	)
+	@viewIndex(data)
 }
 }
 
-templ viewIndex(
-	tiks iter.Seq[TIK], catalogs []*Catalog, catalogsDisplayed []*Catalog,
-	filterTIKs FilterTIKs,
-	numChanges, numAll, numEmpty, numComplete, numIncomplete, numInvalid int,
-) {
+templ viewIndex(data DataIndex) {
 @htmlMain() {
 	<sidebar>
+		if data.TotalChanges > 0 {
+			<button hx-post="/apply-changes" class="apply-changes">
+				Apply Changes ({ data.TotalChanges })
+			</button>
+			<hr>
+		}
 		<form id="filters"
 			method="get"
 			hx-get="/"
@@ -298,100 +332,72 @@ templ viewIndex(
 			hx-target="body"
 			hx-push-url="true">
 			<h1>Toki Edit</h1>
-			<div class="changes">
-				if numChanges > 0 {
-					<button>
-						✅ Apply { strconv.FormatInt(int64(numChanges), 10) } Changes
-					</button>
+			<div>
+				for _, catalog := range data.Catalogs {
+					<label>
+						<input
+							type="checkbox"
+							name="hl"
+							value={catalog.Locale}
+							if !slices.Contains(data.CatalogsDisplayed, catalog) {
+								checked
+							}>
+						<span>
+							hide { catalog.Locale }
+							if catalog.Default {
+								(Default)
+							}
+						</span>
+					</label>
 				}
 			</div>
+			<hr>
 			<div>
-				<label>
-					<input
-						type="radio" name="t" value="all"
-						if filterTIKs == FilterTIKsAll {
-							checked class="selected"
-						}>
-					<span>All ({ numAll })</span>
-				</label>
-				<label>
-					<input
-						type="radio" name="t" value="complete"
-						if filterTIKs == FilterTIKsComplete {
-							checked class="selected"
-						}>
-					<span>Complete ({ numComplete })</span>
-				</label>
-				<label>
-					<input
-						type="radio" name="t" value="incomplete"
-						if filterTIKs == FilterTIKsIncomplete {
-							checked class="selected"
-						}>
-					<span>Incomplete ({ numIncomplete })</span>
-				</label>
-				<label>
-					<input
-						type="radio" name="t" value="empty"
-						if filterTIKs == FilterTIKsEmpty {
-							checked class="selected"
-						}>
-					<span>Empty ({ numEmpty })</span>
-				</label>
-				<label>
-					<input
-						type="radio" name="t" value="invalid"
-						if filterTIKs == FilterTIKsInvalid {
-							checked class="selected"
-						}>
-					<span>Invalid ({ numInvalid })</span>
-				</label>
-			</div>
-			<div>
-				<h2>Hide Catalogs</h2>
-				for _, catalog := range catalogs {
-					if !catalog.Default {
-						<label>
-							<input
-								type="checkbox"
-								name="hl"
-								value={catalog.Locale}
-								if !slices.Contains(catalogsDisplayed, catalog) {
-									checked
-								}>
-							<span>hide { catalog.Locale }</span>
-						</label>
-					}
-				}
+				@fragmentRadioOption(data.FilterTIKs == FilterTIKsAll,
+					"t", "all", fmt.Sprintf("All (%d)", data.NumAll))
+				@fragmentRadioOption(data.FilterTIKs == FilterTIKsChanged,
+					"t", "changed", fmt.Sprintf("Changed (%d)", data.NumChanged))
+				@fragmentRadioOption(data.FilterTIKs == FilterTIKsComplete,
+					"t", "complete", fmt.Sprintf("Complete (%d)", data.NumComplete))
+				@fragmentRadioOption(data.FilterTIKs == FilterTIKsIncomplete,
+					"t", "incomplete", fmt.Sprintf("Incomplete (%d)", data.NumIncomplete))
+				@fragmentRadioOption(data.FilterTIKs == FilterTIKsEmpty,
+					"t", "empty", fmt.Sprintf("Empty (%d)", data.NumEmpty))
+				@fragmentRadioOption(data.FilterTIKs == FilterTIKsInvalid,
+					"t", "invalid", fmt.Sprintf("Invalid (%d)", data.NumInvalid))
 			</div>
 		</form>
 	</sidebar>
 	<main>
 		<div class="contents">
 			switch {
-			case filterTIKs == FilterTIKsAll && numAll == 0:
+			case data.FilterTIKs == FilterTIKsAll && data.NumAll == 0:
 				<div class="no-results">
 					No TIKs found.
 				</div>
-			case filterTIKs == FilterTIKsEmpty && numEmpty == 0:
+			case data.FilterTIKs == FilterTIKsChanged && data.NumChanged == 0:
+				<div class="no-results">
+					No changes.
+				</div>
+			case data.FilterTIKs == FilterTIKsEmpty && data.NumEmpty == 0:
 				<div class="no-results">
 					No empty translations 🤩
 				</div>
-			case filterTIKs == FilterTIKsComplete && numComplete == 0:
+			case data.FilterTIKs == FilterTIKsComplete && data.NumComplete == 0:
 				<div class="no-results">
 					No complete TIKs found.
 				</div>
-			case filterTIKs == FilterTIKsIncomplete && numIncomplete == 0:
+			case data.FilterTIKs == FilterTIKsIncomplete && data.NumIncomplete == 0:
 				<div class="no-results">
 					All TIKs are complete 🤩
 				</div>
-			case filterTIKs == FilterTIKsInvalid && numInvalid == 0:
+			case data.FilterTIKs == FilterTIKsInvalid && data.NumInvalid == 0:
 				<div class="no-results">
 					All TIKs are valid 🤩
 				</div>
 			}
-			for tik := range tiks {
-				@section(tik, catalogsDisplayed)
+			for tik := range data.TIKs {
+				@section(tik, data.CatalogsDisplayed)
 			}
 		</div>
 	</main>
@@ -412,43 +418,79 @@ templ section(tik TIK, catalogsDisplayed []*Catalog) {
 				</label>
 			}
 		</header>
-		<ol>
-			for _, msg := range tik.ICU {
-				<li class="icu-message">
-					<form>
-						<label>
-							if isCatalogDefault(catalogsDisplayed, msg.Locale) {
-								<span>ICU Message [{ msg.Locale } - Default]</span>
-							} else {
-								<span>ICU Message [{ msg.Locale }]</span>
-							}
-							<textarea placeholder="No translation">
-								{ msg.Message }
-							</textarea>
-						</label>
-						if msg.Message == "" {
-							<span class="message-empty">⚠️ Missing Translation</span>
-						}
-						if msg.Error != "" {
-							<label>
-								<span>🚫 Message Invalid</span>
-								<p>{ msg.Error }</p>
-							</label>
-						}
-						if len(msg.IncompleteReports) > 0 {
-							<label class="message-incomplete">
-								<span>⚠️ Message Incomplete</span>
-								<ul>
-									for _, r := range msg.IncompleteReports {
-										<li>{ r }</li>
-									}
-								</ul>
-							</label>
-						}
-						<input type="submit" value="Save">
-					</form>
-				</li>
-			}
-		</ol>
+		if len(tik.ICU) > 0 {
+			<ol>
+				for _, msg := range tik.ICU {
+					<li class="icu-message">
+						@fragmentICUMessage(tik.ID, msg)
+					</li>
+				}
+			</ol>
+		}
 	</section>
+}
+
+templ fragmentICUMessage(tikID string, msg *ICUMessage) {
+	<form hx-post="/set">
+		<input type="hidden" name="locale" value={msg.Catalog.Locale}>
+		<input type="hidden" name="id" value={tikID}>
+		<label>
+			if msg.Catalog.Default {
+				<span>
+					ICU Message [{ msg.Catalog.Locale } - Default]
+				</span>
+			} else {
+				<span>
+					ICU Message [{ msg.Catalog.Locale }]
+				</span>
+			}
+			<textarea
+				placeholder="No translation"
+				name="icumsg">{ msg.Message }</textarea>
+		</label>
+		if msg.Changed {
+			<label class="message-changed">
+				<span>Original Message</span>
+				if msg.MessageOriginal != "" {
+					<p>{ msg.MessageOriginal }</p>
+				} else {
+					<p class="no-translation">No translation</p>
+				}
+			</label>
+		}
+		if msg.Message == "" {
+			<span class="message-empty">⚠️ Missing Translation</span>
+		}
+		if msg.Error != "" {
+			<label class="message-error">
+				<span>🚫 Error</span>
+				<p>{ msg.Error }</p>
+			</label>
+		}
+		if len(msg.IncompleteReports) > 0 {
+			<label class="message-incomplete">
+				<span>⚠️ Message Incomplete</span>
+				<ul>
+					for _, r := range msg.IncompleteReports {
+						<li>{ r }</li>
+					}
+				</ul>
+			</label>
+		}
+		<input type="submit" value="Save">
+	</form>
+}
+
+templ fragmentRadioOption(isSelected bool, name, value, label string) {
+	<label
+		if isSelected {
+			class="selected"
+		}>
+		<input
+			type="radio" name={name} value={value}
+			if isSelected {
+				checked
+			}>
+		<span>{label}</span>
+	</label>
 }

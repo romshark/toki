@@ -1,0 +1,77 @@
+{
+	"@@locale": "en",
+	"@@last_modified": "2025-06-16T00:23:00+02:00",
+	"@@x-generator": "github.com/romshark/toki",
+	"@@x-generator-version": "0.8.0",
+	"msg62489e1e07578e6e": "Nothing found in folder {var0}",
+	"@msg62489e1e07578e6e": {
+		"placeholders": {
+			"var0": {
+				"type": "String",
+				"description": "arbitrary string"
+			}
+		},
+		"type": "text"
+	},
+	"msg6aa44c2f549ae5e8": "translated text",
+	"@msg6aa44c2f549ae5e8": {
+		"type": "text"
+	},
+	"msgd2497314df5ae7e6": "It was finished on {var0, date, full} at {var1, time, full}",
+	"@msgd2497314df5ae7e6": {
+		"placeholders": {
+			"var0": {
+				"type": "DateTime",
+				"description": "date",
+				"isCustomDateFormat": true
+			},
+			"var1": {
+				"type": "DateTime",
+				"description": "time",
+				"isCustomDateFormat": true
+			}
+		},
+		"type": "text"
+	},
+	"msgdc0a1830b671625c": "searched {var0, plural, other {# files}} in {var1, plural, other {# folders}}",
+	"@msgdc0a1830b671625c": {
+		"placeholders": {
+			"var0": {
+				"type": "num",
+				"description": "cardinal plural",
+				"example": "2"
+			},
+			"var1": {
+				"type": "num",
+				"description": "cardinal plural",
+				"example": "2"
+			}
+		},
+		"type": "text"
+	},
+	"msgf5b4499f95971294": "{var0, plural, other {# projects were}} finished on {var1, date, full} at {var2, time, full} by {var3}",
+	"@msgf5b4499f95971294": {
+		"placeholders": {
+			"var0": {
+				"type": "num",
+				"description": "cardinal plural",
+				"example": "2"
+			},
+			"var1": {
+				"type": "DateTime",
+				"description": "date",
+				"isCustomDateFormat": true
+			},
+			"var2": {
+				"type": "DateTime",
+				"description": "time",
+				"isCustomDateFormat": true
+			},
+			"var3": {
+				"type": "String",
+				"description": "arbitrary string with gender information"
+			}
+		},
+		"type": "text"
+	}
+}

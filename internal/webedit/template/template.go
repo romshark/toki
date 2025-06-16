@@ -11,6 +11,7 @@ type FilterTIKs int8
 
 const (
 	FilterTIKsAll FilterTIKs = iota
+	FilterTIKsChanged
 	FilterTIKsEmpty
 	FilterTIKsComplete
 	FilterTIKsIncomplete
@@ -18,17 +19,26 @@ const (
 )
 
 type ICUMessage struct {
-	Locale            string
+	IncompleteReports []string
 	Message           string
 	Error             string
-	IncompleteReports []string
+
+	// MessageOriginal holds the original value before the change.
+	// This is only relevant when Changed == true.
+	MessageOriginal string
+
+	Catalog *Catalog
+
+	// Changed is true when there was a change to this message.
+	// In that case MessageOriginal holds the original message value.
+	Changed bool
 }
 
 type TIK struct {
 	ID          string
 	TIK         string
 	Description string
-	ICU         []ICUMessage
+	ICU         []*ICUMessage
 }
 
 type Catalog struct {
@@ -41,53 +51,33 @@ type DataIndex struct {
 	Catalogs          []*Catalog
 	CatalogsDisplayed []*Catalog
 	FilterTIKs        FilterTIKs
-	NumChanges        int
 	NumAll            int
+	NumChanged        int
 	NumEmpty          int
 	NumComplete       int
 	NumIncomplete     int
 	NumInvalid        int
+	TotalChanges      int
 }
 
 func RenderPageIndex(w http.ResponseWriter, r *http.Request, data DataIndex) {
-	if err := viewIndex(
-		data.TIKs,
-		data.Catalogs,
-		data.CatalogsDisplayed,
-		data.FilterTIKs,
-		data.NumChanges,
-		data.NumAll,
-		data.NumEmpty,
-		data.NumComplete,
-		data.NumIncomplete,
-		data.NumInvalid,
-	).Render(r.Context(), w); err != nil {
+	if err := viewIndex(data).Render(r.Context(), w); err != nil {
 		log.Error("rendering page index", err)
 	}
 }
 
 func RenderViewIndex(w http.ResponseWriter, r *http.Request, data DataIndex) {
-	if err := pageIndex(
-		data.TIKs,
-		data.Catalogs,
-		data.CatalogsDisplayed,
-		data.FilterTIKs,
-		data.NumChanges,
-		data.NumAll,
-		data.NumEmpty,
-		data.NumComplete,
-		data.NumIncomplete,
-		data.NumInvalid,
-	).Render(r.Context(), w); err != nil {
-		log.Error("rendering page index", err)
+	if err := viewIndex(data).Render(r.Context(), w); err != nil {
+		log.Error("rendering view index", err)
 	}
 }
 
-func isCatalogDefault(catalogs []*Catalog, locale string) bool {
-	for _, c := range catalogs {
-		if c.Locale == locale {
-			return c.Default
-		}
+func RenderFragmentICUMessage(
+	w http.ResponseWriter, r *http.Request,
+	tikID string, msg *ICUMessage,
+) {
+	c := fragmentICUMessage(tikID, msg)
+	if err := c.Render(r.Context(), w); err != nil {
+		log.Error("rendering fragment icu message", err)
 	}
-	return false
 }

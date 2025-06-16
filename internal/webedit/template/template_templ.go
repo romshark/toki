@@ -9,9 +9,8 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"iter"
+	"fmt"
 	"slices"
-	"strconv"
 )
 
 func htmlMain() templ.Component {
@@ -35,7 +34,7 @@ func htmlMain() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html><head><title>Toki</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta charset=\"UTF-8\"><meta name=\"description\" content=\"Toki web GUI for editing catalogs\"><script src=\"/static/htmx_min.js\"></script><style>\n\t\thtml {\n\t\t\theight: 100%;\n\t\t}\n\n\t\tbody {\n\t\t\tmargin: 0;\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: row;\n\t\t\theight: 100%;\n\t\t\tfont-family: sans-serif;\n\t\t}\n\n\t\ta.selected {\n\t\t\tfont-weight: bold;\n\t\t}\n\n\t\ttextarea {\n\t\t\tresize: vertical;\n\t\t\tmax-block-size: 20lh;\n\t\t}\n\n\t\tinput,\n\t\ttextarea,\n\t\tbutton {\n\t\t\tborder: none;\n\t\t\tpadding: .3rem;\n\t\t}\n\n\t\t.tik {\n\t\t\tfont-size: 1.4rem;\n\t\t\tline-height: 1.8rem;\n\t\t}\n\n\t\tsidebar {\n\t\t\tmin-width: 10rem;\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tpadding: 1rem;\n\t\t\tgap: 1rem;\n\t\t\toverflow: auto;\n\t\t}\n\n\t\tsidebar a {\n\t\t\ttext-decoration: none;\n\t\t}\n\n\t\tsidebar > div {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tgap: .2rem;\n\t\t}\n\n\t\tsidebar h1 {\n\t\t\tfont-size: 1.2rem;\n\t\t}\n\n\t\tsidebar h2 {\n\t\t\tfont-size: 1rem;\n\t\t}\n\n\t\tsidebar label input {\n\t\t\tmargin: 0;\n\t\t}\n\n\t\tsidebar label {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: row;\n\t\t\theight: 1.5rem;\n\t\t\talign-items: center;\n\t\t}\n\n\t\tsidebar label span {\n\t\t\tmargin-left: .5rem;\n\t\t}\n\n\t\tmain {\n\t\t\tpadding: 1rem;\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tgap: 2rem;\n\t\t\tflex-grow: 1;\n\t\t\toverflow: auto;\n\t\t}\n\n\t\t.changes button {\n\t\t\tpadding: .5rem;\n\t\t\tpadding-left: 1rem;\n\t\t\tpadding-right: 1rem;\n\t\t\tborder-radius: .2rem;\n\t\t\tbackground-color: lightgreen;\n\t\t\tcursor: pointer;\n\t\t}\n\n\t\tmain .contents {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tgap: 2rem;\n\t\t\theight: fit-content;\n\t\t\tmin-height: 100%;\n\t\t}\n\n\t\tmain .contents .no-results {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tjustify-content: center;\n\t\t\talign-items: center;\n\t\t\theight: 100%;\n\t\t}\n\n\t\tform {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tgap: .5rem;\n\t\t}\n\n\t\tlabel {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t}\n\n\t\tlabel>span {\n\t\t\tfont-weight: bold;\n\t\t\tfont-size: .8rem;\n\t\t}\n\n\t\tsection label>span {\n\t\t\tmargin-bottom: .5rem;\n\t\t}\n\n\t\tlabel .msg-id {\n\t\t\tdisplay: inline;\n\t\t\tmargin-left: .5rem;\n\t\t\tcolor: grey;\n\t\t}\n\n\t\tlabel p {\n\t\t\tmargin: 0;\n\t\t}\n\n\t\t.error {\n\t\t\tbackground: rgba(255, 0, 0, .3);\n\t\t\tcolor: black;\n\t\t\tpadding: .5rem;\n\t\t\tborder-radius: .2rem;\n\t\t\twidth: fit-content;\n\t\t\tmargin-top: .25rem;\n\t\t}\n\n\t\tmain section {\n\t\t\tmax-width: 100%;\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tgap: 1rem;\n\t\t\tborder: 1px solid rgba(0, 0, 0, .3);\n\t\t\tborder-radius: .2rem;\n\t\t}\n\n\t\tmain section>header {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tpadding: 1rem;\n\t\t\tgap: 1rem;\n\t\t\tbackground-color: rgba(0,0,0,0.03);\n\t\t}\n\n\t\tmain section ol {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: row;\n\t\t\tgap: 1rem;\n\t\t\toverflow: scroll;\n\t\t\tlist-style: none;\n\t\t\tmargin: 0;\n\t\t\tpadding: 1rem;\n\t\t\tmax-width: 100%;\n\t\t\tposition: relative;\n\t\t}\n\n\t\tmain section .icu-message {\n\t\t\tmin-width: 24rem;\n\t\t\tflex-grow: 1;\n\t\t}\n\n\t\tmain section li>div {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: row;\n\t\t\tjustify-content: left;\n\t\t\talign-items: center;\n\t\t\tgap: 1rem;\n\t\t\tmargin-bottom: 1rem;\n\t\t}\n\n\t\t.message-incomplete, .message-empty {\n\t\t\tpadding: 1rem;\n\t\t\tbackground-color: beige;\n\t\t}\n\n\t\t.message-incomplete ul {\n\t\t\tpadding: 0;\n\t\t\tpadding-left: 1rem;\n\t\t\tbox-sizing: border-box;\n\t\t}\n\n\t\t@media (prefers-color-scheme: dark) {\n\t\t\tbody {\n\t\t\t\tbackground-color: black;\n\t\t\t\tcolor: white;\n\t\t\t}\n\n\t\t\ta {\n\t\t\t\tcolor: #8f8fff;\n\t\t\t}\n\n\t\t\ttextarea,\n\t\t\tbutton {\n\t\t\t\tbackground-color: rgba(255, 255, 255, .15);\n\t\t\t\tcolor: white;\n\t\t\t\tborder: 1px solid grey;\n\t\t\t}\n\n\t\t\tinput[type=\"submit\"] {\n\t\t\t\tbackground-color: rgba(255, 255, 255, .15);\n\t\t\t\tcolor: white;\n\t\t\t}\n\n\t\t\tmain section {\n\t\t\t\tborder: 1px solid rgba(255, 255, 255, 0.3);\n\t\t\t}\n\n\t\t\tmain section>header {\n\t\t\t\tbackground-color: rgba(255, 255, 255, 0.11);\n\t\t\t}\n\n\t\t\tlabel>span {\n\t\t\t\tcolor: rgba(255, 255, 255, .5);\n\t\t\t}\n\n\t\t\t.error {\n\t\t\t\tbackground: rgba(255, 0, 0, .7);\n\t\t\t\tcolor: white;\n\t\t\t}\n\n\t\t\t.message-incomplete, .message-empty {\n\t\t\t\tbackground-color: #4c4c10;\n\t\t\t}\n\t\t}\n\t</style></head><body>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html><head><title>Toki</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta charset=\"UTF-8\"><meta name=\"description\" content=\"Toki web GUI for editing catalogs\"><script src=\"/static/htmx_min.js\"></script><style>\n\t\thtml {\n\t\t\theight: 100%;\n\t\t}\n\n\t\tbody {\n\t\t\tmargin: 0;\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: row;\n\t\t\theight: 100%;\n\t\t\tfont-family: sans-serif;\n\t\t}\n\n\t\thr {\n\t\t\twidth: 100%;\n\t\t\tborder: 0;\n\t\t\tborder-bottom: 1px solid rgba(0,0,0,.1)\n\t\t}\n\n\t\tbutton, input[type=\"submit\"], textarea, .message-changed,\n\t\t\t.message-empty, .message-incomplete, .message-error {\n\t\t\tborder-radius: .2rem;\n\t\t}\n\n\t\t.selected {\n\t\t\tfont-weight: bold;\n\t\t\tcolor: black;\n\t\t}\n\n\t\ttextarea {\n\t\t\tresize: vertical;\n\t\t\tmax-block-size: 20lh;\n\t\t}\n\n\t\tinput,\n\t\ttextarea,\n\t\tbutton {\n\t\t\tborder: none;\n\t\t\tpadding: .3rem;\n\t\t}\n\n\t\t.tik {\n\t\t\tfont-size: 1.4rem;\n\t\t\tline-height: 1.8rem;\n\t\t}\n\n\t\tsidebar {\n\t\t\tmin-width: 8rem;\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tpadding: 1rem;\n\t\t\tgap: 1rem;\n\t\t\toverflow: auto;\n\t\t}\n\n\t\tsidebar a {\n\t\t\ttext-decoration: none;\n\t\t}\n\n\t\tsidebar > div {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tgap: .2rem;\n\t\t}\n\n\t\tsidebar h1 {\n\t\t\tfont-size: 1.2rem;\n\t\t}\n\n\t\tsidebar h2 {\n\t\t\tfont-size: 1rem;\n\t\t}\n\n\t\tsidebar label input {\n\t\t\tmargin: 0;\n\t\t}\n\n\t\tsidebar label {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: row;\n\t\t\theight: 1.5rem;\n\t\t\talign-items: center;\n\t\t}\n\n\t\tsidebar label span {\n\t\t\tmargin-left: .5rem;\n\t\t}\n\n\t\tsidebar .apply-changes {\n\t\t\tbackground-color: lightgreen;\n\t\t}\n\n\t\tmain {\n\t\t\tpadding: 1rem;\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tflex-grow: 1;\n\t\t\toverflow: auto;\n\t\t}\n\n\t\tmain .contents {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tgap: 1rem;\n\t\t\theight: fit-content;\n\t\t}\n\n\t\tmain .contents .no-results {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tjustify-content: center;\n\t\t\talign-items: center;\n\t\t\tmin-height: 10rem;\n\t\t}\n\n\t\tform {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tgap: .5rem;\n\t\t}\n\n\t\tlabel {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t}\n\n\t\tlabel>span {\n\t\t\tfont-weight: bold;\n\t\t\tfont-size: .8rem;\n\t\t}\n\n\t\tsection label>span {\n\t\t\tmargin-bottom: .5rem;\n\t\t}\n\n\t\tlabel .msg-id {\n\t\t\tdisplay: inline;\n\t\t\tmargin-left: .5rem;\n\t\t\tcolor: grey;\n\t\t}\n\n\t\tlabel p {\n\t\t\tmargin: 0;\n\t\t}\n\n\t\t.error {\n\t\t\tbackground: rgba(255, 0, 0, .3);\n\t\t\tcolor: black;\n\t\t\tpadding: .5rem;\n\t\t\tborder-radius: .2rem;\n\t\t\twidth: fit-content;\n\t\t\tmargin-top: .25rem;\n\t\t}\n\n\t\tmain section {\n\t\t\tmax-width: 100%;\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tborder: 1px solid rgba(0, 0, 0, .3);\n\t\t\tborder-radius: .2rem;\n\t\t}\n\n\t\tmain section>header {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: column;\n\t\t\tpadding: 1rem;\n\t\t\tbackground-color: rgba(0,0,0,0.03);\n\t\t}\n\n\t\tmain section ol {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: row;\n\t\t\tgap: 1rem;\n\t\t\toverflow: scroll;\n\t\t\tlist-style: none;\n\t\t\tmargin: 0;\n\t\t\tpadding: 1rem;\n\t\t\tmax-width: 100%;\n\t\t\tposition: relative;\n\t\t}\n\n\t\tmain section .icu-message {\n\t\t\tmin-width: 24rem;\n\t\t\tflex-grow: 1;\n\t\t}\n\n\t\tmain section li>div {\n\t\t\tdisplay: flex;\n\t\t\tflex-direction: row;\n\t\t\tjustify-content: left;\n\t\t\talign-items: center;\n\t\t\tgap: 1rem;\n\t\t\tmargin-bottom: 1rem;\n\t\t}\n\n\t\t.message-incomplete, .message-empty {\n\t\t\tpadding: .5rem;\n\t\t\tbackground-color: beige;\n\t\t}\n\n\t\t.message-changed {\n\t\t\tpadding: .5rem;\n\t\t\tbackground-color: lightblue;\n\t\t}\n\n\t\t.message-error {\n\t\t\tpadding: .5rem;\n\t\t\tbackground-color: #ffc1c1;\n\t\t}\n\n\t\t.message-changed .no-translation {\n\t\t\tfont-style: italic;\n\t\t\topacity: 0.5;\n\t\t}\n\n\t\t.message-incomplete ul {\n\t\t\tpadding: 0;\n\t\t\tpadding-left: 1rem;\n\t\t\tbox-sizing: border-box;\n\t\t}\n\n\t\t@media (prefers-color-scheme: dark) {\n\t\t\tbody {\n\t\t\t\tbackground-color: black;\n\t\t\t\tcolor: white;\n\t\t\t}\n\n\t\t\ta {\n\t\t\t\tcolor: #8f8fff;\n\t\t\t}\n\n\t\t\thr {\n\t\t\t\tborder-color: rgba(255,255,255,0.1);\n\t\t\t}\n\n\t\t\ttextarea,\n\t\t\tbutton {\n\t\t\t\tbackground-color: rgba(255, 255, 255, .15);\n\t\t\t\tcolor: white;\n\t\t\t\tborder: 1px solid grey;\n\t\t\t}\n\n\t\t\tinput[type=\"submit\"] {\n\t\t\t\tbackground-color: rgba(255, 255, 255, .15);\n\t\t\t\tcolor: white;\n\t\t\t}\n\n\t\t\tmain section {\n\t\t\t\tborder: 1px solid rgba(255, 255, 255, 0.3);\n\t\t\t}\n\n\t\t\tmain section>header {\n\t\t\t\tbackground-color: rgba(255, 255, 255, 0.11);\n\t\t\t}\n\n\t\t\tlabel>span {\n\t\t\t\tcolor: rgba(255, 255, 255, .5);\n\t\t\t}\n\n\t\t\t.error {\n\t\t\t\tbackground: rgba(255, 0, 0, .7);\n\t\t\t\tcolor: white;\n\t\t\t}\n\n\t\t\t.message-incomplete, .message-empty {\n\t\t\t\tbackground-color: #4c4c10;\n\t\t\t}\n\n\t\t\t.message-changed {\n\t\t\t\tbackground-color: #00212c;\n\t\t\t}\n\n\t\t\t.message-error {\n\t\t\t\tbackground-color: darkred;\n\t\t\t}\n\n\t\t\t.selected {\n\t\t\t\tfont-weight: bold;\n\t\t\t\tcolor: white;\n\t\t\t}\n\n\t\t\tsidebar .apply-changes {\n\t\t\t\tbackground-color: darkgreen;\n\t\t\t}\n\t\t}\n\t</style></head><body>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -51,11 +50,7 @@ func htmlMain() templ.Component {
 	})
 }
 
-func pageIndex(
-	tiks iter.Seq[TIK], catalogs []*Catalog, catalogsDisplayed []*Catalog,
-	filterTIKs FilterTIKs,
-	numChanges, numAll, numEmpty, numComplete, numIncomplete, numInvalid int,
-) templ.Component {
+func pageIndex(data DataIndex) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -88,9 +83,7 @@ func pageIndex(
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = viewIndex(tiks, catalogs, catalogsDisplayed, filterTIKs,
-				numChanges, numAll, numEmpty, numComplete, numIncomplete, numInvalid,
-			).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = viewIndex(data).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -104,11 +97,7 @@ func pageIndex(
 	})
 }
 
-func viewIndex(
-	tiks iter.Seq[TIK], catalogs []*Catalog, catalogsDisplayed []*Catalog,
-	filterTIKs FilterTIKs,
-	numChanges, numAll, numEmpty, numComplete, numIncomplete, numInvalid int,
-) templ.Component {
+func viewIndex(data DataIndex) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -141,230 +130,162 @@ func viewIndex(
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<sidebar><form id=\"filters\" method=\"get\" hx-get=\"/\" hx-trigger=\"change\" hx-target=\"body\" hx-push-url=\"true\"><h1>Toki Edit</h1><div class=\"changes\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<sidebar>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if numChanges > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<button>✅ Apply ")
+			if data.TotalChanges > 0 {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<button hx-post=\"/apply-changes\" class=\"apply-changes\">Apply Changes (")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var6 string
-				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.FormatInt(int64(numChanges), 10))
+				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(data.TotalChanges)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 304, Col: 58}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 324, Col: 38}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, " Changes</button>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, ")</button><hr>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</div><div><label><input type=\"radio\" name=\"t\" value=\"all\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<form id=\"filters\" method=\"get\" hx-get=\"/\" hx-trigger=\"change\" hx-target=\"body\" hx-push-url=\"true\"><h1>Toki Edit</h1><div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if filterTIKs == FilterTIKsAll {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, " checked class=\"selected\"")
+			for _, catalog := range data.Catalogs {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<label><input type=\"checkbox\" name=\"hl\" value=\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var7 string
+				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(catalog.Locale)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 341, Col: 28}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\"")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if !slices.Contains(data.CatalogsDisplayed, catalog) {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, " checked")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "> <span>hide ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				var templ_7745c5c3_Var8 string
+				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(catalog.Locale)
+				if templ_7745c5c3_Err != nil {
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 346, Col: 28}
+				}
+				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, " ")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				if catalog.Default {
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "(Default)")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</span></label>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "> <span>All (")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "</div><hr><div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var7 string
-			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(numAll)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 315, Col: 24}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+			templ_7745c5c3_Err = fragmentRadioOption(data.FilterTIKs == FilterTIKsAll,
+				"t", "all", fmt.Sprintf("All (%d)", data.NumAll)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, ")</span></label> <label><input type=\"radio\" name=\"t\" value=\"complete\"")
+			templ_7745c5c3_Err = fragmentRadioOption(data.FilterTIKs == FilterTIKsChanged,
+				"t", "changed", fmt.Sprintf("Changed (%d)", data.NumChanged)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if filterTIKs == FilterTIKsComplete {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, " checked class=\"selected\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "> <span>Complete (")
+			templ_7745c5c3_Err = fragmentRadioOption(data.FilterTIKs == FilterTIKsComplete,
+				"t", "complete", fmt.Sprintf("Complete (%d)", data.NumComplete)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(numComplete)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 323, Col: 34}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
+			templ_7745c5c3_Err = fragmentRadioOption(data.FilterTIKs == FilterTIKsIncomplete,
+				"t", "incomplete", fmt.Sprintf("Incomplete (%d)", data.NumIncomplete)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, ")</span></label> <label><input type=\"radio\" name=\"t\" value=\"incomplete\"")
+			templ_7745c5c3_Err = fragmentRadioOption(data.FilterTIKs == FilterTIKsEmpty,
+				"t", "empty", fmt.Sprintf("Empty (%d)", data.NumEmpty)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if filterTIKs == FilterTIKsIncomplete {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, " checked class=\"selected\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "> <span>Incomplete (")
+			templ_7745c5c3_Err = fragmentRadioOption(data.FilterTIKs == FilterTIKsInvalid,
+				"t", "invalid", fmt.Sprintf("Invalid (%d)", data.NumInvalid)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var9 string
-			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(numIncomplete)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 331, Col: 38}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, ")</span></label> <label><input type=\"radio\" name=\"t\" value=\"empty\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if filterTIKs == FilterTIKsEmpty {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, " checked class=\"selected\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "> <span>Empty (")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(numEmpty)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 339, Col: 28}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, ")</span></label> <label><input type=\"radio\" name=\"t\" value=\"invalid\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if filterTIKs == FilterTIKsInvalid {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, " checked class=\"selected\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "> <span>Invalid (")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var11 string
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(numInvalid)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 347, Col: 32}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, ")</span></label></div><div><h2>Hide Catalogs</h2>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			for _, catalog := range catalogs {
-				if !catalog.Default {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<label><input type=\"checkbox\" name=\"hl\" value=\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var12 string
-					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(catalog.Locale)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 358, Col: 29}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\"")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					if !slices.Contains(catalogsDisplayed, catalog) {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, " checked")
-						if templ_7745c5c3_Err != nil {
-							return templ_7745c5c3_Err
-						}
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "> <span>hide ")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var13 string
-					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(catalog.Locale)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 362, Col: 34}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</span></label>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</div></form></sidebar><main><div class=\"contents\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div></form></sidebar><main><div class=\"contents\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			switch {
-			case filterTIKs == FilterTIKsAll && numAll == 0:
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div class=\"no-results\">No TIKs found.</div>")
+			case data.FilterTIKs == FilterTIKsAll && data.NumAll == 0:
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"no-results\">No TIKs found.</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-			case filterTIKs == FilterTIKsEmpty && numEmpty == 0:
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div class=\"no-results\">No empty translations 🤩</div>")
+			case data.FilterTIKs == FilterTIKsChanged && data.NumChanged == 0:
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"no-results\">No changes.</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-			case filterTIKs == FilterTIKsComplete && numComplete == 0:
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<div class=\"no-results\">No complete TIKs found.</div>")
+			case data.FilterTIKs == FilterTIKsEmpty && data.NumEmpty == 0:
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"no-results\">No empty translations 🤩</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-			case filterTIKs == FilterTIKsIncomplete && numIncomplete == 0:
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<div class=\"no-results\">All TIKs are complete 🤩</div>")
+			case data.FilterTIKs == FilterTIKsComplete && data.NumComplete == 0:
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div class=\"no-results\">No complete TIKs found.</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-			case filterTIKs == FilterTIKsInvalid && numInvalid == 0:
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<div class=\"no-results\">All TIKs are valid 🤩</div>")
+			case data.FilterTIKs == FilterTIKsIncomplete && data.NumIncomplete == 0:
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<div class=\"no-results\">All TIKs are complete 🤩</div>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			case data.FilterTIKs == FilterTIKsInvalid && data.NumInvalid == 0:
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"no-results\">All TIKs are valid 🤩</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			for tik := range tiks {
-				templ_7745c5c3_Err = section(tik, catalogsDisplayed).Render(ctx, templ_7745c5c3_Buffer)
+			for tik := range data.TIKs {
+				templ_7745c5c3_Err = section(tik, data.CatalogsDisplayed).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</div></main>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</div></main>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -394,183 +315,378 @@ func section(tik TIK, catalogsDisplayed []*Catalog) templ.Component {
 			}()
 		}
 		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var14 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var14 == nil {
-			templ_7745c5c3_Var14 = templ.NopComponent
+		templ_7745c5c3_Var9 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var9 == nil {
+			templ_7745c5c3_Var9 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<section><header><label class=\"tik\"><span>TIK <span class=\"msg-id\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<section><header><label class=\"tik\"><span>TIK <span class=\"msg-id\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var10 string
+		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(tik.ID)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 411, Col: 43}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</span></span><p placeholder=\"Empty\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var11 string
+		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(tik.TIK)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 412, Col: 36}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</p></label> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if tik.Description != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<label><span>Description</span><p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var12 string
+			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(tik.Description)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 417, Col: 25}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</p></label>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</header>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if len(tik.ICU) > 0 {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<ol>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			for _, msg := range tik.ICU {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<li class=\"icu-message\">")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = fragmentICUMessage(tik.ID, msg).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</li>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</ol>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</section>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func fragmentICUMessage(tikID string, msg *ICUMessage) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var13 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var13 == nil {
+			templ_7745c5c3_Var13 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<form hx-post=\"/set\"><input type=\"hidden\" name=\"locale\" value=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var14 string
+		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Catalog.Locale)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 435, Col: 62}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "\"> <input type=\"hidden\" name=\"id\" value=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var15 string
-		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(tik.ID)
+		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(tikID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 405, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 436, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</span></span><p placeholder=\"Empty\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "\"> <label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var16 string
-		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(tik.TIK)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 406, Col: 36}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</p></label> ")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if tik.Description != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<label><span>Description</span><p>")
+		if msg.Catalog.Default {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<span>ICU Message [")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			var templ_7745c5c3_Var16 string
+			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Catalog.Locale)
+			if templ_7745c5c3_Err != nil {
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 440, Col: 38}
+			}
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, " - Default]</span> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<span>ICU Message [")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var17 string
-			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(tik.Description)
+			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Catalog.Locale)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 411, Col: 25}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 444, Col: 38}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</p></label>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "]</span> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</header><ol>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<textarea placeholder=\"No translation\" name=\"icumsg\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, msg := range tik.ICU {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<li class=\"icu-message\"><form><label>")
+		var templ_7745c5c3_Var18 string
+		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Message)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 449, Col: 31}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "</textarea></label> ")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if msg.Changed {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<label class=\"message-changed\"><span>Original Message</span> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if isCatalogDefault(catalogsDisplayed, msg.Locale) {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 41, "<span>ICU Message [")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var18 string
-				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Locale)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 421, Col: 39}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, " - Default]</span> ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<span>ICU Message [")
+			if msg.MessageOriginal != "" {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var19 string
-				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Locale)
+				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(msg.MessageOriginal)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 423, Col: 39}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 455, Col: 29}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "]</span> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</p>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+			} else {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<p class=\"no-translation\">No translation</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<textarea placeholder=\"No translation\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</label> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		if msg.Message == "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<span class=\"message-empty\">⚠️ Missing Translation</span> ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		if msg.Error != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "<label class=\"message-error\"><span>🚫 Error</span><p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var20 string
-			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Message)
+			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 426, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 467, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</textarea></label> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "</p></label> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if msg.Message == "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<span class=\"message-empty\">⚠️ Missing Translation</span> ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
+		}
+		if len(msg.IncompleteReports) > 0 {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<label class=\"message-incomplete\"><span>⚠️ Message Incomplete</span><ul>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
 			}
-			if msg.Error != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<label><span>🚫 Message Invalid</span><p>")
+			for _, r := range msg.IncompleteReports {
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "<li>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var21 string
-				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Error)
+				templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(r)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 435, Col: 22}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 475, Col: 13}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "</p></label> ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</li>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			if len(msg.IncompleteReports) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<label class=\"message-incomplete\"><span>⚠️ Message Incomplete</span><ul>")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				for _, r := range msg.IncompleteReports {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<li>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					var templ_7745c5c3_Var22 string
-					templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(r)
-					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 443, Col: 17}
-					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 52, "</li>")
-					if templ_7745c5c3_Err != nil {
-						return templ_7745c5c3_Err
-					}
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "</ul></label> ")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<input type=\"submit\" value=\"Save\"></form></li>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "</ul></label> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "</ol></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<input type=\"submit\" value=\"Save\"></form>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+func fragmentRadioOption(isSelected bool, name, value, label string) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var22 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var22 == nil {
+			templ_7745c5c3_Var22 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<label")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if isSelected {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, " class=\"selected\"")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "><input type=\"radio\" name=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var23 string
+		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(name)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 490, Col: 26}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "\" value=\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var24 string
+		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(value)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 490, Col: 40}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "\"")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if isSelected {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, " checked")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "> <span>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var25 string
+		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(label)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/webedit/template/template.templ`, Line: 494, Col: 14}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</span></label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

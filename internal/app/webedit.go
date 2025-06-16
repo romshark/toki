@@ -60,7 +60,9 @@ func (g *WebEdit) Run(osArgs, env []string, stderr io.Writer) error {
 		return ErrSourceErrors
 	}
 
-	s := webedit.NewServer(conf.Host, scan)
+	s := webedit.NewServer(conf.Host)
+	s.Init(scan)
+
 	go func() {
 		log.Info("listening", slog.String("host", conf.Host))
 		if err := s.ListenAndServe(); err != nil {
