@@ -197,7 +197,7 @@ func TestGenerateAndRunFallback(t *testing.T) {
 }
 
 // TestGenerateAndRunNoTranslationFallback tests falling back to default language
-// when no translation is avaiable for a particular TIK.
+// when no translation is available for a particular TIK.
 func TestGenerateAndRunNoTranslationFallback(t *testing.T) {
 	dir := t.TempDir()
 	initGoMod(t, dir, "tstmod")
