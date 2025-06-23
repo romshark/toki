@@ -250,11 +250,16 @@ const DefaultLocale = %q
 var BufferCap = 8 * 1024
 
 // MissingTranslation is the default missing translation handler which
-// by default falls back to the default locale.
+// by default tries to fall back to the default locale.
+// If a translation is missing for the default language it panics.
 var MissingTranslation = func(
 	w io.Writer, locale language.Tag, tik string, args ...any,
 ) (written int, err error) {
-	d, _ := Match(language.MustParse(DefaultLocale))
+	dl := language.MustParse(DefaultLocale)
+	if locale == dl {
+		panic(fmt.Errorf("missing translation for TIK: %q", tik))
+	}
+	d, _ := Match(dl)
 	return d.Write(w, tik, args...)
 }
 
