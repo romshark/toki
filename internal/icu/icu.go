@@ -1,6 +1,7 @@
 package icu
 
 import (
+	"fmt"
 	"iter"
 	"strings"
 
@@ -18,18 +19,18 @@ func AnalysisReport(
 		case icumsg.ErrorPluralMissingOption:
 			argName := tokens[err.TokenIndex+1].String(raw, tokens)
 			missingOptions := missingOptions(err)
-			report = append(report, "argument %q is missing options %s",
-				argName, missingOptions)
+			report = append(report, fmt.Sprintf("argument %q is missing options %s",
+				argName, missingOptions))
 		case icumsg.ErrorSelectMissingOption:
 			argName := tokens[err.TokenIndex+1].String(raw, tokens)
 			missingOptions := missingOptions(err)
-			report = append(report, "argument %q is missing options %s",
-				argName, missingOptions)
+			report = append(report, fmt.Sprintf("argument %q is missing options %s",
+				argName, missingOptions))
 		case icumsg.ErrorSelectInvalidOption:
 			argName := tokens[err.TokenIndexArgument+1].String(raw, tokens)
 			optionName := tokens[err.TokenIndexOption].String(raw, tokens)
-			report = append(report, "argument %q: invalid select option %q",
-				argName, optionName)
+			report = append(report, fmt.Sprintf("argument %q: invalid select option %q",
+				argName, optionName))
 		}
 	}
 	return report
