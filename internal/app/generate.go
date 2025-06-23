@@ -18,6 +18,7 @@ import (
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/config"
 	"github.com/romshark/toki/internal/gengo"
+	"github.com/romshark/toki/internal/icu"
 	"github.com/romshark/toki/internal/log"
 	"github.com/romshark/toki/internal/sync"
 
@@ -277,21 +278,13 @@ func (g *Generate) Run(
 		// Report incomplete messages in verbose mode.
 		for catalog := range scan.Catalogs.SeqRead() {
 			for _, msg := range catalog.ARB.Messages {
-				_ = icumsg.Completeness(
-					msg.ICUMessage, msg.ICUMessageTokens, catalog.ARB.Locale,
-					codeparse.ICUSelectOptions,
-					func(index int) {
-						tok := msg.ICUMessageTokens[index]
-						incompletePart := tok.String(msg.ICUMessage, msg.ICUMessageTokens)
-						log.Warn("ICU message incomplete",
-							slog.String("id", msg.ID),
-							slog.String("type", tok.Type.String()),
-							slog.String("part", incompletePart))
-					}, // On incomplete.
-					func(index int) {
-						// On rejected do nothing. This was addressed before this report.
-					},
-				)
+				errs := icu.AnalysisReport(catalog.ARB.Locale,
+					msg.ICUMessage, msg.ICUMessageTokens,
+					codeparse.ICUSelectOptions)
+				for _, errMsg := range errs {
+					log.Warn(errMsg,
+						slog.String("id", msg.ID))
+				}
 			}
 		}
 	}

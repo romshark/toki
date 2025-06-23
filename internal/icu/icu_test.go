@@ -11,7 +11,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-func TestCompletenessReport(t *testing.T) {
+func TestAnalysisReport(t *testing.T) {
 	tk := new(icumsg.Tokenizer)
 	var buffer []icumsg.Token
 	f := func(t *testing.T, locale language.Tag, input string, expectReport []string) {
@@ -20,7 +20,7 @@ func TestCompletenessReport(t *testing.T) {
 		buffer = buffer[:0]
 		buffer, err = tk.Tokenize(locale, buffer, input)
 		require.NoError(t, err)
-		report := icu.CompletenessReport(
+		report := icu.AnalysisReport(
 			locale, input, buffer, codeparse.ICUSelectOptions,
 		)
 		require.Equal(t, expectReport, report)

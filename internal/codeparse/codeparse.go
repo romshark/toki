@@ -278,12 +278,12 @@ func IsMsgIncomplete(
 	scan *Scan, arbFile *arb.File, fileName string, msg *arb.Message,
 ) bool {
 	incomplete := false
-	_ = icumsg.Completeness(
-		msg.ICUMessage, msg.ICUMessageTokens, arbFile.Locale,
+	_, _ = icumsg.Analyze(
+		arbFile.Locale, msg.ICUMessage, msg.ICUMessageTokens,
 		ICUSelectOptions,
-		func(index int) { incomplete = true }, // On incomplete.
-		func(index int) { // On rejected.
-			name := msg.ICUMessageTokens[index+1].String(
+		func(index int) error { incomplete = true; return nil }, // On incomplete.
+		func(indexArgument, indexOption int) error { // On rejected.
+			name := msg.ICUMessageTokens[indexArgument+1].String(
 				msg.ICUMessage, msg.ICUMessageTokens,
 			)
 			scan.SourceErrors.Append(SourceError{
@@ -292,6 +292,7 @@ func IsMsgIncomplete(
 					Filename: fileName,
 				},
 			})
+			return nil
 		},
 	)
 	return incomplete

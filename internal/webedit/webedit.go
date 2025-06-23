@@ -212,7 +212,7 @@ func (s *Server) handlePostSet(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		icuMsg.Error = fmt.Sprintf("at index %d: %v", s.icuTokenizer.Pos(), err)
 	} else {
-		icuMsg.IncompleteReports = icu.CompletenessReport(
+		icuMsg.IncompleteReports = icu.AnalysisReport(
 			loc, newMessage, s.icuTokBuffer, codeparse.ICUSelectOptions,
 		)
 	}
@@ -329,8 +329,9 @@ func (s *Server) newDataIndex(
 				m.Error = fmt.Sprintf("at index %d: %v", s.icuTokenizer.Pos(), err)
 			}
 
-			m.IncompleteReports = icu.CompletenessReport(
-				s.localeTags[catIndex], m.Message, s.icuTokBuffer, codeparse.ICUSelectOptions,
+			m.IncompleteReports = icu.AnalysisReport(
+				s.localeTags[catIndex], m.Message, s.icuTokBuffer,
+				codeparse.ICUSelectOptions,
 			)
 			if len(m.IncompleteReports) != 0 {
 				isIncomplete = true

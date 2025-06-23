@@ -2,13 +2,13 @@ module github.com/romshark/toki
 
 go 1.24.4
 
-replace github.com/romshark/icumsg v0.1.1 => ../icumsg
+replace github.com/romshark/icumsg v0.3.0 => ../icumsg
 
 require (
 	github.com/a-h/templ v0.3.898
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/fatih/color v1.18.0
-	github.com/romshark/icumsg v0.2.0
+	github.com/romshark/icumsg v0.3.0
 	github.com/romshark/tik/tik-go v0.8.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/text v0.26.0
