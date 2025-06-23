@@ -19,17 +19,17 @@ func AnalysisReport(
 		case icumsg.ErrorPluralMissingOption:
 			argName := tokens[err.TokenIndex+1].String(raw, tokens)
 			missingOptions := missingOptions(err)
-			report = append(report, fmt.Sprintf("argument %q is missing options %s",
+			report = append(report, fmt.Sprintf("Argument %q is missing options %s",
 				argName, missingOptions))
 		case icumsg.ErrorSelectMissingOption:
 			argName := tokens[err.TokenIndex+1].String(raw, tokens)
 			missingOptions := missingOptions(err)
-			report = append(report, fmt.Sprintf("argument %q is missing options %s",
+			report = append(report, fmt.Sprintf("Argument %q is missing options %s",
 				argName, missingOptions))
 		case icumsg.ErrorSelectInvalidOption:
 			argName := tokens[err.TokenIndexArgument+1].String(raw, tokens)
 			optionName := tokens[err.TokenIndexOption].String(raw, tokens)
-			report = append(report, fmt.Sprintf("argument %q: invalid select option %q",
+			report = append(report, fmt.Sprintf("Argument %q: invalid select option %q",
 				argName, optionName))
 		}
 	}
