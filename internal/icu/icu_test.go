@@ -122,21 +122,21 @@ func TestAnalysisReport(t *testing.T) {
 	// Incomplete - Cardinal.
 	f(t, language.English,
 		"{var0, plural, other {# things}}",
-		[]string{"incomplete plural argument: var0: missing options: [one]"})
+		[]string{`Argument "var0" is missing options [one]`})
 	f(t, language.German,
 		"{var0, plural, other {# Dinge}}",
-		[]string{"incomplete plural argument: var0: missing options: [one]"})
+		[]string{`Argument "var0" is missing options [one]`})
 
 	f(t, language.Russian,
 		"{var0, plural, other {# незавершённых собщений}}",
-		[]string{"incomplete plural argument: var0: missing options: [one,few,many]"})
+		[]string{`Argument "var0" is missing options [one,few,many]`})
 	f(t, language.Russian,
 		`{
 			var0, plural,
 			other {# незавершённых собщений}
 			one {# незавершённое собщение}
 		}`,
-		[]string{"incomplete plural argument: var0: missing options: [few,many]"})
+		[]string{`Argument "var0" is missing options [few,many]`})
 	f(t, language.Russian,
 		`{var0, plural,
 			=0 {нет незавершённых собщений}
@@ -144,32 +144,24 @@ func TestAnalysisReport(t *testing.T) {
 			few {# незавершённых собщений}
 			one {# незавершённое собщение}
 		}`,
-		[]string{"incomplete plural argument: var0: missing options: [many]"})
+		[]string{`Argument "var0" is missing options [many]`})
 	f(t, language.Latvian,
 		`{var0, plural, other {# diennaktis}}`,
-		[]string{"incomplete plural argument: var0: missing options: [zero,one]"})
+		[]string{`Argument "var0" is missing options [zero,one]`})
 
 	// Incomplete - Ordinal.
 	f(t, language.English,
 		"{var0, selectordinal, other {#th}}",
-		[]string{
-			"incomplete select ordinal argument: var0: missing options: [one,two,few]",
-		})
+		[]string{`Argument "var0" is missing options [one,two,few]`})
 	f(t, language.BritishEnglish,
 		"{var0, selectordinal, other {#th} one {#st}}",
-		[]string{
-			"incomplete select ordinal argument: var0: missing options: [two,few]",
-		})
+		[]string{`Argument "var0" is missing options [two,few]`})
 	f(t, language.AmericanEnglish,
 		"{var0, selectordinal, other {#th} one {#st} few {#rd}}",
-		[]string{
-			"incomplete select ordinal argument: var0: missing options: [two]",
-		})
+		[]string{`Argument "var0" is missing options [two]`})
 	f(t, language.Ukrainian,
 		"{var0, selectordinal, other {#-а}}",
-		[]string{
-			"incomplete select ordinal argument: var0: missing options: [few]",
-		})
+		[]string{`Argument "var0" is missing options [few]`})
 	f(t, language.MustParse("cy"),
 		`{var0, selectordinal,
 			zero {yr 0fed}
@@ -178,7 +170,7 @@ func TestAnalysisReport(t *testing.T) {
 			few {yr 3ydd}
 			other {yr #ain}
 		}`,
-		[]string{"incomplete select ordinal argument: var0: missing options: [many]"})
+		[]string{`Argument "var0" is missing options [many]`})
 	f(t, language.MustParse("cy"),
 		`{var0, selectordinal,
 			zero {yr 0fed}
@@ -187,24 +179,18 @@ func TestAnalysisReport(t *testing.T) {
 			many {yr 20fed}
 			other {yr #ain}
 		}`,
-		[]string{"incomplete select ordinal argument: var0: missing options: [two]"})
+		[]string{`Argument "var0" is missing options [two]`})
 
 	// Incomplete - Gender.
 	f(t, language.English,
 		"{var0_gender, select, other {{var0}} female {{var0}}} notified",
-		[]string{
-			"incomplete select argument: var0_gender: missing options: [male]",
-		})
+		[]string{`Argument "var0_gender" is missing options [male]`})
 	f(t, language.Russian,
 		"{var0_gender, select, other {{var0} сообщил}}",
-		[]string{
-			"incomplete select argument: var0_gender: missing options: [male,female]",
-		})
+		[]string{`Argument "var0_gender" is missing options [male,female]`})
 	f(t, language.Ukrainian,
 		"{var0_gender, select, male {{var0} повідомив} other {{var0} повідомило}}",
-		[]string{
-			"incomplete select argument: var0_gender: missing options: [female]",
-		})
+		[]string{`Argument "var0_gender" is missing options [female]`})
 
 	// Multiple incomplete arguments.
 	f(t, language.Ukrainian,
@@ -221,9 +207,9 @@ func TestAnalysisReport(t *testing.T) {
 			other {{var1}}
 		}`,
 		[]string{
-			"incomplete select argument: var0_gender: missing options: [male,female]",
-			"incomplete select argument: var1_gender: missing options: [male]",
-			"incomplete select argument: var2_gender: missing options: [female]",
+			`Argument "var0_gender" is missing options [male,female]`,
+			`Argument "var1_gender" is missing options [male]`,
+			`Argument "var2_gender" is missing options [female]`,
 		})
 
 	// Multiple nested incomplete arguments.
@@ -239,8 +225,8 @@ func TestAnalysisReport(t *testing.T) {
 			}
 		}`,
 		[]string{
-			"incomplete select argument: var1_gender: missing options: [male,female]",
-			"incomplete select argument: var0_gender: missing options: [male,female]",
+			`Argument "var1_gender" is missing options [male,female]`,
+			`Argument "var0_gender" is missing options [male,female]`,
 		})
 
 	f(t, language.Ukrainian,
@@ -257,8 +243,8 @@ func TestAnalysisReport(t *testing.T) {
 			}
 		}`,
 		[]string{
-			"incomplete plural argument: var2: missing options: [one,few,many]",
-			"incomplete select ordinal argument: var1: missing options: [few]",
-			"incomplete select argument: var0_gender: missing options: [male,female]",
+			`Argument "var2" is missing options [one,few,many]`,
+			`Argument "var1" is missing options [few]`,
+			`Argument "var0_gender" is missing options [male,female]`,
 		})
 }
