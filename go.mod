@@ -2,8 +2,6 @@ module github.com/romshark/toki
 
 go 1.24.4
 
-replace github.com/romshark/icumsg v0.3.0 => ../icumsg
-
 require (
 	github.com/a-h/templ v0.3.906
 	github.com/cespare/xxhash/v2 v2.3.0
