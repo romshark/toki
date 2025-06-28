@@ -123,6 +123,8 @@ You can also make it a bit better by adding a special case for `0`:
 **TIP:** The double apostrophe `''` is not a typo, it's
 [ICU's escape for a single quote](https://unicode-org.github.io/icu/userguide/format_parse/messages/#quotingescaping).
 
+**TIP:** Use command `toki webedit` to open a browser-based UI for more comfortable translation editing.
+
 4. After tweaking the catalog files, rerun the generator to update your bundle once again:
 
 ```sh
