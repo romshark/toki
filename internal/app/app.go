@@ -78,7 +78,7 @@ func Run(
 		return Result{}, 0
 	}
 	return Result{
-		Err: fmt.Errorf("%w %q, use either of: [generate,lint,web]",
+		Err: fmt.Errorf("%w %q, use either of: [generate,lint,webedit]",
 			ErrUnknownCommand, osArgs[1]),
 	}, 2
 }
