@@ -106,6 +106,7 @@ var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
 		written += n
 		return written, nil
 	},
+	msgfb968a4dc3768ccd: nil,
 }
 
 func (catalog_de) Locale() language.Tag { return loc_de }

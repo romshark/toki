@@ -62,7 +62,7 @@ type DataIndex struct {
 }
 
 func RenderPageIndex(w http.ResponseWriter, r *http.Request, data DataIndex) {
-	if err := viewIndex(data).Render(r.Context(), w); err != nil {
+	if err := pageIndex(data).Render(r.Context(), w); err != nil {
 		log.Error("rendering page index", err)
 	}
 }
@@ -80,5 +80,15 @@ func RenderFragmentICUMessage(
 	c := fragmentICUMessage(tikID, msg)
 	if err := c.Render(r.Context(), w); err != nil {
 		log.Error("rendering fragment icu message", err)
+	}
+}
+
+func RenderOOBUpdate(
+	w http.ResponseWriter, r *http.Request,
+	tikID string, msg *ICUMessage, d DataIndex,
+) {
+	c := oobUpdate(tikID, msg, d)
+	if err := c.Render(r.Context(), w); err != nil {
+		log.Error("rendering oob update", err)
 	}
 }

@@ -13,4 +13,4 @@ test: fmtcheck
 	go test -coverpkg=./... -v .
 
 templ:
-	go run github.com/a-h/templ/cmd/templ@v0.3.898 generate
+	go run github.com/a-h/templ/cmd/templ@v0.3.906 generate

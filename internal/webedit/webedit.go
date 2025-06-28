@@ -137,14 +137,10 @@ func (s *Server) handleGetIndex(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
-	q := r.URL.Query()
-
-	filterTIKs, ok := parseFilterTIKs(w, q)
+	hideLocales, filterTIKs, ok := parseFilterParams(w, r)
 	if !ok {
 		return
 	}
-
-	hideLocales := q["hl"]
 
 	data := s.newDataIndex(hideLocales, filterTIKs)
 	if r.Header.Get("Hx-Request") == "true" {
@@ -154,6 +150,16 @@ func (s *Server) handleGetIndex(w http.ResponseWriter, r *http.Request) {
 
 	template.RenderPageIndex(w, r, data)
 }
+
+// func debugForm(w http.ResponseWriter, r *http.Request) {
+// 	if err := r.ParseForm(); err != nil {
+// 		http.Error(w, "cannot parse form: "+err.Error(), http.StatusBadRequest)
+// 		return
+// 	}
+// 	for k, vs := range r.Form {
+// 		fmt.Fprintf(os.Stdout, "%q = %q\n", k, vs)
+// 	}
+// }
 
 func (s *Server) handlePostSet(w http.ResponseWriter, r *http.Request) {
 	s.lock.Lock()
@@ -218,8 +224,10 @@ func (s *Server) handlePostSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if icuMsg.Changed {
+		fmt.Printf("ORIG: %q NOW: %q\n", icuMsg.MessageOriginal, newMessage)
 		if newMessage == icuMsg.MessageOriginal {
 			// Reverted change.
+			icuMsg.Message = newMessage
 			icuMsg.Changed = false
 			icuMsg.MessageOriginal = ""
 			s.changed = slices.DeleteFunc(s.changed, func(m *template.ICUMessage) bool {
@@ -237,9 +245,52 @@ func (s *Server) handlePostSet(w http.ResponseWriter, r *http.Request) {
 		s.changed = append(s.changed, icuMsg)
 	}
 
-	redirectURL := "/" + "?" + r.URL.RawQuery
-	w.Header().Set("HX-Redirect", redirectURL)
-	w.WriteHeader(http.StatusNoContent)
+	fmt.Printf("M: %q; %t; %q\n", icuMsg.Message, icuMsg.Changed, icuMsg.MessageOriginal)
+
+	hideLocales, filterTIKs, ok := parseFilterParamsFromReferer(w, r)
+	if !ok {
+		return
+	}
+	template.RenderOOBUpdate(w, r, id, icuMsg, s.newDataIndex(hideLocales, filterTIKs))
+}
+
+func parseFilterParams(
+	w http.ResponseWriter, r *http.Request,
+) ([]string, template.FilterTIKs, bool) {
+	q := r.URL.Query()
+
+	filterTIKs, ok := parseFilterTIKs(w, q)
+	if !ok {
+		return nil, 0, false
+	}
+
+	hideLocales := q["hl"]
+	return hideLocales, filterTIKs, true
+}
+
+func parseFilterParamsFromReferer(
+	w http.ResponseWriter, r *http.Request,
+) ([]string, template.FilterTIKs, bool) {
+	referer := r.Header.Get("Referer")
+	if referer == "" {
+		// Fallback to default if no referer
+		return nil, template.FilterTIKsAll, true
+	}
+
+	refererURL, err := url.Parse(referer)
+	if err != nil {
+		return nil, template.FilterTIKsAll, true
+	}
+
+	q := refererURL.Query()
+
+	filterTIKs, ok := parseFilterTIKs(w, q)
+	if !ok {
+		filterTIKs = template.FilterTIKsAll
+	}
+
+	hideLocales := q["hl"]
+	return hideLocales, filterTIKs, true
 }
 
 func parseFilterTIKs(

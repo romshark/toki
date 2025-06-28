@@ -31,6 +31,7 @@ var writers_ru = map[string]func(w io.Writer, args ...any) (int, error){
 	msgd2497314df5ae7e6: nil,
 	msgdc0a1830b671625c: nil,
 	msgf5b4499f95971294: nil,
+	msgfb968a4dc3768ccd: nil,
 }
 
 func (catalog_ru) Locale() language.Tag { return loc_ru }
