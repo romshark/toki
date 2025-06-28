@@ -97,7 +97,18 @@ type CatalogStatistics struct {
 type Catalog struct {
 	CatalogStatistics
 	ARB         *arb.File
-	ARBFileName string
+	ARBFilePath string
+}
+
+func NewScan(defaultLocale language.Tag, tokiVersion string) *Scan {
+	return &Scan{
+		DefaultLocale: defaultLocale,
+		TokiVersion:   tokiVersion,
+		Texts:         sync.NewSlice[Text](0),
+		TextIndexByID: sync.NewMap[string, int](0),
+		SourceErrors:  sync.NewSlice[SourceError](0),
+		Catalogs:      sync.NewSlice[*Catalog](0),
+	}
 }
 
 type Scan struct {
@@ -111,9 +122,7 @@ type Scan struct {
 }
 
 func (p *Parser) Parse(
-	env []string, pathPattern, bundlePkgPath string,
-	locale language.Tag,
-	trimpath bool,
+	env []string, pathPattern, bundlePkgPath string, trimpath bool,
 ) (scan *Scan, err error) {
 	fset := token.NewFileSet()
 
@@ -159,7 +168,7 @@ func (p *Parser) Parse(
 		}
 		scan.DefaultLocale = defaultLocale
 
-		err = p.collectARBFiles(pkgBundle.Dir, scan)
+		err = p.CollectARBFiles(pkgBundle.Dir, scan)
 		if err != nil {
 			return scan, fmt.Errorf("searching .arb files: %w", err)
 		}
@@ -215,7 +224,7 @@ func ICUSelectOptions(argName string) (
 	return nil, 0, 0
 }
 
-func (p *Parser) collectARBFiles(bundlePkgDir string, scan *Scan) error {
+func (p *Parser) CollectARBFiles(bundlePkgDir string, scan *Scan) error {
 	return forFileInDir(bundlePkgDir, func(fileName string) error {
 		if filepath.Ext(fileName) != ".arb" {
 			return nil
@@ -250,7 +259,12 @@ func (p *Parser) collectARBFiles(bundlePkgDir string, scan *Scan) error {
 				arbFile.Locale.String(), locale.String(), fileName)
 		}
 
-		catalog := &Catalog{ARB: arbFile, ARBFileName: fileName}
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return fmt.Errorf("determining absolute file path: %w", err)
+		}
+
+		catalog := &Catalog{ARB: arbFile, ARBFilePath: absPath}
 
 		for _, msg := range arbFile.Messages {
 			incomplete := IsMsgIncomplete(scan, arbFile, fileName, &msg)
@@ -269,12 +283,12 @@ func IsMsgIncomplete(
 	scan *Scan, arbFile *arb.File, fileName string, msg *arb.Message,
 ) bool {
 	incomplete := false
-	_ = icumsg.Completeness(
-		msg.ICUMessage, msg.ICUMessageTokens, arbFile.Locale,
+	_, _ = icumsg.Analyze(
+		arbFile.Locale, msg.ICUMessage, msg.ICUMessageTokens,
 		ICUSelectOptions,
-		func(index int) { incomplete = true }, // On incomplete.
-		func(index int) { // On rejected.
-			name := msg.ICUMessageTokens[index+1].String(
+		func(index int) error { incomplete = true; return nil }, // On incomplete.
+		func(indexArgument, indexOption int) error { // On rejected.
+			name := msg.ICUMessageTokens[indexArgument+1].String(
 				msg.ICUMessage, msg.ICUMessageTokens,
 			)
 			scan.SourceErrors.Append(SourceError{
@@ -283,6 +297,7 @@ func IsMsgIncomplete(
 					Filename: fileName,
 				},
 			})
+			return nil
 		},
 	)
 	return incomplete

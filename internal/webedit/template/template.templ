@@ -1,0 +1,542 @@
+package template
+
+import (
+	"fmt"
+	"slices"
+)
+
+templ htmlMain() {
+	<!DOCTYPE html>
+	<html>
+		<head>
+			<title>Toki</title>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<meta charset="UTF-8"/>
+			<meta name="description" content="Toki web GUI for editing catalogs"/>
+			<script src="/static/htmx_min.js"></script>
+			<script src="/static/app.js"></script>
+			<script type="module" src="/static/mode_icu.js"></script>
+			<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.css"/>
+			<link
+				rel="stylesheet"
+				href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/theme/base16-light.min.css"
+				media="(prefers-color-scheme: light)"
+			/>
+			<link
+				rel="stylesheet"
+				href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/theme/base16-dark.min.css"
+				media="(prefers-color-scheme: dark)"
+			/>
+			<style>
+		html {
+			height: 100%;
+		}
+
+		body {
+			margin: 0;
+			display: flex;
+			flex-direction: row;
+			height: 100%;
+			font-family: sans-serif;
+		}
+
+		hr {
+			width: 100%;
+			border: 0;
+			border-bottom: 1px solid rgba(0,0,0,.1)
+		}
+
+		button, input[type="submit"], textarea, .message-changed,
+			.message-empty, .message-incomplete, .message-error {
+			border-radius: .2rem;
+		}
+
+		.selected {
+			font-weight: bold;
+			color: black;
+		}
+
+		input,
+		textarea,
+		button {
+			border: none;
+			padding: .3rem;
+		}
+
+		.tik {
+			font-size: 1.4rem;
+			line-height: 1.8rem;
+		}
+
+		#sidebar {
+			min-width: 8rem;
+			display: flex;
+			flex-direction: column;
+			padding: 1rem;
+			gap: 1rem;
+			overflow: auto;
+		}
+
+		#sidebar a {
+			text-decoration: none;
+		}
+
+		#sidebar > div {
+			display: flex;
+			flex-direction: column;
+			gap: .2rem;
+		}
+
+		#sidebar h1 {
+			font-size: 1.2rem;
+		}
+
+		#sidebar h2 {
+			font-size: 1rem;
+		}
+
+		#sidebar label input {
+			margin: 0;
+		}
+
+		#sidebar label {
+			display: flex;
+			flex-direction: row;
+			height: 1.5rem;
+			align-items: center;
+		}
+
+		#sidebar label span {
+			margin-left: .5rem;
+		}
+
+		#sidebar .apply-changes {
+			background-color: lightgreen;
+		}
+
+		main {
+			display: flex;
+			flex-direction: column;
+			flex-grow: 1;
+			overflow: auto;
+			padding: 1rem;
+			padding-left: 0;
+		}
+
+		main .contents {
+			display: flex;
+			flex-direction: column;
+			gap: 1rem;
+			height: fit-content;
+		}
+
+		main .contents .no-results {
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			min-height: 10rem;
+		}
+
+		form {
+			display: flex;
+			flex-direction: column;
+			gap: .5rem;
+		}
+
+		label {
+			display: flex;
+			flex-direction: column;
+			flex: 1;
+		}
+
+		label>span {
+			font-weight: bold;
+			font-size: .8rem;
+		}
+
+		section label>span {
+			margin-bottom: .5rem;
+		}
+
+		label .msg-id {
+			display: inline;
+			margin-left: .5rem;
+			color: grey;
+		}
+
+		label p {
+			margin: 0;
+		}
+
+		.error {
+			background: rgba(255, 0, 0, .3);
+			color: black;
+			padding: .5rem;
+			border-radius: .2rem;
+			width: fit-content;
+			margin-top: .25rem;
+		}
+
+		main section {
+			max-width: 100%;
+			display: flex;
+			flex-direction: column;
+			border: 1px solid rgba(0, 0, 0, .3);
+			border-radius: .2rem;
+		}
+
+		main section>header {
+			display: flex;
+			flex-direction: column;
+			padding: 1rem;
+			gap: 1rem;
+			background-color: rgba(0,0,0,0.03);
+		}
+
+		main section ol {
+			display: flex;
+			flex-direction: row;
+			flex-wrap: nowrap;
+			overflow-x: auto;
+			gap: 1rem;
+			width: 100%;
+			list-style: none;
+			margin: 0;
+			padding: 1rem;
+			box-sizing: border-box;
+		}
+
+		.CodeMirror {
+			height: auto;
+		}
+
+		main section .icu-message {
+			flex: 1 1;
+			box-sizing: border-box;
+			display: flex;
+			flex-direction: column;
+			width: 100%;
+		}
+
+		main section .icu-message textarea,
+		main section .icu-message .CodeMirror {
+			width: 100%;
+			box-sizing: border-box;
+			max-height: 90vh;
+			min-width: 14rem;
+			max-width: 100%;
+			font-size: 1rem;
+			overflow: hidden;
+		}
+
+		.message-incomplete, .message-empty {
+			padding: .5rem;
+			background-color: beige;
+		}
+
+		.message-changed {
+			padding: .5rem;
+			background-color: lightblue;
+		}
+
+		.message-error {
+			padding: .5rem;
+			background-color: #ffc1c1;
+		}
+
+		.message-changed .no-translation {
+			font-style: italic;
+			opacity: 0.5;
+		}
+
+		.message-incomplete ul {
+			padding: 0;
+			padding-left: 1rem;
+			box-sizing: border-box;
+		}
+
+		@media (prefers-color-scheme: dark) {
+			body {
+				background-color: black;
+				color: white;
+			}
+
+			a {
+				color: #8f8fff;
+			}
+
+			hr {
+				border-color: rgba(255,255,255,0.1);
+			}
+
+			textarea,
+			button {
+				background-color: rgba(255, 255, 255, .15);
+				color: white;
+			}
+
+			input[type="submit"] {
+				background-color: rgba(255, 255, 255, .15);
+				color: white;
+			}
+
+			main section {
+				border: 1px solid rgba(255, 255, 255, 0.3);
+			}
+
+			main section>header {
+				background-color: rgba(255, 255, 255, 0.11);
+			}
+
+			label>span {
+				color: rgba(255, 255, 255, .5);
+			}
+
+			.error {
+				background: rgba(255, 0, 0, .7);
+				color: white;
+			}
+
+			.message-incomplete, .message-empty {
+				background-color: #4c4c10;
+			}
+
+			.message-changed {
+				background-color: #00212c;
+			}
+
+			.message-error {
+				background-color: darkred;
+			}
+
+			.selected {
+				font-weight: bold;
+				color: white;
+			}
+
+			#sidebar .apply-changes {
+				background-color: darkgreen;
+			}
+		}
+	</style>
+		</head>
+		<body>
+			{ children... }
+		</body>
+	</html>
+}
+
+templ pageIndex(data DataIndex) {
+	@htmlMain() {
+		@viewIndex(data)
+	}
+}
+
+templ viewIndex(data DataIndex) {
+	@fragmentSidebar(data)
+	@fragmentMain(data)
+}
+
+templ oobUpdate(tikID string, msg *ICUMessage, data DataIndex) {
+	@fragmentICUMessage(tikID, msg)
+	@fragmentSidebar(data)
+}
+
+templ fragmentSidebar(data DataIndex) {
+	<aside id="sidebar" hx-swap-oob="true">
+		if data.TotalChanges > 0 {
+			<button
+				hx-post="/apply-changes"
+				if !data.CanApplyChanges {
+					disabled
+				}
+				class="apply-changes"
+			>
+				Apply Changes ({ data.TotalChanges })
+			</button>
+			<hr/>
+		}
+		<form
+			id="filters"
+			method="get"
+			hx-get="/"
+			hx-trigger="change"
+			hx-target="main"
+			hx-swap="outerHTML"
+			hx-push-url="true"
+		>
+			<h1>Toki Edit</h1>
+			<div>
+				for _, catalog := range data.Catalogs {
+					<label>
+						<input
+							type="checkbox"
+							name="hl"
+							value={ catalog.Locale }
+							if !slices.Contains(data.CatalogsDisplayed, catalog) {
+								checked
+							}
+						/>
+						<span>
+							hide { catalog.Locale }
+							if catalog.Default {
+								(Default)
+							}
+						</span>
+					</label>
+				}
+			</div>
+			<hr/>
+			<div>
+				@fragmentRadioOption(data.FilterTIKs == FilterTIKsAll,
+					"t", "all", fmt.Sprintf("All (%d)", data.NumAll))
+				@fragmentRadioOption(data.FilterTIKs == FilterTIKsChanged,
+					"t", "changed", fmt.Sprintf("Changed (%d)", data.NumChanged))
+				@fragmentRadioOption(data.FilterTIKs == FilterTIKsComplete,
+					"t", "complete", fmt.Sprintf("Complete (%d)", data.NumComplete))
+				@fragmentRadioOption(data.FilterTIKs == FilterTIKsIncomplete,
+					"t", "incomplete", fmt.Sprintf("Incomplete (%d)", data.NumIncomplete))
+				@fragmentRadioOption(data.FilterTIKs == FilterTIKsEmpty,
+					"t", "empty", fmt.Sprintf("Empty (%d)", data.NumEmpty))
+				@fragmentRadioOption(data.FilterTIKs == FilterTIKsInvalid,
+					"t", "invalid", fmt.Sprintf("Invalid (%d)", data.NumInvalid))
+			</div>
+		</form>
+	</aside>
+}
+
+templ fragmentMain(data DataIndex) {
+	<main>
+		<div class="contents">
+			switch  {
+				case data.FilterTIKs == FilterTIKsAll && data.NumAll == 0:
+					<div class="no-results">
+						No TIKs found.
+					</div>
+				case data.FilterTIKs == FilterTIKsChanged && data.NumChanged == 0:
+					<div class="no-results">
+						No changes.
+					</div>
+				case data.FilterTIKs == FilterTIKsEmpty && data.NumEmpty == 0:
+					<div class="no-results">
+						No empty translations 🤩
+					</div>
+				case data.FilterTIKs == FilterTIKsComplete && data.NumComplete == 0:
+					<div class="no-results">
+						No complete TIKs found.
+					</div>
+				case data.FilterTIKs == FilterTIKsIncomplete && data.NumIncomplete == 0:
+					<div class="no-results">
+						All TIKs are complete 🤩
+					</div>
+				case data.FilterTIKs == FilterTIKsInvalid && data.NumInvalid == 0:
+					<div class="no-results">
+						All TIKs are valid 🤩
+					</div>
+			}
+			for tik := range data.TIKs {
+				@fragmentSection(tik, data.CatalogsDisplayed)
+			}
+		</div>
+	</main>
+}
+
+templ fragmentSection(tik TIK, catalogsDisplayed []*Catalog) {
+	<section>
+		<header>
+			<label class="tik">
+				<span>TIK <span class="msg-id">{ tik.ID }</span></span>
+				<p placeholder="Empty">{ tik.TIK }</p>
+			</label>
+			if tik.Description != "" {
+				<label>
+					<span>Description</span>
+					<p>{ tik.Description }</p>
+				</label>
+			}
+		</header>
+		if len(tik.ICU) > 0 {
+			<ol>
+				for _, msg := range tik.ICU {
+					<li class="icu-message">
+						@fragmentICUMessage(tik.ID, msg)
+					</li>
+				}
+			</ol>
+		}
+	</section>
+}
+
+templ fragmentICUMessage(tikID string, msg *ICUMessage) {
+	<form hx-post="/set">
+		<input type="hidden" name="locale" value={ msg.Catalog.Locale }/>
+		<input type="hidden" name="id" value={ tikID }/>
+		<label>
+			if msg.Catalog.Default {
+				<span>
+					ICU Message [{ msg.Catalog.Locale } - Default]
+				</span>
+			} else {
+				<span>
+					ICU Message [{ msg.Catalog.Locale }]
+				</span>
+			}
+			<textarea
+				name="icumsg"
+				class="editor"
+				data-mode="icu"
+				hidden
+			>{ msg.Message }</textarea>
+		</label>
+		if msg.Changed {
+			<label class="message-changed">
+				<span>Original Message</span>
+				if msg.MessageOriginal != "" {
+					<p>{ msg.MessageOriginal }</p>
+				} else {
+					<p class="no-translation">No translation</p>
+				}
+			</label>
+		}
+		if msg.Message == "" {
+			<span class="message-empty">⚠️ Missing Translation</span>
+		}
+		if msg.Error != "" {
+			<label class="message-error">
+				<span>🚫 Error</span>
+				<p>{ msg.Error }</p>
+			</label>
+		}
+		if len(msg.IncompleteReports) > 0 {
+			<label class="message-incomplete">
+				<span>⚠️ Message Incomplete</span>
+				<ul>
+					for _, r := range msg.IncompleteReports {
+						<li>{ r }</li>
+					}
+				</ul>
+			</label>
+		}
+		<input type="submit" value="Update"/>
+	</form>
+}
+
+templ fragmentRadioOption(isSelected bool, name, value, label string) {
+	<label
+		if isSelected {
+			class="selected"
+		}
+	>
+		<input
+			type="radio"
+			name={ name }
+			value={ value }
+			if isSelected {
+				checked
+			}
+		/>
+		<span>{ label }</span>
+	</label>
+}

@@ -18,6 +18,7 @@ import (
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/config"
 	"github.com/romshark/toki/internal/gengo"
+	"github.com/romshark/toki/internal/icu"
 	"github.com/romshark/toki/internal/log"
 	"github.com/romshark/toki/internal/sync"
 
@@ -85,14 +86,7 @@ func (g *Generate) Run(
 				result.Err = ErrMissingLocaleParam
 				return result
 			}
-			scan := &codeparse.Scan{
-				DefaultLocale: conf.Locale,
-				TokiVersion:   Version,
-				Texts:         sync.NewSlice[codeparse.Text](0),
-				TextIndexByID: sync.NewMap[string, int](0),
-				SourceErrors:  sync.NewSlice[codeparse.SourceError](0),
-				Catalogs:      sync.NewSlice[*codeparse.Catalog](0),
-			}
+			scan := codeparse.NewScan(conf.Locale, Version)
 			// Need to generate an empty bundle package first.
 			// Otherwise if the bundle existed and was imported before, later got removed
 			// and then toki generate was rerun it will first generate an incorrect bundle
@@ -114,7 +108,7 @@ func (g *Generate) Run(
 
 	// Parse source code and bundle.
 	result.Scan, result.Err = parser.Parse(
-		env, conf.ModPath, conf.BundlePkgPath, conf.Locale, conf.TrimPath,
+		env, conf.ModPath, conf.BundlePkgPath, conf.TrimPath,
 	)
 	if result.Err != nil {
 		result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, result.Err)
@@ -148,20 +142,25 @@ func (g *Generate) Run(
 
 	var nativeCatalog *codeparse.Catalog
 	var nativeARB *arb.File
-	var nativeARBFileName string
+	var nativeARBFilePath string
 	for catalog := range scan.Catalogs.SeqRead() {
 		if catalog.ARB.Locale == scan.DefaultLocale {
 			nativeCatalog = catalog
 			nativeARB = catalog.ARB
-			nativeARBFileName = catalog.ARBFileName
+			nativeARBFilePath = catalog.ARBFilePath
 		}
 	}
 
 	if nativeARB == nil {
-		nativeARBFileName = filepath.Join(
+		nativeARBFilePath = filepath.Join(
 			conf.BundlePkgPath,
 			gengo.FileNameWithLocale(scan.DefaultLocale, "catalog", ".arb"),
 		)
+		nativeARBFilePath, err := filepath.Abs(nativeARBFilePath)
+		if err != nil {
+			panic(err)
+		}
+
 		// Make a new one.
 		nativeARB = &arb.File{
 			Locale:       scan.DefaultLocale,
@@ -172,7 +171,7 @@ func (g *Generate) Run(
 
 		nativeCatalog = &codeparse.Catalog{
 			ARB:         nativeARB,
-			ARBFileName: nativeARBFileName,
+			ARBFilePath: nativeARBFilePath,
 		}
 		scan.Catalogs.Append(nativeCatalog)
 	}
@@ -193,7 +192,7 @@ func (g *Generate) Run(
 				slog.String("id", newMsg.ID))
 			nativeARB.Messages[newMsg.ID] = newMsg
 			if incomplete := codeparse.IsMsgIncomplete(
-				scan, nativeARB, nativeARBFileName, &newMsg,
+				scan, nativeARB, nativeARBFilePath, &newMsg,
 			); incomplete {
 				nativeCatalog.MessagesIncomplete.Add(1)
 			}
@@ -284,21 +283,13 @@ func (g *Generate) Run(
 		// Report incomplete messages in verbose mode.
 		for catalog := range scan.Catalogs.SeqRead() {
 			for _, msg := range catalog.ARB.Messages {
-				_ = icumsg.Completeness(
-					msg.ICUMessage, msg.ICUMessageTokens, catalog.ARB.Locale,
-					codeparse.ICUSelectOptions,
-					func(index int) {
-						tok := msg.ICUMessageTokens[index]
-						incompletePart := tok.String(msg.ICUMessage, msg.ICUMessageTokens)
-						log.Warn("ICU message incomplete",
-							slog.String("id", msg.ID),
-							slog.String("type", tok.Type.String()),
-							slog.String("part", incompletePart))
-					}, // On incomplete.
-					func(index int) {
-						// On rejected do nothing. This was addressed before this report.
-					},
-				)
+				errs := icu.AnalysisReport(catalog.ARB.Locale,
+					msg.ICUMessage, msg.ICUMessageTokens,
+					codeparse.ICUSelectOptions)
+				for _, errMsg := range errs {
+					log.Warn(errMsg,
+						slog.String("id", msg.ID))
+				}
 			}
 		}
 	}
@@ -393,8 +384,12 @@ func writeMissingARBFilesAndUpdateCatalogs(
 
 		name := gengo.FileNameWithLocale(locale, "catalog", ".arb")
 		filePath := filepath.Join(bundlePkgPath, name)
+		filePath, err := filepath.Abs(filePath)
+		if err != nil {
+			panic(err)
+		}
 
-		err := func() error {
+		err = func() error {
 			f, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 			if err != nil {
 				return fmt.Errorf("opening new .arb catalog (%q): %w",
@@ -422,7 +417,7 @@ func writeMissingARBFilesAndUpdateCatalogs(
 			// Add a new catalog.
 			newCatalog := &codeparse.Catalog{
 				ARB:         newFile,
-				ARBFileName: filePath,
+				ARBFilePath: filePath,
 			}
 			newCatalog.MessagesIncomplete.Store(int64(len(newFile.Messages)))
 			catalogs.Append(newCatalog)

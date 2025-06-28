@@ -15,19 +15,20 @@ import (
 )
 
 var (
-	ErrSourceErrors       = errors.New("source code contains errors")
-	ErrNoCommand          = errors.New("no command")
-	ErrUnknownCommand     = errors.New("unknown command")
-	ErrAnalyzingSource    = errors.New("analyzing sources")
-	ErrInvalidCLIArgs     = errors.New("invalid arguments")
-	ErrMissingLocaleParam = errors.New(
+	ErrGenerateBundleFirst = errors.New("first generate a bundle using `toki generate`")
+	ErrSourceErrors        = errors.New("source code contains errors")
+	ErrNoCommand           = errors.New("no command")
+	ErrUnknownCommand      = errors.New("unknown command")
+	ErrAnalyzingSource     = errors.New("analyzing sources")
+	ErrInvalidCLIArgs      = errors.New("invalid arguments")
+	ErrMissingLocaleParam  = errors.New(
 		"please provide a valid non-und BCP 47 locale for the default language of your " +
 			"original code base using the 'l' parameter",
 	)
 	ErrBundleIncomplete = errors.New("bundle contains incomplete catalogs")
 )
 
-const Version = "0.7.2"
+const Version = "0.8.0"
 
 const MainBundleFileGo = "bundle_gen.go"
 
@@ -60,9 +61,24 @@ func Run(
 			return r, 1
 		}
 		return r, 0
+	case "webedit":
+		w := WebEdit{
+			hasher:           xxhash.New(),
+			icuTokenizer:     new(icumsg.Tokenizer),
+			tikParser:        tik.NewParser(tik.DefaultConfig),
+			tikICUTranslator: tik.NewICUTranslator(tik.DefaultConfig),
+		}
+		err := w.Run(osArgs, env, stderr)
+		switch {
+		case errors.Is(err, ErrInvalidCLIArgs):
+			return Result{Err: err}, 2
+		case err != nil:
+			return Result{Err: err}, 1
+		}
+		return Result{}, 0
 	}
 	return Result{
-		Err: fmt.Errorf("%w %q, use either of: [generate,lint]",
+		Err: fmt.Errorf("%w %q, use either of: [generate,lint,webedit]",
 			ErrUnknownCommand, osArgs[1]),
 	}, 2
 }
