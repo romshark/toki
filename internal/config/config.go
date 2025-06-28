@@ -10,7 +10,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-type ConfigWeb struct {
+type ConfigWebedit struct {
 	Host          string
 	BundlePkgPath string
 }
@@ -29,8 +29,8 @@ type ConfigGenerate struct {
 
 var ErrLocaleNotBCP47 = errors.New("must be a valid non-und BCP 47 locale")
 
-func ParseCLIArgsWeb(osArgs []string) (*ConfigWeb, error) {
-	c := &ConfigWeb{}
+func ParseCLIArgsWebedit(osArgs []string) (*ConfigWebedit, error) {
+	c := &ConfigWebedit{}
 
 	cli := flag.NewFlagSet(osArgs[0], flag.ExitOnError)
 	cli.StringVar(&c.Host, "host", "localhost:52000",

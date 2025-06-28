@@ -30,7 +30,7 @@ type WebEdit struct {
 }
 
 func (g *WebEdit) Run(osArgs, env []string, stderr io.Writer) error {
-	conf, err := config.ParseCLIArgsWeb(osArgs)
+	conf, err := config.ParseCLIArgsWebedit(osArgs)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidCLIArgs, err)
 	}
