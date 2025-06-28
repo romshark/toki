@@ -22,6 +22,8 @@ files are used as intermediate translation storage for
 [ICU messages](https://unicode-org.github.io/icu/userguide/format_parse/messages/)
 generated from [TIKs](https://github.com/romshark/tik) extracted from the source code.
 
+`toki webedit` provides a web-based UI for more comfortable manual translation editing.
+
 - [Quick Start Guide](#quick-start-guide)
   - [1. Create a new Go project.](#1-create-a-new-go-project)
   - [2. Prepare your Go project for internationalization.](#2-prepare-your-go-project-for-internationalization)
