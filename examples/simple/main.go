@@ -17,7 +17,7 @@ func main() {
 
 	fmt.Println("Supported locales:", tokibundle.Locales())
 
-	// Get a localized reader for British English.
+	// Get a localized reader for the locale provided.
 	// Toki will automatically select the most appropriate available translation catalog.
 	reader, conf := tokibundle.Match(locale)
 	fmt.Println("Selected", reader.Locale(), "with confidence:", conf)
