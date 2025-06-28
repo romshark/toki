@@ -21,7 +21,7 @@ import (
 	"github.com/romshark/tik/tik-go"
 )
 
-// WebEdit implements both the `toki webedit` command.
+// WebEdit implements the command `toki webedit`.
 type WebEdit struct {
 	hasher           *xxhash.Digest
 	icuTokenizer     *icumsg.Tokenizer
