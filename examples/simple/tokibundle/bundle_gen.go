@@ -261,7 +261,7 @@ var MissingTranslation = func(
 ) (written int, err error) {
 	dl := language.MustParse(DefaultLocale)
 	if locale == dl {
-		panic(fmt.Errorf("missing translation for TIK: %!q(MISSING)", tik))
+		panic(fmt.Errorf("missing translation for TIK: %q", tik))
 	}
 	d, _ := Match(dl)
 	return d.Write(w, tik, args...)
