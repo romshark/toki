@@ -5,8 +5,10 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"slices"
 	"sort"
 	"strings"
@@ -15,13 +17,17 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/romshark/icumsg"
+	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/icu"
+	"github.com/romshark/toki/internal/log"
 	"github.com/romshark/toki/internal/webedit/template"
 )
 
 type Server struct {
 	httpServer *http.Server
+
+	newScan func() (*codeparse.Scan, error)
 
 	lock         sync.Mutex
 	scan         *codeparse.Scan
@@ -41,8 +47,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return s.httpServer.Shutdown(ctx)
 }
 
-func NewServer(host string) *Server {
+func NewServer(host string, newScan func() (*codeparse.Scan, error)) *Server {
 	s := &Server{
+		newScan:      newScan,
 		icuTokenizer: new(icumsg.Tokenizer),
 		httpServer: &http.Server{
 			Addr: host,
@@ -70,34 +77,36 @@ func NewServer(host string) *Server {
 	return s
 }
 
-func (s *Server) Init(scan *codeparse.Scan) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	s.scan = scan
+func (s *Server) Init() (err error) {
+	s.changed = nil // Reset all changes.
+	s.scan, err = s.newScan()
+	if err != nil {
+		return err
+	}
 	s.localeTags = make([]language.Tag, 0, len(s.catalogs))
-	s.catalogs = make([]*template.Catalog, 0, scan.Catalogs.Len())
-	s.tiks = make([]*template.TIK, 0, scan.TextIndexByID.Len())
-	for cat := range scan.Catalogs.SeqRead() {
+	s.catalogs = make([]*template.Catalog, 0, s.scan.Catalogs.Len())
+	s.tiks = make([]*template.TIK, 0, s.scan.TextIndexByID.Len())
+	for cat := range s.scan.Catalogs.SeqRead() {
 		c := &template.Catalog{
 			Locale:  cat.ARB.Locale.String(),
-			Default: cat.ARB.Locale == scan.DefaultLocale,
+			Default: cat.ARB.Locale == s.scan.DefaultLocale,
 		}
 		s.catalogs = append(s.catalogs, c)
 		s.localeTags = append(s.localeTags, language.MustParse(c.Locale))
 	}
 
-	for _, i := range scan.TextIndexByID.SeqRead() {
-		t := scan.Texts.At(i)
+	for _, i := range s.scan.TextIndexByID.SeqRead() {
+		t := s.scan.Texts.At(i)
 		tmplTIK := &template.TIK{
 			ID:          t.IDHash,
 			TIK:         t.TIK.Raw,
 			Description: strings.Join(t.Comments, " "),
 			ICU:         make([]*template.ICUMessage, 0, len(s.catalogs)),
 		}
-		for c := range scan.Catalogs.SeqRead() {
+		for c := range s.scan.Catalogs.SeqRead() {
 			m := c.ARB.Messages[t.IDHash]
 			tmplMsg := &template.ICUMessage{
+				ID: m.ID,
 				Catalog: func() *template.Catalog {
 					for i, c2 := range s.catalogs {
 						if c.ARB.Locale == s.localeTags[i] {
@@ -115,6 +124,7 @@ func (s *Server) Init(scan *codeparse.Scan) {
 	sort.Slice(s.tiks, func(i, j int) bool {
 		return s.tiks[i].ID < s.tiks[j].ID
 	})
+	return nil
 }
 
 //go:embed static/favicon.ico
@@ -224,7 +234,6 @@ func (s *Server) handlePostSet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if icuMsg.Changed {
-		fmt.Printf("ORIG: %q NOW: %q\n", icuMsg.MessageOriginal, newMessage)
 		if newMessage == icuMsg.MessageOriginal {
 			// Reverted change.
 			icuMsg.Message = newMessage
@@ -244,8 +253,6 @@ func (s *Server) handlePostSet(w http.ResponseWriter, r *http.Request) {
 		icuMsg.Message = newMessage
 		s.changed = append(s.changed, icuMsg)
 	}
-
-	fmt.Printf("M: %q; %t; %q\n", icuMsg.Message, icuMsg.Changed, icuMsg.MessageOriginal)
 
 	hideLocales, filterTIKs, ok := parseFilterParamsFromReferer(w, r)
 	if !ok {
@@ -462,13 +469,85 @@ func (s *Server) canApplyChanges() bool {
 }
 
 func (s *Server) handlePostApplyChanges(w http.ResponseWriter, r *http.Request) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	if !s.canApplyChanges() {
 		http.Error(w, "can't apply changes", http.StatusBadRequest)
 		return
 	}
 
-	// TODO
-	fmt.Println("APPLY CHANGES")
+	type ARBFile struct {
+		*arb.File
+		AbsolutePath string
+		Changed      bool
+	}
+
+	arbFiles := make(map[string]ARBFile, s.scan.Catalogs.Len())
+	for c := range s.scan.Catalogs.Seq() {
+		arbFiles[c.ARB.Locale.String()] = ARBFile{
+			File:         c.ARB,
+			AbsolutePath: c.ARBFilePath,
+		}
+	}
+
+	for _, c := range s.changed {
+		log.Info("apply change",
+			slog.String("id", c.ID),
+			slog.String("catalog", c.Catalog.Locale),
+			slog.String("new", c.Message),
+			slog.String("original", c.MessageOriginal))
+
+		arbFile := arbFiles[c.Catalog.Locale]
+		arbFile.Changed = true
+
+		m := arbFile.Messages
+		arbMsg := m[c.ID]
+		arbMsg.ICUMessage = c.Message
+
+		m[c.ID] = arbMsg
+		arbFiles[c.Catalog.Locale] = arbFile
+	}
+
+	for _, arbFile := range arbFiles {
+		if !arbFile.Changed {
+			continue
+		}
+		filePath := arbFile.AbsolutePath
+
+		err := func() error {
+			log.Info("writing changed catalog",
+				slog.String("file", filePath))
+
+			f, err := os.OpenFile(filePath, os.O_WRONLY, 0o644)
+			if err != nil {
+				return fmt.Errorf("opening arb file: %w", err)
+			}
+
+			defer func() {
+				if err := f.Close(); err != nil {
+					log.Error("closing arb file", err, slog.String("file", filePath))
+				}
+			}()
+
+			err = arb.Encode(f, arbFile.File, "\t")
+			if err != nil {
+				return fmt.Errorf("encoding arb file: %w", err)
+			}
+			return nil
+		}()
+		if err != nil {
+			log.Error("writing changed catalog", err, slog.String("file", filePath))
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Re-initialize server.
+	if err := s.Init(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("HX-Redirect", "/")
 	w.WriteHeader(http.StatusNoContent)

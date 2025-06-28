@@ -97,7 +97,7 @@ type CatalogStatistics struct {
 type Catalog struct {
 	CatalogStatistics
 	ARB         *arb.File
-	ARBFileName string
+	ARBFilePath string
 }
 
 func NewScan(defaultLocale language.Tag, tokiVersion string) *Scan {
@@ -259,7 +259,12 @@ func (p *Parser) CollectARBFiles(bundlePkgDir string, scan *Scan) error {
 				arbFile.Locale.String(), locale.String(), fileName)
 		}
 
-		catalog := &Catalog{ARB: arbFile, ARBFileName: fileName}
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return fmt.Errorf("determining absolute file path: %w", err)
+		}
+
+		catalog := &Catalog{ARB: arbFile, ARBFilePath: absPath}
 
 		for _, msg := range arbFile.Messages {
 			incomplete := IsMsgIncomplete(scan, arbFile, fileName, &msg)

@@ -19,6 +19,7 @@ const (
 )
 
 type ICUMessage struct {
+	ID                string
 	IncompleteReports []string
 	Message           string
 	Error             string

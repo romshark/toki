@@ -142,20 +142,25 @@ func (g *Generate) Run(
 
 	var nativeCatalog *codeparse.Catalog
 	var nativeARB *arb.File
-	var nativeARBFileName string
+	var nativeARBFilePath string
 	for catalog := range scan.Catalogs.SeqRead() {
 		if catalog.ARB.Locale == scan.DefaultLocale {
 			nativeCatalog = catalog
 			nativeARB = catalog.ARB
-			nativeARBFileName = catalog.ARBFileName
+			nativeARBFilePath = catalog.ARBFilePath
 		}
 	}
 
 	if nativeARB == nil {
-		nativeARBFileName = filepath.Join(
+		nativeARBFilePath = filepath.Join(
 			conf.BundlePkgPath,
 			gengo.FileNameWithLocale(scan.DefaultLocale, "catalog", ".arb"),
 		)
+		nativeARBFilePath, err := filepath.Abs(nativeARBFilePath)
+		if err != nil {
+			panic(err)
+		}
+
 		// Make a new one.
 		nativeARB = &arb.File{
 			Locale:       scan.DefaultLocale,
@@ -166,7 +171,7 @@ func (g *Generate) Run(
 
 		nativeCatalog = &codeparse.Catalog{
 			ARB:         nativeARB,
-			ARBFileName: nativeARBFileName,
+			ARBFilePath: nativeARBFilePath,
 		}
 		scan.Catalogs.Append(nativeCatalog)
 	}
@@ -187,7 +192,7 @@ func (g *Generate) Run(
 				slog.String("id", newMsg.ID))
 			nativeARB.Messages[newMsg.ID] = newMsg
 			if incomplete := codeparse.IsMsgIncomplete(
-				scan, nativeARB, nativeARBFileName, &newMsg,
+				scan, nativeARB, nativeARBFilePath, &newMsg,
 			); incomplete {
 				nativeCatalog.MessagesIncomplete.Add(1)
 			}
@@ -379,8 +384,12 @@ func writeMissingARBFilesAndUpdateCatalogs(
 
 		name := gengo.FileNameWithLocale(locale, "catalog", ".arb")
 		filePath := filepath.Join(bundlePkgPath, name)
+		filePath, err := filepath.Abs(filePath)
+		if err != nil {
+			panic(err)
+		}
 
-		err := func() error {
+		err = func() error {
 			f, err := os.OpenFile(filePath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 			if err != nil {
 				return fmt.Errorf("opening new .arb catalog (%q): %w",
@@ -408,7 +417,7 @@ func writeMissingARBFilesAndUpdateCatalogs(
 			// Add a new catalog.
 			newCatalog := &codeparse.Catalog{
 				ARB:         newFile,
-				ARBFileName: filePath,
+				ARBFilePath: filePath,
 			}
 			newCatalog.MessagesIncomplete.Store(int64(len(newFile.Messages)))
 			catalogs.Append(newCatalog)

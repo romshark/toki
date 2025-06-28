@@ -37,31 +37,34 @@ func (g *WebEdit) Run(osArgs, env []string, stderr io.Writer) error {
 
 	log.SetWriter(stderr, false)
 
-	mainBundleFile := filepath.Join(conf.BundlePkgPath, MainBundleFileGo)
-	switch _, err := os.Stat(mainBundleFile); {
-	case errors.Is(err, os.ErrNotExist):
-		return ErrGenerateBundleFirst
-	case err != nil:
-		return fmt.Errorf(
-			"checking main bundle file %q: %w",
-			mainBundleFile, err,
-		)
-	}
+	s := webedit.NewServer(conf.Host, func() (*codeparse.Scan, error) {
+		mainBundleFile := filepath.Join(conf.BundlePkgPath, MainBundleFileGo)
+		switch _, err := os.Stat(mainBundleFile); {
+		case errors.Is(err, os.ErrNotExist):
+			return nil, ErrGenerateBundleFirst
+		case err != nil:
+			return nil, fmt.Errorf(
+				"checking main bundle file %q: %w",
+				mainBundleFile, err,
+			)
+		}
 
-	parser := codeparse.NewParser(g.hasher, g.tikParser, g.tikICUTranslator)
+		parser := codeparse.NewParser(g.hasher, g.tikParser, g.tikICUTranslator)
 
-	// TODO: avoid hardcoding trimpath.
-	scan, err := parser.Parse(env, "./...", conf.BundlePkgPath, false)
-	if err != nil {
-		err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
-		return err
+		// TODO: avoid hardcoding trimpath.
+		scan, err := parser.Parse(env, "./...", conf.BundlePkgPath, false)
+		if err != nil {
+			err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
+			return nil, err
+		}
+		if scan.SourceErrors.Len() > 0 {
+			return nil, ErrSourceErrors
+		}
+		return scan, nil
+	})
+	if err := s.Init(); err != nil {
+		return fmt.Errorf("initializing server: %w", err)
 	}
-	if scan.SourceErrors.Len() > 0 {
-		return ErrSourceErrors
-	}
-
-	s := webedit.NewServer(conf.Host)
-	s.Init(scan)
 
 	go func() {
 		log.Info("listening", slog.String("host", conf.Host))
