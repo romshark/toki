@@ -340,6 +340,15 @@ func (s *Server) newDataIndex(
 		CatalogsDisplayed: make([]*template.Catalog, 0, len(hideCatalogLocales)),
 		CanApplyChanges:   s.canApplyChanges(),
 	}
+
+	// Move default catalog to first index.
+	for i, c := range data.Catalogs {
+		if c.Default {
+			data.Catalogs[0], data.Catalogs[i] = data.Catalogs[i], data.Catalogs[0]
+			break
+		}
+	}
+
 	for _, cat := range s.catalogs {
 		if !isCatalogHidden(cat.Locale) {
 			data.CatalogsDisplayed = append(data.CatalogsDisplayed, cat)
