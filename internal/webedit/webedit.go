@@ -21,6 +21,7 @@ import (
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/icu"
 	"github.com/romshark/toki/internal/log"
+	"github.com/romshark/toki/internal/tik"
 	"github.com/romshark/toki/internal/webedit/template"
 )
 
@@ -105,6 +106,13 @@ func (s *Server) Init() (err error) {
 		}
 		for c := range s.scan.Catalogs.SeqRead() {
 			m := c.ARB.Messages[t.IDHash]
+
+			isReadOnly := false
+			if c.ARB.Locale == s.scan.DefaultLocale {
+				// For non-default locales a translation is always required.
+				isReadOnly = tik.ProducesCompleteICU(c.ARB.Locale, t.TIK)
+			}
+
 			tmplMsg := &template.ICUMessage{
 				ID: m.ID,
 				Catalog: func() *template.Catalog {
@@ -115,7 +123,8 @@ func (s *Server) Init() (err error) {
 					}
 					return nil
 				}(),
-				Message: m.ICUMessage,
+				Message:    m.ICUMessage,
+				IsReadOnly: isReadOnly,
 			}
 			tmplTIK.ICU = append(tmplTIK.ICU, tmplMsg)
 		}

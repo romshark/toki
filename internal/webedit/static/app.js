@@ -19,11 +19,12 @@ function initEditors() {
 		// Skip if already initialized.
 		if (el.dataset.initialized) return;
 
-		const code = el.value.trim();
 		const mode = el.dataset.mode;
+		const readOnly = el.dataset.readonly;
 
 		const cm = CodeMirror.fromTextArea(el, {
 			mode,
+			readOnly,
 			theme,
 			inputStyle: "textarea",
 			scrollbarStyle: "null",

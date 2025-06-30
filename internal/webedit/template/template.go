@@ -33,6 +33,8 @@ type ICUMessage struct {
 	// Changed is true when there was a change to this message.
 	// In that case MessageOriginal holds the original message value.
 	Changed bool
+
+	IsReadOnly bool
 }
 
 type TIK struct {

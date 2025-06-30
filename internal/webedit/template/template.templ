@@ -477,16 +477,23 @@ templ fragmentICUMessage(tikID string, msg *ICUMessage) {
 			if msg.Catalog.Default {
 				<span>
 					ICU Message [{ msg.Catalog.Locale } - Default]
+					if msg.IsReadOnly {
+						(read only)
+					}
 				</span>
 			} else {
 				<span>
 					ICU Message [{ msg.Catalog.Locale }]
+					if msg.IsReadOnly {
+						(read only)
+					}
 				</span>
 			}
 			<textarea
 				name="icumsg"
 				class="editor"
 				data-mode="icu"
+				data-readonly={ msg.IsReadOnly }
 				hidden
 			>{ msg.Message }</textarea>
 		</label>
@@ -519,7 +526,9 @@ templ fragmentICUMessage(tikID string, msg *ICUMessage) {
 				</ul>
 			</label>
 		}
-		<input type="submit" value="Update"/>
+		if !msg.IsReadOnly {
+			<input type="submit" value="Update"/>
+		}
 	</form>
 }
 
