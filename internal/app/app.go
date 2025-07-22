@@ -28,7 +28,7 @@ var (
 	ErrBundleIncomplete = errors.New("bundle contains incomplete catalogs")
 )
 
-const Version = "0.8.0"
+const Version = "0.8.2"
 
 const MainBundleFileGo = "bundle_gen.go"
 

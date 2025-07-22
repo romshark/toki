@@ -159,7 +159,7 @@ func TestGenerateAndRunFallback(t *testing.T) {
 			"@@locale": "de",
 			"@@last_modified": "2025-01-01T01:01:01Z",
 			"@@x-generator": "github.com/romshark/toki",
-			"@@x-generator-version": "0.7.1",
+			"@@x-generator-version": "0.8.2",
 			"msg1bf544c92a992298": "übersetzt",
 			"@msg1bf544c92a992298": {
 					"description": "übersetzt",

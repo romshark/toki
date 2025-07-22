@@ -3,7 +3,7 @@
 	"@@last_modified": "2025-06-16T00:23:28+02:00",
 	"@@x-generator": "github.com/romshark/toki",
 	"@@x-generator-version": "0.8.0",
-	"msg62489e1e07578e6e": "Im Ordner {var0} wurde nichts gefunden",
+	"msg62489e1e07578e6e": "OK",
 	"@msg62489e1e07578e6e": {
 		"placeholders": {
 			"var0": {
@@ -13,11 +13,11 @@
 		},
 		"type": "text"
 	},
-	"msg6aa44c2f549ae5e8": "übersetzter Text",
+	"msg6aa44c2f549ae5e8": "übersetzter Text 123",
 	"@msg6aa44c2f549ae5e8": {
 		"type": "text"
 	},
-	"msgd2497314df5ae7e6": "",
+	"msgd2497314df5ae7e6": "Es wurde am {var0, date, full} um {var1, time, full} fertiggestellt",
 	"@msgd2497314df5ae7e6": {
 		"placeholders": {
 			"var0": {
