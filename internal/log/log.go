@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"io"
 	"log/slog"
+	"os"
 	"sync/atomic"
 )
 
@@ -37,7 +38,14 @@ func SetWriter(stderr io.Writer, jsonMode bool) {
 
 var logger atomic.Value
 
-func getLogger() *slog.Logger { return logger.Load().(*slog.Logger) }
+func getLogger() *slog.Logger {
+	l, ok := logger.Load().(*slog.Logger)
+	if ok {
+		return l
+	}
+	SetWriter(os.Stderr, false)
+	return logger.Load().(*slog.Logger)
+}
 
 func Verbose(msg string, attrs ...any) {
 	if Mode(mode.Load()) >= ModeVerbose {

@@ -28,7 +28,7 @@ var (
 	ErrBundleIncomplete = errors.New("bundle contains incomplete catalogs")
 )
 
-const Version = "0.8.2"
+const Version = "0.8.3"
 
 const MainBundleFileGo = "bundle_gen.go"
 
@@ -37,7 +37,7 @@ func Run(
 ) (result Result, exitCode int) {
 	if len(osArgs) < 2 {
 		return Result{
-			Err: fmt.Errorf("%w, use either of: [generate,lint]", ErrNoCommand),
+			Err: fmt.Errorf("%w, use either of: [generate,lint,webedit]", ErrNoCommand),
 		}, 2
 	}
 

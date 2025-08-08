@@ -92,6 +92,9 @@ func (r Result) mustPrintJSON() {
 }
 
 func (r Result) Print() {
+	if r.Err != nil {
+		log.Error(r.Err.Error(), nil)
+	}
 	if r.Config == nil {
 		return
 	}
@@ -130,8 +133,5 @@ func (r Result) Print() {
 			return nil
 		})
 		log.Info("finished", fields...)
-	}
-	if r.Err != nil {
-		log.Error(r.Err.Error(), nil)
 	}
 }
