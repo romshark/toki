@@ -7,9 +7,11 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"time"
 
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/config"
@@ -17,6 +19,7 @@ import (
 	"github.com/romshark/toki/internal/webedit"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/cli/browser"
 	"github.com/romshark/icumsg"
 	"github.com/romshark/tik/tik-go"
 )
@@ -64,6 +67,12 @@ func (g *WebEdit) Run(osArgs, env []string, stderr io.Writer) error {
 	})
 	if err := s.Init(); err != nil {
 		return fmt.Errorf("initializing server: %w", err)
+	}
+
+	if !conf.DontOpen {
+		time.AfterFunc(10*time.Millisecond, func() {
+			_ = browser.OpenURL((&url.URL{Scheme: "http", Host: conf.Host}).String())
+		})
 	}
 
 	go func() {

@@ -5,6 +5,7 @@ go 1.24.5
 require (
 	github.com/a-h/templ v0.3.920
 	github.com/cespare/xxhash/v2 v2.3.0
+	github.com/cli/browser v1.3.0
 	github.com/fatih/color v1.18.0
 	github.com/romshark/icumsg v0.3.1
 	github.com/romshark/tik/tik-go v0.8.0

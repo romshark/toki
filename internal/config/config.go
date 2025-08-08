@@ -13,6 +13,7 @@ import (
 type ConfigWebedit struct {
 	Host          string
 	BundlePkgPath string
+	DontOpen      bool
 }
 
 type ConfigGenerate struct {
@@ -33,10 +34,15 @@ func ParseCLIArgsWebedit(osArgs []string) (*ConfigWebedit, error) {
 	c := &ConfigWebedit{}
 
 	cli := flag.NewFlagSet(osArgs[0], flag.ExitOnError)
+	cli.BoolVar(&c.DontOpen, "dontopen", false, "disables automatic browser opening")
 	cli.StringVar(&c.Host, "host", "localhost:52000",
 		"HTTP server host address")
 	cli.StringVar(&c.BundlePkgPath, "b", "tokibundle",
 		"path to generated Go bundle package")
+
+	if err := cli.Parse(osArgs[2:]); err != nil {
+		return nil, fmt.Errorf("parsing: %w", err)
+	}
 
 	return c, nil
 }
