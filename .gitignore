@@ -23,3 +23,12 @@ go.work.sum
 
 # env file
 .env
+
+# Example binaries
+example
+
+# Generated bundle files
+**/tokibundle/bundle_gen.go
+**/tokibundle/catalog_*.arb
+**/tokibundle/*_gen.go
+**/tokibundle/head.txt

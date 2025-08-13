@@ -1,0 +1,8 @@
+module MODULE_NAME_PLACEHOLDER
+
+go 1.22
+
+require (
+	github.com/go-playground/locales v0.14.1
+	golang.org/x/text v0.28.0
+)

@@ -28,14 +28,32 @@ tasks:
     summary: |
       Initialize a new Go project with Toki internationalization support.
       Creates the default bundle with English locale.
+      Copies template files and sets up initial structure.
     vars:
       LOCALE: "{{.LOCALE | default .DEFAULT_LOCALE}}"
+      MODULE_NAME: "{{.MODULE_NAME | default (printf \"github.com/username/project\")}}"
     dep: install
     dir: "{{.USER_WORKING_DIR}}"
     cmds:
+      - cp {{.ROOT_TASKFILE}}/template/main.go.template ./main.go
+      - cp {{.ROOT_TASKFILE}}/template/go.mod.template ./go.mod
+      - go run {{.ROOT_TASKFILE}}/template/replace.go MODULE_NAME_PLACEHOLDER {{.MODULE_NAME}} go.mod
+      - go run {{.ROOT_TASKFILE}}/template/replace.go MODULE_NAME_PLACEHOLDER {{.MODULE_NAME}} main.go
+      - go mod tidy
       - "{{.TOKI_CMD}} generate -l {{.LOCALE}} -json -v"
       - echo "✅ Project initialized with locale {{.LOCALE}}"
       - echo "📁 Bundle created in {{.BUNDLE_DIR}}"
+      - echo "📝 Module {{.MODULE_NAME}}"
+
+  init:del:
+    desc: Delete Toki initialization (clean bundle)
+    summary: |
+      Removes all Toki bundle files and cleans the project.
+      Use this to reset the project to a clean state.
+    dir: "{{.USER_WORKING_DIR}}"
+    cmds:
+      - rm -rf {{.BUNDLE_DIR}}
+      - echo "🧹 Toki bundle removed"
 
   generate:
     desc: "Regenerate the localization bundle"
@@ -48,7 +66,7 @@ tasks:
       - "{{.TOKI_CMD}} generate -l {{.DEFAULT_LOCALE}} -json"
       - echo "✅ Bundle regenerated"
 
-  add-locale:
+  locale:add:
     desc: Add a new translation locale
     summary: |
       Add support for a new language/locale.
@@ -71,6 +89,16 @@ tasks:
     dir: "{{.USER_WORKING_DIR}}"
     cmds:
       - "{{.TOKI_CMD}} lint -require-complete -json -v"
+
+  lint:stat:
+    desc: Show translation status (no failure)
+    summary: |
+      Shows current translation status and completeness percentages.
+      Never fails - use for development overview.
+    dep: install
+    dir: "{{.USER_WORKING_DIR}}"
+    cmds:
+      - "{{.TOKI_CMD}} lint -json -v"
 
   webedit:
     desc: Open web-based translation editor
@@ -110,6 +138,20 @@ tasks:
       - task: build
       - ./example -l ru
 
+  locale:del:
+    desc: Remove a translation locale
+    summary: |
+      Remove support for a language/locale.
+      Deletes the .arb file for the specified locale.
+    requires:
+      vars: [LOCALE]
+    dir: "{{.USER_WORKING_DIR}}"
+    cmds:
+      - rm -f {{.BUNDLE_DIR}}/catalog_{{.LOCALE}}.arb
+      - rm -f {{.BUNDLE_DIR}}/catalog_{{.LOCALE}}_gen.go
+      - "{{.TOKI_CMD}} generate -l {{.DEFAULT_LOCALE}} -json"
+      - echo "🗑️  Removed locale {{.LOCALE}}"
+
   clean:
     desc: Clean generated bundle files
     dep: install
@@ -118,12 +160,3 @@ tasks:
       - rm -rf {{.BUNDLE_DIR}}/*
       - echo "🧹 Cleaned generated files"
 
-  lint:stat:
-    desc: Show translation status (no failure)
-    summary: |
-      Shows current translation status and completeness percentages.
-      Never fails - use for development overview.
-    dep: install
-    dir: "{{.USER_WORKING_DIR}}"
-    cmds:
-      - "{{.TOKI_CMD}} lint -json -v"
