@@ -21,7 +21,7 @@ func main() {
 
 	newContent := strings.ReplaceAll(string(content), old, new)
 
-	err = ioutil.WriteFile(filename, []byte(newContent), 0644)
+	err = ioutil.WriteFile(filename, []byte(newContent), 0o644)
 	if err != nil {
 		panic(err)
 	}
