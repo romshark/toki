@@ -112,6 +112,7 @@ tasks:
   build:
     desc: Build example application
     dir: "{{.USER_WORKING_DIR}}"
+    deps: [generate]
     cmds:
       - go build -o example .
 
