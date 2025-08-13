@@ -1,0 +1,113 @@
+version: '3'
+
+vars:
+  TOKI_CMD: toki
+  DEFAULT_LOCALE: en
+  BUNDLE_DIR: tokibundle
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - echo "USER_WORKING_DIR {{.USER_WORKING_DIR}}"
+      - echo "ROOT_TASKFILE {{.ROOT_TASKFILE}}"
+      - task --list-all
+    silent: true
+
+  install:
+    desc: Install toki from source to go bin
+    cmds:
+      - go install -v ./...
+  install:del:
+    desc: Deletes toki from go bin
+    cmds:
+      - rm -f $(go env GOPATH)/bin/toki
+
+  init:
+    desc: Initialize a new project with Toki
+    summary: |
+      Initialize a new Go project with Toki internationalization support.
+      Creates the default bundle with English locale.
+    vars:
+      LOCALE: "{{.LOCALE | default .DEFAULT_LOCALE}}"
+    dep: install
+    dir: "{{.USER_WORKING_DIR}}"
+    cmds:
+      - "{{.TOKI_CMD}} generate -l {{.LOCALE}} -json -v"
+      - echo "✅ Project initialized with locale {{.LOCALE}}"
+      - echo "📁 Bundle created in {{.BUNDLE_DIR}}"
+
+  generate:
+    desc: "Regenerate the localization bundle"
+    summary: |
+      Regenerates the localization bundle from source code.
+      Use after adding new TIK strings to your code.
+    dep: install
+    dir: "{{.USER_WORKING_DIR}}"
+    cmds:
+      - "{{.TOKI_CMD}} generate -l {{.DEFAULT_LOCALE}} -json"
+      - echo "✅ Bundle regenerated"
+
+  add-locale:
+    desc: Add a new translation locale
+    summary: |
+      Add support for a new language/locale.
+      Creates new .arb files for the specified locale.
+    dep: install
+    dir: "{{.USER_WORKING_DIR}}"
+    requires:
+      vars: [LOCALE]
+    cmds:
+      - "{{.TOKI_CMD}} generate -t {{.LOCALE}} -json -v"
+      - echo "✅ Added locale {{.LOCALE}}"
+      - echo "📝 Edit {{.BUNDLE_DIR}}/catalog_{{.LOCALE}}.arb to add translations"
+
+  lint:
+    desc: Check localization completeness
+    summary: |
+      Lints the source code for TIK usage and checks translation completeness.
+      Fails if any translations are incomplete.
+    dep: install
+    dir: "{{.USER_WORKING_DIR}}"
+    cmds:
+      - "{{.TOKI_CMD}} lint -require-complete -json -v"
+
+  webedit:
+    desc: Open web-based translation editor
+    summary: |
+      Opens a browser-based UI for comfortable translation editing.
+    dep: install
+    dir: "{{.USER_WORKING_DIR}}"
+    cmds:
+      - "{{.TOKI_CMD}} webedit"
+
+  de:
+    desc: Run the simple example in German
+    dep: install
+    dir: "{{.USER_WORKING_DIR}}"
+    cmds:
+      - go build -o $(go env GOPATH)/bin/toki-example .
+      - $(go env GOPATH)/bin/toki-example -l de
+
+  ru:
+    desc: Run the simple example in Russian
+    dep: install
+    dir: "{{.USER_WORKING_DIR}}"
+    cmds:
+      - go build -o $(go env GOPATH)/bin/toki-example .
+      - $(go env GOPATH)/bin/toki-example -l ru
+
+  clean:
+    desc: Clean generated bundle files
+    dep: install
+    dir: "{{.USER_WORKING_DIR}}"
+    cmds:
+      - rm -rf {{.BUNDLE_DIR}}/*
+      - echo "🧹 Cleaned generated files"
+
+  lint:
+    desc: Show translation status
+    dep: install
+    dir: "{{.USER_WORKING_DIR}}"
+    cmds:
+      - "{{.TOKI_CMD}} lint -json -v"
