@@ -1,6 +1,6 @@
 module MODULE_NAME_PLACEHOLDER
 
-go 1.22
+go 1.25
 
 require (
 	github.com/go-playground/locales v0.14.1

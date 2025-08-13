@@ -23,6 +23,12 @@ tasks:
     cmds:
       - rm -f $(go env GOPATH)/bin/toki
 
+  tidy:
+    desc: go mdo tidy
+    dir: "{{.USER_WORKING_DIR}}"
+    cmds:
+      - go mod tidy
+
   init:
     desc: Initialize a new project with Toki
     summary: |
