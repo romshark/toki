@@ -63,10 +63,10 @@ tasks:
       - echo "📝 Edit {{.BUNDLE_DIR}}/catalog_{{.LOCALE}}.arb to add translations"
 
   lint:
-    desc: Check localization completeness
+    desc: Check localization completeness (fails if incomplete)
     summary: |
       Lints the source code for TIK usage and checks translation completeness.
-      Fails if any translations are incomplete.
+      Fails if any translations are incomplete - use for CI/CD validation.
     dep: install
     dir: "{{.USER_WORKING_DIR}}"
     cmds:
@@ -81,21 +81,34 @@ tasks:
     cmds:
       - "{{.TOKI_CMD}} webedit"
 
-  de:
-    desc: Run the simple example in German
-    dep: install
+  build:
+    desc: Build example application
     dir: "{{.USER_WORKING_DIR}}"
     cmds:
-      - go build -o $(go env GOPATH)/bin/toki-example .
-      - $(go env GOPATH)/bin/toki-example -l de
+      - go build -o example .
 
-  ru:
-    desc: Run the simple example in Russian
-    dep: install
+  run:
+    desc: Run example with specified locale
+    dir: "{{.USER_WORKING_DIR}}"
+    requires:
+      vars: [LOCALE]
+    cmds:
+      - task: build
+      - ./example -l {{.LOCALE}}
+
+  run:de:
+    desc: Run example in German
     dir: "{{.USER_WORKING_DIR}}"
     cmds:
-      - go build -o $(go env GOPATH)/bin/toki-example .
-      - $(go env GOPATH)/bin/toki-example -l ru
+      - task: build
+      - ./example -l de
+
+  run:ru:
+    desc: Run example in Russian
+    dir: "{{.USER_WORKING_DIR}}"
+    cmds:
+      - task: build
+      - ./example -l ru
 
   clean:
     desc: Clean generated bundle files
@@ -105,8 +118,11 @@ tasks:
       - rm -rf {{.BUNDLE_DIR}}/*
       - echo "🧹 Cleaned generated files"
 
-  lint:
-    desc: Show translation status
+  lint:stat:
+    desc: Show translation status (no failure)
+    summary: |
+      Shows current translation status and completeness percentages.
+      Never fails - use for development overview.
     dep: install
     dir: "{{.USER_WORKING_DIR}}"
     cmds:
