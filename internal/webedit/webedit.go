@@ -213,12 +213,14 @@ func (s *Server) handleGetStream(w http.ResponseWriter, r *http.Request) {
 		for msg := range ch {
 			switch msg.Type {
 			case EventTypeTIKsChangeFilters, EventTypeTIKChanged:
-				s.lock.Lock()
-				defer s.lock.Unlock()
+				func() {
+					s.lock.Lock()
+					defer s.lock.Unlock()
 
-				sigs := msg.Payload.(signalsFilterParams)
-				data := s.newDataIndex(sigs.HideLocales, sigs.FilterTIKs)
-				patchElement(sse, template.ViewIndex(data), "view index")
+					sigs := msg.Payload.(signalsFilterParams)
+					data := s.newDataIndex(sigs.HideLocales, sigs.FilterTIKs)
+					patchElement(sse, template.ViewIndex(data), "view index")
+				}()
 			}
 		}
 	})
