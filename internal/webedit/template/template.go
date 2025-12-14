@@ -1,13 +1,36 @@
 package template
 
 import (
+	"fmt"
 	"iter"
+	"log/slog"
 	"net/http"
 
+	"github.com/a-h/templ"
 	"github.com/romshark/toki/internal/log"
 )
 
 type FilterTIKs int8
+
+func (f *FilterTIKs) UnmarshalJSON(b []byte) error {
+	switch string(b) {
+	case `"all"`, `""`:
+		*f = FilterTIKsAll
+	case "changed":
+		*f = FilterTIKsChanged
+	case "empty":
+		*f = FilterTIKsEmpty
+	case "complete":
+		*f = FilterTIKsComplete
+	case "incomplete":
+		*f = FilterTIKsIncomplete
+	case "invalid":
+		*f = FilterTIKsInvalid
+	default:
+		return fmt.Errorf("unexpected value: %s", string(b))
+	}
+	return nil
+}
 
 const (
 	FilterTIKsAll FilterTIKs = iota
@@ -49,6 +72,10 @@ type Catalog struct {
 	Default bool
 }
 
+type DataTIK struct {
+	TIK *TIK
+}
+
 type DataIndex struct {
 	TIKs              iter.Seq[TIK]
 	Catalogs          []*Catalog
@@ -64,34 +91,16 @@ type DataIndex struct {
 	CanApplyChanges   bool
 }
 
+func render(w http.ResponseWriter, r *http.Request, c templ.Component, name string) {
+	if err := c.Render(r.Context(), w); err != nil {
+		log.Error("rendering templ component", err, slog.String("component", name))
+	}
+}
+
 func RenderPageIndex(w http.ResponseWriter, r *http.Request, data DataIndex) {
-	if err := pageIndex(data).Render(r.Context(), w); err != nil {
-		log.Error("rendering page index", err)
-	}
+	render(w, r, pageIndex(data), "ViewIndex")
 }
 
-func RenderViewIndex(w http.ResponseWriter, r *http.Request, data DataIndex) {
-	if err := viewIndex(data).Render(r.Context(), w); err != nil {
-		log.Error("rendering view index", err)
-	}
-}
-
-func RenderFragmentICUMessage(
-	w http.ResponseWriter, r *http.Request,
-	tikID string, msg *ICUMessage,
-) {
-	c := fragmentICUMessage(tikID, msg)
-	if err := c.Render(r.Context(), w); err != nil {
-		log.Error("rendering fragment icu message", err)
-	}
-}
-
-func RenderOOBUpdate(
-	w http.ResponseWriter, r *http.Request,
-	tikID string, msg *ICUMessage, d DataIndex,
-) {
-	c := oobUpdate(tikID, msg, d)
-	if err := c.Render(r.Context(), w); err != nil {
-		log.Error("rendering oob update", err)
-	}
+func RenderPageTIK(w http.ResponseWriter, r *http.Request, data DataTIK) {
+	render(w, r, pageTIK(data), "PageTIK")
 }

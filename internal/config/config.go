@@ -12,6 +12,7 @@ import (
 
 type ConfigWebedit struct {
 	Host          string
+	ModPath       string
 	BundlePkgPath string
 	DontOpen      bool
 }
@@ -37,6 +38,7 @@ func ParseCLIArgsWebedit(osArgs []string) (*ConfigWebedit, error) {
 	cli.BoolVar(&c.DontOpen, "dontopen", false, "disables automatic browser opening")
 	cli.StringVar(&c.Host, "host", "localhost:52000",
 		"HTTP server host address")
+	cli.StringVar(&c.ModPath, "m", ".", "path to Go module containing the toki bundle")
 	cli.StringVar(&c.BundlePkgPath, "b", "tokibundle",
 		"path to generated Go bundle package")
 
@@ -61,7 +63,7 @@ func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
 		"translation locale in non-und BCP 47 "+
 			"(multiple are accepted and duplicates are ignored). "+
 			"Creates new catalogs for locales for which no catalogs exist yet.")
-	cli.StringVar(&c.ModPath, "m", ".", "path to Go module")
+	cli.StringVar(&c.ModPath, "m", ".", "path to Go module containing the toki bundle")
 	cli.BoolVar(&c.TrimPath, "trimpath", true, "enable source code path trimming")
 	cli.BoolVar(&c.JSON, "json", false, "enables JSON output")
 	cli.BoolVar(&c.QuietMode, "q", false, "disable all console logging")

@@ -122,7 +122,7 @@ type Scan struct {
 }
 
 func (p *Parser) Parse(
-	env []string, pathPattern, bundlePkgPath string, trimpath bool,
+	env []string, dir, bundlePkgPath string, trimpath bool,
 ) (scan *Scan, err error) {
 	fset := token.NewFileSet()
 
@@ -138,11 +138,12 @@ func (p *Parser) Parse(
 		Fset:  fset,
 		Tests: true,
 		Env:   env,
+		Dir:   dir,
 	}
-	pkgs, err := packages.Load(conf, pathPattern+"/...")
+	pkgs, err := packages.Load(conf, "./...")
 	for _, pkg := range pkgs {
 		if len(pkg.Errors) > 0 {
-			return nil, fmt.Errorf("errors in package %q: %v", pkg.Name, pkg.Errors)
+			return nil, fmt.Errorf("errors in package %q: %v", pkg.PkgPath, pkg.Errors)
 		}
 	}
 	if err != nil {
@@ -176,7 +177,7 @@ func (p *Parser) Parse(
 		p.readerType = pkgBundle.PkgPath + ".Reader"
 	}
 
-	p.collectTexts(fset, pkgs, bundlePkg, pathPattern, trimpath, scan)
+	p.collectTexts(fset, pkgs, bundlePkg, dir, trimpath, scan)
 
 	return scan, nil
 }

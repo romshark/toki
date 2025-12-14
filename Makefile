@@ -1,6 +1,9 @@
 vulncheck:
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
+dist:
+	(cd internal/webedit; bun run build:css)
+
 fmtcheck:
 	@unformatted=$$(go run mvdan.cc/gofumpt@latest -l .); \
 	if [ -n "$$unformatted" ]; then \

@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"os"
 	"slices"
 	"sort"
@@ -16,17 +15,21 @@ import (
 
 	"golang.org/x/text/language"
 
+	"github.com/a-h/templ"
 	"github.com/romshark/icumsg"
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/icu"
 	"github.com/romshark/toki/internal/log"
 	"github.com/romshark/toki/internal/tik"
+	"github.com/romshark/toki/internal/webedit/internal/broadcast"
 	"github.com/romshark/toki/internal/webedit/template"
+	"github.com/starfederation/datastar-go/datastar"
 )
 
 type Server struct {
 	httpServer *http.Server
+	events     *broadcast.Broadcast[EventType]
 
 	newScan func() (*codeparse.Scan, error)
 
@@ -48,9 +51,12 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return s.httpServer.Shutdown(ctx)
 }
 
+func isDevMode() bool { return os.Getenv("TEMPL_DEV_MODE") != "" }
+
 func NewServer(host string, newScan func() (*codeparse.Scan, error)) *Server {
 	s := &Server{
 		newScan:      newScan,
+		events:       broadcast.New[EventType](),
 		icuTokenizer: new(icumsg.Tokenizer),
 		httpServer: &http.Server{
 			Addr: host,
@@ -58,24 +64,54 @@ func NewServer(host string, newScan func() (*codeparse.Scan, error)) *Server {
 	}
 
 	// the files in staticFS are still under the "static" directory.
-	// strip it so the file server can serve "/static/something.js"
-	staticFiles, err := fs.Sub(staticFS, "static")
-	if err != nil {
-		panic(err)
+	// strip it so the file server can serve "/static/dist.css"
+	var staticHandler http.Handler
+	if isDevMode() {
+		// Serve from disk for instant reloads during development
+		staticHandler = noCache(http.FileServer(http.Dir("./internal/webedit/static")))
+		log.Info("serving static from disk (dev mode)")
+	} else {
+		// Serve embedded in prod.
+		staticFiles, err := fs.Sub(staticFS, "static")
+		if err != nil {
+			panic(err)
+		}
+		staticHandler = http.FileServer(http.FS(staticFiles))
 	}
 
 	m := http.NewServeMux()
-	m.Handle("GET /favicon.ico", http.HandlerFunc(s.handleGetFavicon))
-	m.Handle("GET /static/",
-		http.StripPrefix("/static/",
-			http.FileServer(http.FS(staticFiles)),
-		))
-	m.Handle("GET /", http.HandlerFunc(s.handleGetIndex))
-	m.Handle("POST /set", http.HandlerFunc(s.handlePostSet))
-	m.Handle("POST /apply-changes", http.HandlerFunc(s.handlePostApplyChanges))
+
+	// Static resources
+	m.Handle("GET /static/", http.StripPrefix("/static/", staticHandler))
+
+	// Pages
+	m.Handle("GET /", noCache(http.HandlerFunc(s.handleGETIndex)))
+	m.Handle("GET /tik/{id}/{$}", noCache(http.HandlerFunc(s.handleGETID)))
+
+	// Streams
+	m.Handle("GET /stream/{$}", noCache(http.HandlerFunc(s.handleGetStream)))
+	m.Handle("GET /tik/{id}/stream/{$}", noCache(http.HandlerFunc(s.handleGETIDStream)))
+
+	// Actions
+	m.Handle("POST /change-filters/{$}", noCache(http.HandlerFunc(s.handlePOSTChangeFilters)))
+	m.Handle("POST /set/{$}", noCache(http.HandlerFunc(s.handlePOSTSet)))
+	m.Handle("POST /apply-changes/{$}", noCache(http.HandlerFunc(s.handlePOSTApplyChanges)))
 	s.httpServer.Handler = m
 
 	return s
+}
+
+type EventType int8
+
+const (
+	_ EventType = iota
+
+	EventTypeTIKsChangeFilters
+	EventTypeTIKChanged
+)
+
+type EventTIKChanged struct {
+	ID string
 }
 
 func (s *Server) Init() (err error) {
@@ -136,55 +172,106 @@ func (s *Server) Init() (err error) {
 	return nil
 }
 
-//go:embed static/favicon.ico
-var faviconICO []byte
-
 //go:embed static/*
 var staticFS embed.FS
 
-func (s *Server) handleGetFavicon(w http.ResponseWriter, r *http.Request) {
-	_, _ = w.Write(faviconICO)
-}
-
-func (s *Server) handleGetIndex(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleGETIndex(w http.ResponseWriter, r *http.Request) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-
-	noCacheHeaders(w)
 
 	if r.URL.Path != "/" {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
-	hideLocales, filterTIKs, ok := parseFilterParams(w, r)
-	if !ok {
-		return
-	}
 
-	data := s.newDataIndex(hideLocales, filterTIKs)
-	if r.Header.Get("Hx-Request") == "true" {
-		template.RenderViewIndex(w, r, data)
-		return
-	}
-
+	data := s.newDataIndex(nil, template.FilterTIKsAll)
 	template.RenderPageIndex(w, r, data)
 }
 
-// func debugForm(w http.ResponseWriter, r *http.Request) {
-// 	if err := r.ParseForm(); err != nil {
-// 		http.Error(w, "cannot parse form: "+err.Error(), http.StatusBadRequest)
-// 		return
-// 	}
-// 	for k, vs := range r.Form {
-// 		fmt.Fprintf(os.Stdout, "%q = %q\n", k, vs)
-// 	}
-// }
-
-func (s *Server) handlePostSet(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleGETID(w http.ResponseWriter, r *http.Request) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	noCacheHeaders(w)
+	id := r.PathValue("id")
+	if id == "" {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+
+	tik := s.getTIK(id)
+	if tik == nil {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+	template.RenderPageTIK(w, r, template.DataTIK{TIK: tik})
+}
+
+func (s *Server) handleGetStream(w http.ResponseWriter, r *http.Request) {
+	s.handleStreamRequest(w, r, func(
+		sse *datastar.ServerSentEventGenerator, ch <-chan broadcast.Message[EventType],
+	) {
+		for msg := range ch {
+			switch msg.Type {
+			case EventTypeTIKsChangeFilters, EventTypeTIKChanged:
+				s.lock.Lock()
+				defer s.lock.Unlock()
+
+				sigs := msg.Payload.(signalsFilterParams)
+				data := s.newDataIndex(sigs.HideLocales, sigs.FilterTIKs)
+				patchElement(sse, template.ViewIndex(data), "view index")
+			}
+		}
+	})
+}
+
+func (s *Server) handleGETIDStream(w http.ResponseWriter, r *http.Request) {
+	s.handleStreamRequest(w, r, func(
+		sse *datastar.ServerSentEventGenerator, ch <-chan broadcast.Message[EventType],
+	) {
+		for msg := range ch {
+			switch msg.Type {
+			case EventTypeTIKChanged, EventTypeTIKsChangeFilters:
+				func() {
+					s.lock.Lock()
+					defer s.lock.Unlock()
+
+					var sigs signalsFilterParams
+					if err := datastar.ReadSignals(r, &sigs); err != nil {
+						log.Error("reading signals", err)
+					}
+					patchElement(sse,
+						template.ViewTIK(template.DataTIK{}), "view index")
+				}()
+			default:
+				log.Warn("unknown broadcast message",
+					slog.Int("type", int(msg.Type)),
+					slog.Any("payload", msg.Payload))
+			}
+		}
+	})
+}
+
+func (s *Server) handlePOSTChangeFilters(w http.ResponseWriter, r *http.Request) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	var sig struct {
+		FilterTIKs        template.FilterTIKs `json:"filter-tiks"`
+		CatalogsDisplayed []string            `json:"catalogs-displayed"`
+	}
+	if err := datastar.ReadSignals(r, &sig); err != nil {
+		log.Error("reading signals", err)
+		http.Error(w, fmt.Sprintf("bad signals: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	data := s.newDataIndex(sig.CatalogsDisplayed, sig.FilterTIKs)
+	s.events.Broadcast(EventTypeTIKsChangeFilters, data)
+}
+
+func (s *Server) handlePOSTSet(w http.ResponseWriter, r *http.Request) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 
 	// Parse form data.
 	if err := r.ParseForm(); err != nil {
@@ -223,7 +310,6 @@ func (s *Server) handlePostSet(w http.ResponseWriter, r *http.Request) {
 	icuMsg := tk.ICU[iICUMsg]
 
 	if icuMsg.Message == newMessage {
-		template.RenderFragmentICUMessage(w, r, id, icuMsg)
 		return // No change.
 	}
 
@@ -263,73 +349,7 @@ func (s *Server) handlePostSet(w http.ResponseWriter, r *http.Request) {
 		s.changed = append(s.changed, icuMsg)
 	}
 
-	hideLocales, filterTIKs, ok := parseFilterParamsFromReferer(w, r)
-	if !ok {
-		return
-	}
-	template.RenderOOBUpdate(w, r, id, icuMsg, s.newDataIndex(hideLocales, filterTIKs))
-}
-
-func parseFilterParams(
-	w http.ResponseWriter, r *http.Request,
-) ([]string, template.FilterTIKs, bool) {
-	q := r.URL.Query()
-
-	filterTIKs, ok := parseFilterTIKs(w, q)
-	if !ok {
-		return nil, 0, false
-	}
-
-	hideLocales := q["hl"]
-	return hideLocales, filterTIKs, true
-}
-
-func parseFilterParamsFromReferer(
-	w http.ResponseWriter, r *http.Request,
-) ([]string, template.FilterTIKs, bool) {
-	referer := r.Header.Get("Referer")
-	if referer == "" {
-		// Fallback to default if no referer
-		return nil, template.FilterTIKsAll, true
-	}
-
-	refererURL, err := url.Parse(referer)
-	if err != nil {
-		return nil, template.FilterTIKsAll, true
-	}
-
-	q := refererURL.Query()
-
-	filterTIKs, ok := parseFilterTIKs(w, q)
-	if !ok {
-		filterTIKs = template.FilterTIKsAll
-	}
-
-	hideLocales := q["hl"]
-	return hideLocales, filterTIKs, true
-}
-
-func parseFilterTIKs(
-	w http.ResponseWriter, q url.Values,
-) (tp template.FilterTIKs, ok bool) {
-	switch q.Get("t") {
-	case "all", "":
-		tp = template.FilterTIKsAll
-	case "changed":
-		tp = template.FilterTIKsChanged
-	case "empty":
-		tp = template.FilterTIKsEmpty
-	case "complete":
-		tp = template.FilterTIKsComplete
-	case "incomplete":
-		tp = template.FilterTIKsIncomplete
-	case "invalid":
-		tp = template.FilterTIKsInvalid
-	default:
-		http.Error(w, "invalid type", http.StatusNotAcceptable)
-		return 0, false
-	}
-	return tp, true
+	s.events.Broadcast(EventTypeTIKChanged, EventTIKChanged{ID: id})
 }
 
 func (s *Server) newDataIndex(
@@ -486,7 +506,7 @@ func (s *Server) canApplyChanges() bool {
 	return true
 }
 
-func (s *Server) handlePostApplyChanges(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handlePOSTApplyChanges(w http.ResponseWriter, r *http.Request) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -567,12 +587,55 @@ func (s *Server) handlePostApplyChanges(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	w.Header().Set("HX-Redirect", "/")
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func noCacheHeaders(w http.ResponseWriter) {
-	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
-	w.Header().Set("Pragma", "no-cache")
-	w.Header().Set("Expires", "0")
+func noCache(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		h.ServeHTTP(w, r)
+	})
+}
+
+type signalsFilterParams struct {
+	HideLocales []string            `json:"hide-locales"`
+	FilterTIKs  template.FilterTIKs `json:"filter-tiks"`
+}
+
+func (s *Server) handleStreamRequest(
+	w http.ResponseWriter, r *http.Request,
+	fn func(
+		sse *datastar.ServerSentEventGenerator,
+		ch <-chan broadcast.Message[EventType],
+	),
+) {
+	if r.Header.Get("Datastar-Request") != "true" {
+		log.Warn("non-datastar request to GET /stream")
+		http.Error(w, "not a ds request", http.StatusBadRequest)
+		return
+	}
+	sse := datastar.NewSSE(w, r, datastar.WithCompression())
+
+	sub := s.events.Subscribe(8)
+	defer sub.Close()
+
+	fn(sse, sub.C())
+}
+
+func patchElement(
+	sse *datastar.ServerSentEventGenerator, comp templ.Component, compName string,
+) {
+	if err := sse.PatchElementTempl(comp); err != nil {
+		log.Error("patching", err, slog.String("component", compName))
+	}
+}
+
+func (s *Server) getTIK(id string) *template.TIK {
+	i := slices.IndexFunc(s.tiks, func(t *template.TIK) bool { return t.ID == id })
+	if i == -1 {
+		return nil
+	}
+	return s.tiks[i]
 }

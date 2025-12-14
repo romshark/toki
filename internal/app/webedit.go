@@ -41,9 +41,10 @@ func (g *WebEdit) Run(osArgs, env []string, stderr io.Writer) error {
 	log.SetWriter(stderr, false)
 
 	s := webedit.NewServer(conf.Host, func() (*codeparse.Scan, error) {
-		mainBundleFile := filepath.Join(conf.BundlePkgPath, MainBundleFileGo)
+		mainBundleFile := filepath.Join(conf.ModPath, conf.BundlePkgPath, MainBundleFileGo)
 		switch _, err := os.Stat(mainBundleFile); {
 		case errors.Is(err, os.ErrNotExist):
+			log.Error("main bundle file not found", err)
 			return nil, ErrGenerateBundleFirst
 		case err != nil:
 			return nil, fmt.Errorf(
@@ -55,7 +56,7 @@ func (g *WebEdit) Run(osArgs, env []string, stderr io.Writer) error {
 		parser := codeparse.NewParser(g.hasher, g.tikParser, g.tikICUTranslator)
 
 		// TODO: avoid hardcoding trimpath.
-		scan, err := parser.Parse(env, "./...", conf.BundlePkgPath, false)
+		scan, err := parser.Parse(env, conf.ModPath, conf.BundlePkgPath, false)
 		if err != nil {
 			err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
 			return nil, err
