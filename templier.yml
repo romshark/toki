@@ -36,6 +36,7 @@ custom-watchers:
     debounce:
     fail-on-error: true
     requires: rebuild
+
   - name: "Bundle CSS"
     cmd: "make dist"
     include:
@@ -46,14 +47,34 @@ custom-watchers:
     exclude: ["internal/webedit/static/*"]
     fail-on-error: true
     debounce:
-    requires: # No action, "Bundle Changed" will do the reloading.
-  - name: Bundle Changed
+    requires:
+
+  - name: "Bundle JS"
+    cmd: >-
+      bun build internal/webedit/js/app.js
+      --outfile=internal/webedit/static/dist.min.js
+      --format=esm
+      --target=browser
+      --minify
+    include:
+      - "internal/webedit/**/*.js"
+      - "internal/webedit/**/*.ts"
+    exclude:
+      - "internal/webedit/static/*"
+    fail-on-error: true
+    debounce:
+    requires:
+
+  - name: "Bundle Changed"
     cmd: # Just reload all tabs.
-    include: ["internal/webedit/static/*"]
+    include:
+      - "internal/webedit/static/dist.min.js"
+      - "internal/webedit/static/dist.min.css"
     exclude:
     fail-on-error:
     debounce:
     requires: reload
+
 
 compiler:
   gcflags:

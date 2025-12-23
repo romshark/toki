@@ -34,8 +34,8 @@ github.com/romshark/icumsg v0.3.1 h1:x2Vb8tEhOF9b/wt4tgxf7jEimMk/R3uQr5dx5+1ZcXA
 github.com/romshark/icumsg v0.3.1/go.mod h1:XjMGIpBh3veiX+zzefcrKm4XIMyFOYdcDBxvsEPTvRM=
 github.com/romshark/tik/tik-go v0.8.0 h1:JQimk1odNrqRh/t6IAvYsyYuUpAspAcNaed6F6l86so=
 github.com/romshark/tik/tik-go v0.8.0/go.mod h1:+RydGIk0Er3/WFVR/ctTm6wPGGaJZ5WtTQw9YIMXiH8=
-github.com/starfederation/datastar-go v1.0.3 h1:DnzgsJ6tDHDM6y5Nxsk0AGW/m8SyKch2vQg3P1xGTcU=
-github.com/starfederation/datastar-go v1.0.3/go.mod h1:stm83LQkhZkwa5GzzdPEN6dLuu8FVwxIv0w1DYkbD3w=
+github.com/starfederation/datastar-go v1.1.0 h1:UVOYpbNfKPfrEq3MBOa1FRPO/YsxxcIduUxUTJiEQbQ=
+github.com/starfederation/datastar-go v1.1.0/go.mod h1:stm83LQkhZkwa5GzzdPEN6dLuu8FVwxIv0w1DYkbD3w=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.4.0/go.mod h1:YvHI0jy2hoMjB+UWwv71VJQ9isScKT/TqJzVSSt89Yw=
 github.com/stretchr/objx v0.5.0/go.mod h1:Yh+to48EsGEfYuaHDzXPcE3xhTkx73EhmCGUpEOglKo=

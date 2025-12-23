@@ -1,1 +1,11 @@
 @import "tailwindcss";
+
+.cm-wrapper {
+  width: 100%;
+}
+.cm-mount .cm-editor {
+  height: 100%;
+}
+.cm-mount {
+  min-height: 6rem;
+} /* or whatever you need */

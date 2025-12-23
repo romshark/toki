@@ -10,26 +10,44 @@ import (
 	"github.com/romshark/toki/internal/log"
 )
 
-type FilterTIKs int8
+type FilterTIKs int8 // enum
 
 func (f *FilterTIKs) UnmarshalJSON(b []byte) error {
 	switch string(b) {
 	case `"all"`, `""`:
 		*f = FilterTIKsAll
-	case "changed":
+	case `"changed"`:
 		*f = FilterTIKsChanged
-	case "empty":
+	case `"empty"`:
 		*f = FilterTIKsEmpty
-	case "complete":
+	case `"complete"`:
 		*f = FilterTIKsComplete
-	case "incomplete":
+	case `"incomplete"`:
 		*f = FilterTIKsIncomplete
-	case "invalid":
+	case `"invalid"`:
 		*f = FilterTIKsInvalid
 	default:
 		return fmt.Errorf("unexpected value: %s", string(b))
 	}
 	return nil
+}
+
+func (f FilterTIKs) String() string {
+	switch f {
+	case FilterTIKsAll:
+		return "all"
+	case FilterTIKsChanged:
+		return "changed"
+	case FilterTIKsEmpty:
+		return "empty"
+	case FilterTIKsComplete:
+		return "complete"
+	case FilterTIKsIncomplete:
+		return "incomplete"
+	case FilterTIKsInvalid:
+		return "invalid"
+	}
+	return ""
 }
 
 const (
@@ -97,10 +115,14 @@ func render(w http.ResponseWriter, r *http.Request, c templ.Component, name stri
 	}
 }
 
-func RenderPageIndex(w http.ResponseWriter, r *http.Request, data DataIndex) {
-	render(w, r, pageIndex(data), "ViewIndex")
+func RenderPageIndex(
+	w http.ResponseWriter, r *http.Request, data DataIndex, sessionID string,
+) {
+	render(w, r, pageIndex(data, sessionID), "ViewIndex")
 }
 
-func RenderPageTIK(w http.ResponseWriter, r *http.Request, data DataTIK) {
-	render(w, r, pageTIK(data), "PageTIK")
+func RenderPageTIK(
+	w http.ResponseWriter, r *http.Request, data DataTIK, sessionID string,
+) {
+	render(w, r, pageTIK(data, sessionID), "PageTIK")
 }

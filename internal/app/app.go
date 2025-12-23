@@ -28,7 +28,7 @@ var (
 	ErrBundleIncomplete = errors.New("bundle contains incomplete catalogs")
 )
 
-const Version = "0.8.3"
+const Version = "0.9.0"
 
 const MainBundleFileGo = "bundle_gen.go"
 
@@ -37,7 +37,8 @@ func Run(
 ) (result Result, exitCode int) {
 	if len(osArgs) < 2 {
 		return Result{
-			Err: fmt.Errorf("%w, use either of: [generate,lint,webedit]", ErrNoCommand),
+			Err: fmt.Errorf("%w, use either of: [version,generate,lint,webedit]",
+				ErrNoCommand),
 		}, 2
 	}
 
@@ -62,6 +63,7 @@ func Run(
 		}
 		return r, 0
 	case "webedit":
+		fmt.Println("OKAY WEBEDIT")
 		w := WebEdit{
 			hasher:           xxhash.New(),
 			icuTokenizer:     new(icumsg.Tokenizer),
@@ -78,7 +80,7 @@ func Run(
 		return Result{}, 0
 	}
 	return Result{
-		Err: fmt.Errorf("%w %q, use either of: [generate,lint,webedit]",
+		Err: fmt.Errorf("%w %q, use either of: [version,generate,lint,webedit]",
 			ErrUnknownCommand, osArgs[1]),
 	}, 2
 }

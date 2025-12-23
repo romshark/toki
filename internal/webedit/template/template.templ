@@ -5,7 +5,7 @@ import (
 	"slices"
 )
 
-templ htmlMain() {
+templ htmlMain(sessionID string) {
 	<!DOCTYPE html>
 	<html class="h-full">
 		<head>
@@ -13,57 +13,63 @@ templ htmlMain() {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<meta charset="UTF-8"/>
 			<meta name="description" content="Toki web GUI for editing catalogs"/>
-			<script type="module" src="/static/datastar.min.js"></script>
-			<script src="/static/app.js"></script>
-			<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-			<script src="/static/mode_icu.js"></script>
+			<script type="module" src="/static/dist.min.js"></script>
+			<script type="module" src="/static/datastar/1.0.0rc7/min.js"></script>
 			<link rel="icon" href="/static/favicon.ico"/>
-			<link rel="stylesheet" href="/static/dist.css"/>
-			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css"/>
-			<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.css"/>
-			<link
-				rel="stylesheet"
-				href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/theme/base16-light.min.css"
-				media="(prefers-color-scheme: light)"
-			/>
-			<link
-				rel="stylesheet"
-				href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/theme/base16-dark.min.css"
-				media="(prefers-color-scheme: dark)"
-			/>
+			<link rel="stylesheet" href="/static/dist.min.css"/>
+			<link rel="stylesheet" href="/static/font-awesome/7.0.0/css/all.min.css"/>
 		</head>
 		<body
 			class="
 				h-screen overflow-hidden dark:bg-black dark:text-white
 				m-0 font-sans
 			"
+			data-signals:sessionid={ fmt.Sprintf("'%s'", sessionID) }
 		>
 			{ children... }
 		</body>
 	</html>
 }
 
-templ pageIndex(data DataIndex) {
-	@htmlMain() {
+templ pageIndex(data DataIndex, sessionID string) {
+	@htmlMain(sessionID) {
 		@ViewIndex(data)
 	}
 }
 
-templ pageTIK(data DataTIK) {
-	@htmlMain() {
+templ pageTIK(data DataTIK, sessionID string) {
+	@htmlMain(sessionID) {
 		@ViewTIK(data)
 	}
 }
 
 templ ViewIndex(data DataIndex) {
-	<div id="index" class="h-full flex flex-row min-h-0">
+	<div
+		id="index"
+		class="h-full flex flex-row min-h-0"
+		data-init="@get('/stream/')"
+		data-signals="{
+			filtertiks: 'all',
+			hidelocales: [],
+		}"
+		data-effect="
+			queryWrite({
+				f: $filtertiks,
+				h: $hidelocales,
+			})
+		"
+	>
 		@fragmentSidebar(data)
 		@fragmentMain(data)
 	</div>
 }
 
 templ ViewTIK(data DataTIK) {
-	<div id="tik" class="w-full flex flex-col gap-4">
+	<div
+		id="tik"
+		class="w-full flex flex-col gap-4"
+		data-init={ fmt.Sprintf("@get('/tik/%s/stream/')", data.TIK.ID) }
+	>
 		<nav class="p-2">
 			<a href="javascript:history.back()">
 				<i class="fa-solid fa-angle-left"></i>
@@ -129,19 +135,19 @@ templ fragmentSidebar(data DataIndex) {
 				}
 			</div>
 			<hr/>
-			<div>
+			<div data-on:change="@post('/change-filters/')">
 				@fragmentRadioOption(data.FilterTIKs == FilterTIKsAll,
-					"t", "all", fmt.Sprintf("All (%d)", data.NumAll))
+					"t", FilterTIKsAll.String(), fmt.Sprintf("All (%d)", data.NumAll))
 				@fragmentRadioOption(data.FilterTIKs == FilterTIKsChanged,
-					"t", "changed", fmt.Sprintf("Changed (%d)", data.NumChanged))
+					"t", FilterTIKsChanged.String(), fmt.Sprintf("Changed (%d)", data.NumChanged))
 				@fragmentRadioOption(data.FilterTIKs == FilterTIKsComplete,
-					"t", "complete", fmt.Sprintf("Complete (%d)", data.NumComplete))
+					"t", FilterTIKsComplete.String(), fmt.Sprintf("Complete (%d)", data.NumComplete))
 				@fragmentRadioOption(data.FilterTIKs == FilterTIKsIncomplete,
-					"t", "incomplete", fmt.Sprintf("Incomplete (%d)", data.NumIncomplete))
+					"t", FilterTIKsIncomplete.String(), fmt.Sprintf("Incomplete (%d)", data.NumIncomplete))
 				@fragmentRadioOption(data.FilterTIKs == FilterTIKsEmpty,
-					"t", "empty", fmt.Sprintf("Empty (%d)", data.NumEmpty))
+					"t", FilterTIKsEmpty.String(), fmt.Sprintf("Empty (%d)", data.NumEmpty))
 				@fragmentRadioOption(data.FilterTIKs == FilterTIKsInvalid,
-					"t", "invalid", fmt.Sprintf("Invalid (%d)", data.NumInvalid))
+					"t", FilterTIKsInvalid.String(), fmt.Sprintf("Invalid (%d)", data.NumInvalid))
 			</div>
 		</form>
 	</aside>
@@ -155,7 +161,7 @@ templ fragmentNoResults() {
 }
 
 templ fragmentMain(data DataIndex) {
-	<main class="p-4 pl-0 overflow-auto flex flex-col flex-grow">
+	<main class="p-4 pl-0 overflow-auto flex flex-col grow">
 		<div class="h-fit gap-4 flex flex-col">
 			switch  {
 				case data.FilterTIKs == FilterTIKsAll && data.NumAll == 0:
@@ -184,7 +190,7 @@ templ fragmentMain(data DataIndex) {
 					}
 			}
 			for tik := range data.TIKs {
-				@fragmentSection(tik, data.CatalogsDisplayed)
+				@FragmentSection(tik, data.CatalogsDisplayed)
 			}
 		</div>
 	</main>
@@ -201,8 +207,11 @@ templ fragmentButton(disabled bool) {
 	</button>
 }
 
-templ fragmentSection(tik TIK, catalogsDisplayed []*Catalog) {
-	<section class="max-w-full flex flex-col border border-solid rounded-md">
+templ FragmentSection(tik TIK, catalogsDisplayed []*Catalog) {
+	<section
+		id={ fmt.Sprintf("msg.%s", tik.ID) }
+		class="max-w-full flex flex-col border border-solid rounded-md"
+	>
 		<header class="p-4 bg-stone-100 dark:bg-stone-800">
 			<label>
 				<a class="text-xs text-blue-700 dark:text-blue-400" href={ fmt.Sprintf("/%s", tik.ID) }>
@@ -226,10 +235,7 @@ templ fragmentSection(tik TIK, catalogsDisplayed []*Catalog) {
 				"
 			>
 				for _, msg := range tik.ICU {
-					<li
-						id={ fmt.Sprintf("msg-%s", msg.ID) }
-						class="flex flex-col flex-1 box-border w-full"
-					>
+					<li class="flex flex-col flex-1 box-border w-full">
 						@fragmentICUMessage(tik.ID, msg)
 					</li>
 				}
@@ -239,7 +245,8 @@ templ fragmentSection(tik TIK, catalogsDisplayed []*Catalog) {
 }
 
 templ fragmentICUMessage(tikID string, msg *ICUMessage) {
-	<form data-on-change="@">
+	{{ formActURL := fmt.Sprintf("@post('/set/%s/', {contentType: 'form'})", tikID) }}
+	<form data-on:change__debounce.300ms={ formActURL }>
 		<input type="hidden" name="locale" value={ msg.Catalog.Locale }/>
 		<input type="hidden" name="id" value={ tikID }/>
 		<label>
@@ -289,11 +296,11 @@ templ fragmentICUMessage(tikID string, msg *ICUMessage) {
 				</ul>
 			</label>
 		}
-		if !msg.IsReadOnly {
-			@fragmentButton(false) {
-				Update
-			}
-		}
+		// if !msg.IsReadOnly {
+		// 	@fragmentButton(false) {
+		// 		Update
+		// 	}
+		// }
 	</form>
 }
 
@@ -301,8 +308,7 @@ templ fragmentRadioOption(isSelected bool, name, value, label string) {
 	<label class="text-xs font-normal items-center h-5 flex flex-row">
 		<input
 			type="radio"
-			name={ name }
-			value={ value }
+			data-on:click={ fmt.Sprintf("$filtertiks = '%s'", value) }
 			if isSelected {
 				checked
 			}
@@ -322,6 +328,6 @@ templ fragmentCodeMirror(name string, readOnly bool, value string) {
 		name={ name }
 		class="editor"
 		data-info-readonly={ fmt.Sprintf("%t", readOnly) }
-		data-on-load="initCodeMirror(el)"
+		data-init="window.initCodeMirror(el)"
 	>{ value }</textarea>
 }

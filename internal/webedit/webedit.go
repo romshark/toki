@@ -23,13 +23,15 @@ import (
 	"github.com/romshark/toki/internal/log"
 	"github.com/romshark/toki/internal/tik"
 	"github.com/romshark/toki/internal/webedit/internal/broadcast"
+	"github.com/romshark/toki/internal/webedit/internal/sessid"
 	"github.com/romshark/toki/internal/webedit/template"
 	"github.com/starfederation/datastar-go/datastar"
 )
 
 type Server struct {
 	httpServer *http.Server
-	events     *broadcast.Broadcast[EventType]
+	events     *broadcast.Broadcast[string, EventType]
+	shutdownCh chan struct{} // Closed when shutting down.
 
 	newScan func() (*codeparse.Scan, error)
 
@@ -48,6 +50,7 @@ func (s *Server) ListenAndServe() error {
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
+	close(s.shutdownCh) // Close all SSE subscriptions.
 	return s.httpServer.Shutdown(ctx)
 }
 
@@ -56,15 +59,16 @@ func isDevMode() bool { return os.Getenv("TEMPL_DEV_MODE") != "" }
 func NewServer(host string, newScan func() (*codeparse.Scan, error)) *Server {
 	s := &Server{
 		newScan:      newScan,
-		events:       broadcast.New[EventType](),
+		events:       broadcast.New[string, EventType](),
 		icuTokenizer: new(icumsg.Tokenizer),
+		shutdownCh:   make(chan struct{}),
 		httpServer: &http.Server{
 			Addr: host,
 		},
 	}
 
 	// the files in staticFS are still under the "static" directory.
-	// strip it so the file server can serve "/static/dist.css"
+	// strip it so the file server can serve "/static/dist.min.css"
 	var staticHandler http.Handler
 	if isDevMode() {
 		// Serve from disk for instant reloads during development
@@ -94,7 +98,7 @@ func NewServer(host string, newScan func() (*codeparse.Scan, error)) *Server {
 
 	// Actions
 	m.Handle("POST /change-filters/{$}", noCache(http.HandlerFunc(s.handlePOSTChangeFilters)))
-	m.Handle("POST /set/{$}", noCache(http.HandlerFunc(s.handlePOSTSet)))
+	m.Handle("POST /set/{id}/{$}", noCache(http.HandlerFunc(s.handlePOSTSet)))
 	m.Handle("POST /apply-changes/{$}", noCache(http.HandlerFunc(s.handlePOSTApplyChanges)))
 	s.httpServer.Handler = m
 
@@ -106,9 +110,11 @@ type EventType int8
 const (
 	_ EventType = iota
 
-	EventTypeTIKsChangeFilters
+	EventTypeIndexChangeFilters
 	EventTypeTIKChanged
 )
+
+type EventIndexChangeFilters struct{ signalsIndex }
 
 type EventTIKChanged struct {
 	ID string
@@ -184,8 +190,9 @@ func (s *Server) handleGETIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sessionID := sessid.MustNewID()
 	data := s.newDataIndex(nil, template.FilterTIKsAll)
-	template.RenderPageIndex(w, r, data)
+	template.RenderPageIndex(w, r, data, sessionID)
 }
 
 func (s *Server) handleGETID(w http.ResponseWriter, r *http.Request) {
@@ -203,22 +210,42 @@ func (s *Server) handleGETID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 		return
 	}
-	template.RenderPageTIK(w, r, template.DataTIK{TIK: tik})
+
+	sessionID := sessid.MustNewID()
+	template.RenderPageTIK(w, r, template.DataTIK{TIK: tik}, sessionID)
 }
 
 func (s *Server) handleGetStream(w http.ResponseWriter, r *http.Request) {
+	var filters signalsIndex
 	s.handleStreamRequest(w, r, func(
 		sse *datastar.ServerSentEventGenerator, ch <-chan broadcast.Message[EventType],
 	) {
 		for msg := range ch {
 			switch msg.Type {
-			case EventTypeTIKsChangeFilters, EventTypeTIKChanged:
+			case EventTypeTIKChanged:
 				func() {
 					s.lock.Lock()
 					defer s.lock.Unlock()
 
-					sigs := msg.Payload.(signalsFilterParams)
-					data := s.newDataIndex(sigs.HideLocales, sigs.FilterTIKs)
+					ev := msg.Payload.(EventTIKChanged)
+					tik := s.getTIK(ev.ID)
+
+					// for _, cat := range s.catalogs {
+					// 	if !isCatalogHidden(cat.Locale) {
+					// 		data.CatalogsDisplayed = append(data.CatalogsDisplayed, cat)
+					// 	}
+					// }
+
+					patchElement(sse, template.FragmentSection(*tik, nil), "view index")
+				}()
+			case EventTypeIndexChangeFilters:
+				func() {
+					s.lock.Lock()
+					defer s.lock.Unlock()
+
+					ev := msg.Payload.(EventIndexChangeFilters)
+					filters = ev.signalsIndex
+					data := s.newDataIndex(filters.HideLocales, filters.FilterTIKs)
 					patchElement(sse, template.ViewIndex(data), "view index")
 				}()
 			}
@@ -232,48 +259,46 @@ func (s *Server) handleGETIDStream(w http.ResponseWriter, r *http.Request) {
 	) {
 		for msg := range ch {
 			switch msg.Type {
-			case EventTypeTIKChanged, EventTypeTIKsChangeFilters:
+			case EventTypeTIKChanged:
 				func() {
 					s.lock.Lock()
 					defer s.lock.Unlock()
 
-					var sigs signalsFilterParams
-					if err := datastar.ReadSignals(r, &sigs); err != nil {
-						log.Error("reading signals", err)
+					ev := msg.Payload.(EventTIKChanged)
+
+					tik := s.getTIK(ev.ID)
+					if tik == nil {
+						http.Error(w, http.StatusText(http.StatusNotFound),
+							http.StatusNotFound)
+						return
 					}
+
 					patchElement(sse,
-						template.ViewTIK(template.DataTIK{}), "view index")
+						template.ViewTIK(template.DataTIK{TIK: tik}), "view index")
 				}()
-			default:
-				log.Warn("unknown broadcast message",
-					slog.Int("type", int(msg.Type)),
-					slog.Any("payload", msg.Payload))
 			}
 		}
 	})
 }
 
 func (s *Server) handlePOSTChangeFilters(w http.ResponseWriter, r *http.Request) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	var sig struct {
-		FilterTIKs        template.FilterTIKs `json:"filter-tiks"`
-		CatalogsDisplayed []string            `json:"catalogs-displayed"`
-	}
-	if err := datastar.ReadSignals(r, &sig); err != nil {
-		log.Error("reading signals", err)
-		http.Error(w, fmt.Sprintf("bad signals: %v", err), http.StatusBadRequest)
+	sig, ok := readSignalsIndex(w, r)
+	if !ok {
 		return
 	}
 
-	data := s.newDataIndex(sig.CatalogsDisplayed, sig.FilterTIKs)
-	s.events.Broadcast(EventTypeTIKsChangeFilters, data)
+	s.events.Broadcast(sig.SessionID, EventTypeIndexChangeFilters,
+		EventIndexChangeFilters{signalsIndex: sig})
 }
 
 func (s *Server) handlePOSTSet(w http.ResponseWriter, r *http.Request) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+
+	// sig, ok := readSignalsIndex(w, r)
+	// if !ok {
+	// 	return
+	// }
 
 	// Parse form data.
 	if err := r.ParseForm(); err != nil {
@@ -281,7 +306,7 @@ func (s *Server) handlePOSTSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.FormValue("id")
+	id := r.PathValue("id")
 	locale := r.FormValue("locale")
 	newMessage := r.FormValue("icumsg")
 
@@ -351,7 +376,7 @@ func (s *Server) handlePOSTSet(w http.ResponseWriter, r *http.Request) {
 		s.changed = append(s.changed, icuMsg)
 	}
 
-	s.events.Broadcast(EventTypeTIKChanged, EventTIKChanged{ID: id})
+	s.events.BroadcastAll(EventTypeTIKChanged, EventTIKChanged{ID: id})
 }
 
 func (s *Server) newDataIndex(
@@ -601,11 +626,6 @@ func noCache(h http.Handler) http.Handler {
 	})
 }
 
-type signalsFilterParams struct {
-	HideLocales []string            `json:"hide-locales"`
-	FilterTIKs  template.FilterTIKs `json:"filter-tiks"`
-}
-
 func (s *Server) handleStreamRequest(
 	w http.ResponseWriter, r *http.Request,
 	fn func(
@@ -618,12 +638,35 @@ func (s *Server) handleStreamRequest(
 		http.Error(w, "not a ds request", http.StatusBadRequest)
 		return
 	}
-	sse := datastar.NewSSE(w, r, datastar.WithCompression())
 
-	sub := s.events.Subscribe(8)
+	sig, ok := readSignalsIndex(w, r)
+	if !ok {
+		return
+	}
+	if sig.SessionID == "" {
+		http.Error(w, "missing session id", http.StatusBadRequest)
+		return
+	}
+
+	// This would create a new stream even if the session id was never
+	// issued by the server, but this is fine since this server is
+	// supposed to run on localhost only in a trusted environment.
+	sub := s.events.Subscribe(sig.SessionID, 8)
 	defer sub.Close()
 
-	fn(sse, sub.C())
+	sse := datastar.NewSSE(w, r, datastar.WithCompression())
+	subC := sub.C()
+
+	go func() {
+		// Close the subscription when the request is canceled.
+		select {
+		case <-r.Context().Done():
+		case <-s.shutdownCh:
+		}
+		sub.Close()
+	}()
+
+	fn(sse, subC)
 }
 
 func patchElement(
@@ -641,3 +684,37 @@ func (s *Server) getTIK(id string) *template.TIK {
 	}
 	return s.tiks[i]
 }
+
+type signalsIndex struct {
+	SessionID   string              `json:"sessionid"`
+	FilterTIKs  template.FilterTIKs `json:"filtertiks"`
+	HideLocales []string            `json:"hidelocales"`
+}
+
+func readSignalsIndex(
+	w http.ResponseWriter, r *http.Request,
+) (signals signalsIndex, ok bool) {
+	if err := datastar.ReadSignals(r, &signals); err != nil {
+		log.Error("reading index signals", err)
+		http.Error(w, fmt.Sprintf("bad signals: %v", err), http.StatusBadRequest)
+		return signals, false
+	}
+	return signals, true
+}
+
+type Params struct {
+	FilterTIKs  string   `form:"f"`
+	HideLocales []string `form:"h"`
+}
+
+// func parseURLParams[T any](w http.ResponseWriter, r *http.Request) (data T, ok bool) {
+// 	decoder := form.NewDecoder()
+
+// 	err := decoder.Decode(&data, r.URL.Query())
+// 	if err != nil {
+// 		errMsg := fmt.Sprintf("decoding url params: %v", err)
+// 		http.Error(w, errMsg, http.StatusBadRequest)
+// 		return data, false
+// 	}
+// 	return data, true
+// }

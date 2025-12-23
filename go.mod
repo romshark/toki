@@ -9,7 +9,7 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/romshark/icumsg v0.3.1
 	github.com/romshark/tik/tik-go v0.8.0
-	github.com/starfederation/datastar-go v1.0.3
+	github.com/starfederation/datastar-go v1.1.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/text v0.32.0
 	golang.org/x/tools v0.40.0
