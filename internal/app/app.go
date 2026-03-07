@@ -28,7 +28,11 @@ var (
 	ErrBundleIncomplete = errors.New("bundle contains incomplete catalogs")
 )
 
-const Version = "0.8.3"
+var (
+	Version = "dev"
+	Commit  = ""
+	Date    = ""
+)
 
 const MainBundleFileGo = "bundle_gen.go"
 
@@ -101,7 +105,17 @@ func printVersionInfoAndExit(stderr, stdout io.Writer) (exitCode int) {
 		_, _ = fmt.Fprintf(stderr, "reading build information: %v\n", err)
 	}
 
-	_, _ = fmt.Fprintf(stdout, "Toki v%s\n\n", Version)
-	_, _ = fmt.Fprintf(stdout, "%v\n", info)
+	v := Version
+	if len(v) > 0 && v[0] != 'v' {
+		v = "v" + v
+	}
+	_, _ = fmt.Fprintf(stdout, "Toki %s\n", v)
+	if Commit != "" {
+		_, _ = fmt.Fprintf(stdout, "commit: %s\n", Commit)
+	}
+	if Date != "" {
+		_, _ = fmt.Fprintf(stdout, "built:  %s\n", Date)
+	}
+	_, _ = fmt.Fprintf(stdout, "\n%v\n", info)
 	return 0
 }

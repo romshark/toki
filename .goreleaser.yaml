@@ -19,6 +19,11 @@ builds:
   - id: toki
     binary: toki
     main: ./
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.ShortCommit}}
+      - -X main.date={{.Date}}
     env:
       - CGO_ENABLED=0
     goos: [linux, windows, darwin]
