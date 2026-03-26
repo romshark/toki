@@ -1,0 +1,14 @@
+app: editor/app
+gen:
+  package: editor/datapagesgen
+  prometheus: false
+cmd: cmd/editor-server
+assets:
+  url-prefix: /static/
+  dir: ./editor/app/static/
+watch:
+  flags: "--server=localhost:8080 --dir=./examples/simple"
+  exclude:
+    - ".git/**"
+    - ".*"
+    - "*~"

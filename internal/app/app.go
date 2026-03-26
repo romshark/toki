@@ -41,7 +41,7 @@ func Run(
 ) (result Result, exitCode int) {
 	if len(osArgs) < 2 {
 		return Result{
-			Err: fmt.Errorf("%w, use either of: [generate,lint,webedit]", ErrNoCommand),
+			Err: fmt.Errorf("%w, use either of: [generate,lint,edit]", ErrNoCommand),
 		}, 2
 	}
 
@@ -65,14 +65,9 @@ func Run(
 			return r, 1
 		}
 		return r, 0
-	case "webedit":
-		w := WebEdit{
-			hasher:           xxhash.New(),
-			icuTokenizer:     new(icumsg.Tokenizer),
-			tikParser:        tik.NewParser(tik.DefaultConfig),
-			tikICUTranslator: tik.NewICUTranslator(tik.DefaultConfig),
-		}
-		err := w.Run(osArgs, env, stderr)
+	case "edit":
+		e := Edit{}
+		err := e.Run(osArgs, env, stderr)
 		switch {
 		case errors.Is(err, ErrInvalidCLIArgs):
 			return Result{Err: err}, 2
@@ -82,7 +77,7 @@ func Run(
 		return Result{}, 0
 	}
 	return Result{
-		Err: fmt.Errorf("%w %q, use either of: [generate,lint,webedit]",
+		Err: fmt.Errorf("%w %q, use either of: [generate,lint,edit]",
 			ErrUnknownCommand, osArgs[1]),
 	}, 2
 }
