@@ -202,24 +202,20 @@ templ indexContent(data DataIndex) {
 	</div>
 }
 
-templ pageProjectDir(dir string, errMsg string) {
+templ pageProjectDir(dir string, errMsg string, numChanges int) {
 	<div
 		id="page-project-dir"
 		class="page-center"
 		data-signals:folder={ fmt.Sprintf("'%s'", dir) }
 		data-signals:origfolder={ fmt.Sprintf("'%s'", dir) }
 		data-signals:haserror={ boolStr(errMsg != "") }
+		data-signals:confirmdiscard="false"
 	>
 		<div class="card">
 			<header>
 				<h1>Toki Project Directory</h1>
 			</header>
 			<section>
-				if errMsg != "" {
-					<div class="alert alert-destructive">
-						<section>{ errMsg }</section>
-					</div>
-				}
 				<div class="folder-picker">
 					<label>
 						<span>Project Folder</span>
@@ -230,16 +226,86 @@ templ pageProjectDir(dir string, errMsg string) {
 							placeholder="/path/to/your/project"
 						/>
 					</label>
+					if errMsg != "" {
+						<div class="alert alert-destructive">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								width="16"
+								height="16"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<circle cx="12" cy="12" r="10"></circle>
+								<line x1="12" x2="12" y1="8" y2="12"></line>
+								<line x1="12" x2="12.01" y1="16" y2="16"></line>
+							</svg>
+							<section>{ errMsg }</section>
+						</div>
+					}
+					if dir != "" && errMsg == "" {
+						<button
+							class="btn btn-primary"
+							data-on:click="window.location='/'"
+							data-show="$folder===$origfolder"
+						>
+							Continue
+						</button>
+					}
 					<button
 						class="btn btn-primary"
-						data-on:click={ action.POSTPageProjectDirOpen() }
-						data-attr:disabled="$folder===$origfolder && $origfolder!=='' && $haserror"
+						data-show="$folder!==$origfolder || $origfolder==='' || $haserror"
+						data-attr:disabled="$folder===''"
+						if numChanges > 0 {
+							data-on:click="$confirmdiscard=true"
+						} else {
+							data-on:click={ action.POSTPageProjectDirOpen() }
+						}
 					>
 						Open Project
 					</button>
 				</div>
 			</section>
 		</div>
+		if numChanges > 0 {
+			<div
+				class="modal-overlay"
+				style="display:none"
+				data-show="$confirmdiscard==='true'"
+			>
+				<div class="modal-card card">
+					<header>
+						<h3>Unsaved Changes</h3>
+					</header>
+					<section>
+						<p>
+							You have { fmt.Sprintf("%d", numChanges) } unsaved
+							{ changeWord(numChanges) }. Opening a new project will
+							irreversibly discard them.
+						</p>
+					</section>
+					<footer class="modal-actions">
+						<button
+							class="btn btn-ghost"
+							data-on:click="$confirmdiscard=false"
+						>
+							Cancel
+						</button>
+						<button
+							class="btn btn-destructive"
+							data-on:click={ action.POSTPageProjectDirOpen(
+								action.WithBefore("$confirmdiscard=false"),
+							) }
+						>
+							Discard Changes
+						</button>
+					</footer>
+				</div>
+			</div>
+		}
 	</div>
 }
 
@@ -726,6 +792,13 @@ func initShowLocalesSignal(data DataIndex) string {
 	}
 	b = append(b, '}')
 	return string(b)
+}
+
+func changeWord(n int) string {
+	if n == 1 {
+		return "change"
+	}
+	return "changes"
 }
 
 func boolStr(b bool) string {

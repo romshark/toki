@@ -663,7 +663,7 @@ type PageProjectDir struct{ App *App }
 func (p PageProjectDir) GET(r *http.Request) (body templ.Component, err error) {
 	p.App.mu.Lock()
 	defer p.App.mu.Unlock()
-	return pageProjectDir(p.App.dir, p.App.initErr), nil
+	return pageProjectDir(p.App.dir, p.App.initErr, len(p.App.changed)), nil
 }
 
 // POSTOpen is /project-dir/open/{$}
