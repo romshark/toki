@@ -20,3 +20,6 @@ templ:
 
 dev-editor:
 	datapages watch
+
+gen-example-large:
+	go run ./cmd/genexamplelarge

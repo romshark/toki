@@ -194,7 +194,7 @@ func (a *App) tryInitLocked() error {
 		a.initErr = fmt.Sprintf("Changing to directory %q: %v", a.dir, err)
 		return errors.New(a.initErr)
 	}
-	defer os.Chdir(prevDir)
+	defer func() { _ = os.Chdir(prevDir) }()
 
 	parser := codeparse.NewParser(a.hasher, a.tikParser, a.tikICUTranslator)
 	scan, err := parser.Parse(a.env, "./...", a.bundlePkgPath, false)
@@ -660,10 +660,19 @@ func navigate(url string) string {
 // PageProjectDir is /project-dir
 type PageProjectDir struct{ App *App }
 
-func (p PageProjectDir) GET(r *http.Request) (body templ.Component, err error) {
+func (p PageProjectDir) GET(r *http.Request) (
+	body templ.Component,
+	enableBackgroundStreaming bool,
+	disableRefreshAfterHidden bool,
+	err error,
+) {
+	enableBackgroundStreaming = true
+	disableRefreshAfterHidden = true
+
 	p.App.mu.Lock()
 	defer p.App.mu.Unlock()
-	return pageProjectDir(p.App.dir, p.App.initErr, len(p.App.changed)), nil
+	body = pageProjectDir(p.App.dir, p.App.initErr, len(p.App.changed))
+	return
 }
 
 // POSTOpen is /project-dir/open/{$}

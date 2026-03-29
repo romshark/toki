@@ -856,7 +856,7 @@ func (s *Server) handlePageProjectDirGET(w http.ResponseWriter, r *http.Request)
 	p := app.PageProjectDir{
 		App: s.app,
 	}
-	body, err := p.GET(r)
+	body, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(r)
 	if err != nil {
 		s.httpErrIntern(w, r, nil, "handling PageProjectDir.GET", err)
 		return
@@ -864,7 +864,9 @@ func (s *Server) handlePageProjectDirGET(w http.ResponseWriter, r *http.Request)
 	genericHead := s.app.Head(r)
 
 	bodyAttrs := func(w http.ResponseWriter) {
-		writeBodyAttrOnVisibilityChange(w)
+		if !disableRefreshAfterHidden {
+			writeBodyAttrOnVisibilityChange(w)
+		}
 	}
 
 	if err := s.writeHTML(
