@@ -188,7 +188,7 @@ func (a *App) tryInitLocked() error {
 				isReadOnly = tikutil.ProducesCompleteICU(c.ARB.Locale, t.TIK)
 			}
 			tmplMsg := &template.ICUMessage{
-				ID: m.ID,
+				ID: t.IDHash,
 				Catalog: func() *template.Catalog {
 					for i, c2 := range a.catalogs {
 						if c.ARB.Locale == a.localeTags[i] {
@@ -421,7 +421,6 @@ func (a *App) POSTApplyChanges(
 	if !a.canApplyChangesLocked() {
 		return httperr.BadRequest
 	}
-
 	type ARBFile struct {
 		*arb.File
 		AbsolutePath string
@@ -450,7 +449,7 @@ func (a *App) POSTApplyChanges(
 		if !arbFile.Changed {
 			continue
 		}
-		f, err := os.OpenFile(arbFile.AbsolutePath, os.O_WRONLY, 0o644)
+		f, err := os.OpenFile(arbFile.AbsolutePath, os.O_WRONLY|os.O_TRUNC, 0o644)
 		if err != nil {
 			return fmt.Errorf("opening arb file: %w", err)
 		}
@@ -512,11 +511,9 @@ func (a *App) buildDashboardStats() template.DashboardStats {
 	}
 
 	for _, tk := range a.tiks {
-		hasEmpty := false
-		hasIncomplete := false
-		hasInvalid := false
+		_, hasEmpty, hasIncomplete, hasInvalid := a.tikStatusFlags(tk, nil)
+
 		for _, m := range tk.ICU {
-			// Find the locale index for this message.
 			for li := range localeStats {
 				if localeStats[li].Locale != m.Catalog.Locale {
 					continue
@@ -529,18 +526,7 @@ func (a *App) buildDashboardStats() template.DashboardStats {
 				if m.Changed {
 					localeStats[li].Changed++
 				}
-				if m.Error != "" || len(m.IncompleteReports) > 0 {
-					localeStats[li].Invalid++
-				}
 				break
-			}
-			if m.Message == "" {
-				hasEmpty = true
-				hasIncomplete = true
-			}
-			if m.Error != "" || len(m.IncompleteReports) > 0 {
-				hasInvalid = true
-				hasIncomplete = true
 			}
 		}
 		if hasEmpty {
@@ -653,7 +639,7 @@ func (p PageTIKs) OnUpdated(
 	if err := sse.PatchElementTempl(template.IndexContent(data)); err != nil {
 		return err
 	}
-	return sse.ExecuteScript("initEditors()")
+	return sse.ExecuteScript(initEditorsScript(data.TIKs))
 }
 
 func (PageTIKs) OnReset(
@@ -712,7 +698,7 @@ func (p PageTIKs) POSTFilter(
 	if err := sse.PatchElementTempl(template.IndexContent(data)); err != nil {
 		return err
 	}
-	return sse.ExecuteScript("initEditors()")
+	return sse.ExecuteScript(initEditorsScript(data.TIKs))
 }
 
 // POSTScrollDown is /tiks/scroll-down/{$}
@@ -1065,7 +1051,7 @@ func (a *App) buildTIKForDisplay(
 		if !isLocaleShown(c.Locale) {
 			continue
 		}
-		m := func() *template.ICUMessage {
+		src := func() *template.ICUMessage {
 			for _, msg := range tk.ICU {
 				if msg.Catalog == c {
 					return msg
@@ -1074,6 +1060,9 @@ func (a *App) buildTIKForDisplay(
 			return nil
 		}()
 
+		// Copy the message so display-time validation doesn't mutate
+		// the shared state used by canApplyChangesLocked/POSTSet.
+		m := *src
 		var icuErr error
 		a.icuTokBuffer = a.icuTokBuffer[:0]
 		a.icuTokBuffer, icuErr = a.icuTokenizer.Tokenize(
@@ -1098,7 +1087,7 @@ func (a *App) buildTIKForDisplay(
 		if m.Changed {
 			tmplTIK.IsChanged = true
 		}
-		tmplTIK.ICU = append(tmplTIK.ICU, m)
+		tmplTIK.ICU = append(tmplTIK.ICU, &m)
 	}
 	tmplTIK.IsComplete = !tmplTIK.IsIncomplete
 	return tmplTIK
@@ -1112,7 +1101,6 @@ func (a *App) buildFilteredDataIndex(
 ) template.DataIndex {
 	data := template.DataIndex{
 		Dir:             a.dir,
-		Catalogs:        a.catalogs,
 		ShownLocales:    showLocales,
 		FilterType:      filterType,
 		CanApplyChanges: a.canApplyChangesLocked(),
@@ -1120,13 +1108,17 @@ func (a *App) buildFilteredDataIndex(
 		WindowSize:      template.DefaultWindowSize,
 	}
 
-	// Move default catalog to first index.
-	for i, c := range data.Catalogs {
+	// Move default catalog to first position in a copy,
+	// so a.catalogs order stays in sync with a.localeTags.
+	cats := make([]*template.Catalog, len(a.catalogs))
+	copy(cats, a.catalogs)
+	for i, c := range cats {
 		if c.Default {
-			data.Catalogs[0], data.Catalogs[i] = data.Catalogs[i], data.Catalogs[0]
+			cats[0], cats[i] = cats[i], cats[0]
 			break
 		}
 	}
+	data.Catalogs = cats
 
 	// First pass: count stats and collect indices of filtered TIKs.
 	filtered := make([]int, 0, len(a.tiks))
@@ -1219,9 +1211,35 @@ func (a *App) tikStatusFlags(
 		if m.Changed {
 			hasChanged = true
 		}
-		// Note: we skip full ICU validation here for speed.
-		// Invalid/incomplete flags from ICU analysis are only
-		// computed for windowed TIKs.
+		if m.Error != "" {
+			hasInvalid = true
+		} else if m.Message != "" {
+			// Look up the locale tag by catalog locale string.
+			locTag := a.localeTagByLocale(m.Catalog.Locale)
+			var icuErr error
+			a.icuTokBuffer = a.icuTokBuffer[:0]
+			a.icuTokBuffer, icuErr = a.icuTokenizer.Tokenize(
+				locTag, a.icuTokBuffer, m.Message,
+			)
+			if icuErr != nil {
+				hasInvalid = true
+			} else if len(icu.AnalysisReport(
+				locTag, m.Message, a.icuTokBuffer,
+				codeparse.ICUSelectOptions,
+			)) > 0 {
+				hasIncomplete = true
+				hasInvalid = true
+			}
+		}
 	}
 	return
+}
+
+func (a *App) localeTagByLocale(locale string) language.Tag {
+	for i, c := range a.catalogs {
+		if c.Locale == locale {
+			return a.localeTags[i]
+		}
+	}
+	return language.Und
 }
