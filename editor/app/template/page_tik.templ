@@ -1,0 +1,122 @@
+package template
+
+import (
+	"fmt"
+	"github.com/romshark/toki/editor/datapagesgen/href"
+)
+
+templ PageTIK(tk *TIK, sidebarOpen bool) {
+	<div
+		id="page-tik"
+		data-signals:icumsg="''"
+		data-signals:settikid="''"
+		data-signals:setlocale="''"
+		data-signals:resettikid="''"
+		data-signals:resetlocale="''"
+		data-signals:resetmodalopen="false"
+		data-signals:resetdonetikid="''"
+		data-signals:resetdonelocale="''"
+		data-signals:instance_id="getOrCreateInstanceID('toki-editor-instance-id')"
+		data-init="initEditors()"
+	>
+		<aside
+			class="sidebar"
+			id="editor-sidebar"
+			data-side="left"
+			data-initial-open={ boolStr(sidebarOpen) }
+			if !sidebarOpen {
+				aria-hidden="true"
+				inert
+			}
+		>
+			@tikSidebarNav(tk)
+		</aside>
+		@tikMainArea(tk)
+		@editorModals()
+	</div>
+}
+
+// TIKContent is the morph target for PageTIK.OnUpdated SSE patches.
+// Excludes the <aside> wrapper so sidebar open/closed state is preserved.
+templ TIKContent(tk *TIK) {
+	@tikSidebarNav(tk)
+	@tikMainArea(tk)
+}
+
+templ tikSidebarNav(tk *TIK) {
+	<nav id="tik-sidebar-content" aria-label="TIK navigation">
+		@sidebarHeader()
+		<section>
+			<div role="group" aria-labelledby="tik-nav-label">
+				<h3 id="tik-nav-label">ICU Messages</h3>
+				<ul>
+					for _, msg := range tk.ICU {
+						<li>
+							//datapages:nolint
+							<a href={ templ.SafeURL(fmt.Sprintf("#icu-%s-%s", tk.ID, msg.Catalog.Locale)) } data-ignore-current>
+								{ msg.Catalog.Locale }
+								if msg.Catalog.Default {
+									<span class="badge-secondary">Default</span>
+								}
+								if msg.Changed {
+									<span class="badge-changed">Changed</span>
+								}
+							</a>
+						</li>
+					}
+				</ul>
+			</div>
+		</section>
+	</nav>
+}
+
+templ tikMainArea(tk *TIK) {
+	<div id="tik-main-area" class="main-area">
+		@navbar([]Breadcrumb{
+			{Label: "Dashboard", Href: href.PageIndex(href.QueryPageIndex{})},
+			{Label: "Messages", Href: href.PageTIKs(href.QueryPageTIKs{})},
+			{Label: tk.ID},
+		}, tikChangedCount(tk), true)
+		<main>
+			<div class="contents">
+				<div class="card tik-card">
+					<header>
+						<label class="tik-label">
+							<span>
+								TIK
+								<span class="msg-id">{ tk.ID }</span>
+							</span>
+							<textarea
+								class="editor"
+								data-mode="icu"
+								readonly="true"
+							>{ tk.TIK }</textarea>
+						</label>
+						if tk.Description != "" {
+							<label>
+								<span>Description</span>
+								<p>{ tk.Description }</p>
+							</label>
+						}
+					</header>
+				</div>
+				for _, msg := range tk.ICU {
+					<div
+						class="card"
+						id={ fmt.Sprintf("icu-%s-%s", tk.ID, msg.Catalog.Locale) }
+					>
+						<header>
+							<span class="icu-form-label">
+								<strong>{ msg.Catalog.Locale }</strong> — ICU Message
+								@icuMessageBadges(msg)
+							</span>
+						</header>
+						<section>
+							@icuMessageForm(tk.ID, msg, false)
+						</section>
+					</div>
+				}
+			</div>
+		</main>
+	</div>
+}

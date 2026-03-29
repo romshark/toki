@@ -179,22 +179,6 @@ func POSTAppSet(options ...option) string {
 	return b.String()
 }
 
-// POSTPageIndexFilter references /filter/
-func POSTPageIndexFilter(options ...option) string {
-	if len(options) == 0 {
-		return "@post('/filter/')"
-	}
-	var b strings.Builder
-	bl, al := beforeAfterLen(options)
-	b.Grow(bl + len("@post('/filter/'") + optionsLen(options) + len(")") + al)
-	writeBefore(&b, options)
-	b.WriteString("@post('/filter/'")
-	writeOptions(&b, options)
-	b.WriteByte(')')
-	writeAfter(&b, options)
-	return b.String()
-}
-
 // POSTPageProjectDirOpen references /project-dir/open/
 func POSTPageProjectDirOpen(options ...option) string {
 	if len(options) == 0 {
@@ -205,6 +189,54 @@ func POSTPageProjectDirOpen(options ...option) string {
 	b.Grow(bl + len("@post('/project-dir/open/'") + optionsLen(options) + len(")") + al)
 	writeBefore(&b, options)
 	b.WriteString("@post('/project-dir/open/'")
+	writeOptions(&b, options)
+	b.WriteByte(')')
+	writeAfter(&b, options)
+	return b.String()
+}
+
+// POSTPageTIKsFilter references /tiks/filter/
+func POSTPageTIKsFilter(options ...option) string {
+	if len(options) == 0 {
+		return "@post('/tiks/filter/')"
+	}
+	var b strings.Builder
+	bl, al := beforeAfterLen(options)
+	b.Grow(bl + len("@post('/tiks/filter/'") + optionsLen(options) + len(")") + al)
+	writeBefore(&b, options)
+	b.WriteString("@post('/tiks/filter/'")
+	writeOptions(&b, options)
+	b.WriteByte(')')
+	writeAfter(&b, options)
+	return b.String()
+}
+
+// POSTPageTIKsScrollDown references /tiks/scroll-down/
+func POSTPageTIKsScrollDown(options ...option) string {
+	if len(options) == 0 {
+		return "@post('/tiks/scroll-down/')"
+	}
+	var b strings.Builder
+	bl, al := beforeAfterLen(options)
+	b.Grow(bl + len("@post('/tiks/scroll-down/'") + optionsLen(options) + len(")") + al)
+	writeBefore(&b, options)
+	b.WriteString("@post('/tiks/scroll-down/'")
+	writeOptions(&b, options)
+	b.WriteByte(')')
+	writeAfter(&b, options)
+	return b.String()
+}
+
+// POSTPageTIKsScrollUp references /tiks/scroll-up/
+func POSTPageTIKsScrollUp(options ...option) string {
+	if len(options) == 0 {
+		return "@post('/tiks/scroll-up/')"
+	}
+	var b strings.Builder
+	bl, al := beforeAfterLen(options)
+	b.Grow(bl + len("@post('/tiks/scroll-up/'") + optionsLen(options) + len(")") + al)
+	writeBefore(&b, options)
+	b.WriteString("@post('/tiks/scroll-up/'")
 	writeOptions(&b, options)
 	b.WriteByte(')')
 	writeAfter(&b, options)

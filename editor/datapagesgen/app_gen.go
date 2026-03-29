@@ -504,14 +504,14 @@ func MessageBrokerStreamSubjects() []string {
 	}
 }
 
-func evSubjPageIndex() []string {
+func evSubjPageTIK() []string {
 	return []string{
 		EvSubjUpdated,
 		EvSubjReset,
 	}
 }
 
-func evSubjPageTIK() []string {
+func evSubjPageTIKs() []string {
 	return []string{
 		EvSubjUpdated,
 		EvSubjReset,
@@ -523,9 +523,6 @@ func setupHandlers(s *Server) {
 	s.mux.HandleFunc(
 		"GET /",
 		s.handlePageIndexGET)
-	s.mux.HandleFunc(
-		"GET /_$/{$}",
-		s.handlePageIndexGETStream)
 	s.mux.HandleFunc(
 		"GET /project-dir/{$}",
 		s.handlePageProjectDirGET)
@@ -539,6 +536,12 @@ func setupHandlers(s *Server) {
 		"GET /tik/{id}/_$/{$}",
 		s.handlePageTIKGETStream)
 	s.mux.HandleFunc(
+		"GET /tiks/{$}",
+		s.handlePageTIKsGET)
+	s.mux.HandleFunc(
+		"GET /tiks/_$/{$}",
+		s.handlePageTIKsGETStream)
+	s.mux.HandleFunc(
 		"POST /set/{$}",
 		s.handlePOSTSet)
 	s.mux.HandleFunc(
@@ -548,11 +551,17 @@ func setupHandlers(s *Server) {
 		"POST /apply-changes/{$}",
 		s.handlePOSTApplyChanges)
 	s.mux.HandleFunc(
-		"POST /filter/{$}",
-		s.handlePageIndexPOSTFilter)
-	s.mux.HandleFunc(
 		"POST /project-dir/open/{$}",
 		s.handlePageProjectDirPOSTOpen)
+	s.mux.HandleFunc(
+		"POST /tiks/filter/{$}",
+		s.handlePageTIKsPOSTFilter)
+	s.mux.HandleFunc(
+		"POST /tiks/scroll-down/{$}",
+		s.handlePageTIKsPOSTScrollDown)
+	s.mux.HandleFunc(
+		"POST /tiks/scroll-up/{$}",
+		s.handlePageTIKsPOSTScrollUp)
 }
 
 func (s *Server) httpErrIntern(
@@ -701,18 +710,14 @@ func (s *Server) handlePageIndexGET(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	var query struct {
-		Filter  string `query:"f" reflectsignal:"filtertype"`
-		Locales string `query:"l" reflectsignal:"shownlocales"`
 		Sidebar string `query:"s" reflectsignal:"sidebaropen"`
 	}
-	query.Filter = q.Get("f")
-	query.Locales = q.Get("l")
 	query.Sidebar = q.Get("s")
 
 	p := app.PageIndex{
 		App: s.app,
 	}
-	body, redirect, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(r, query)
+	body, redirect, err := p.GET(r, query)
 	if err != nil {
 		s.httpErrIntern(w, r, nil, "handling PageIndex.GET", err)
 		return
@@ -723,17 +728,7 @@ func (s *Server) handlePageIndexGET(w http.ResponseWriter, r *http.Request) {
 	genericHead := s.app.Head(r)
 
 	bodyAttrs := func(w http.ResponseWriter) {
-		if !disableRefreshAfterHidden {
-			writeBodyAttrOnVisibilityChange(w)
-		}
-
-		_, _ = io.WriteString(w, `data-signals:filtertype="'`)
-		_, _ = io.WriteString(w, query.Filter)
-		_, _ = io.WriteString(w, `'"`)
-
-		_, _ = io.WriteString(w, `data-signals:shownlocales="'`)
-		_, _ = io.WriteString(w, query.Locales)
-		_, _ = io.WriteString(w, `'"`)
+		writeBodyAttrOnVisibilityChange(w)
 
 		_, _ = io.WriteString(w, `data-signals:sidebaropen="'`)
 		_, _ = io.WriteString(w, query.Sidebar)
@@ -742,16 +737,7 @@ func (s *Server) handlePageIndexGET(w http.ResponseWriter, r *http.Request) {
 
 	bodySuffix := func(w http.ResponseWriter) {
 
-		_, _ = io.WriteString(w, `data-init="@get('/_$/'`)
-		if enableBackgroundStreaming {
-			_, _ = io.WriteString(w, `,{openWhenHidden:true})"`)
-		} else {
-			_, _ = io.WriteString(w, `)"`)
-		}
-
 		_, _ = io.WriteString(w, `data-effect="const params = new URLSearchParams();
-			if ($filtertype) params.set('f', $filtertype);
-			if ($shownlocales) params.set('l', $shownlocales);
 			if ($sidebaropen) params.set('s', $sidebaropen);
 			const query = params.toString();
 			window.history.replaceState(null, '', query ? '/?' + query : '/');
@@ -766,97 +752,11 @@ func (s *Server) handlePageIndexGET(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) handlePageIndexGETStream(w http.ResponseWriter, r *http.Request) {
-	if !s.checkIsDSReq(w, r) {
-		return
-	}
-
-	var signals struct {
-		FilterType  string          `json:"filtertype"`
-		ShowLocales map[string]bool `json:"showlocales"`
-		InstanceID  string          `json:"instance_id"`
-	}
-	if err := datastar.ReadSignals(r, &signals); err != nil {
-		s.httpErrBad(w, "reading signals", err)
-		return
-	}
-
-	p := app.PageIndex{
-		App: s.app,
-	}
-	s.handleStreamRequest(w, r, evSubjPageIndex(),
-		func(
-			streamID uint64,
-			sse *datastar.ServerSentEventGenerator,
-		) error {
-			return p.StreamOpen(r, streamID, signals)
-		},
-		func(streamID uint64) {
-			if err := p.StreamClose(r, streamID); err != nil {
-				s.logErr("handling PageIndex.StreamClose", err)
-			}
-		},
-		func(
-			streamID uint64,
-			sse *datastar.ServerSentEventGenerator, ch <-chan msgbroker.Message,
-		) {
-			for msg := range ch {
-				switch msg.Subject {
-				case EvSubjUpdated:
-					var e app.EventUpdated
-					if err := json.Unmarshal(msg.Data, &e); err != nil {
-						s.logErr("unmarshaling EventUpdated JSON", err)
-						continue
-					}
-					if err := p.OnUpdated(e, sse, streamID); err != nil {
-						s.logErr("handling PageIndex.OnUpdated", err)
-					}
-				case EvSubjReset:
-					var e app.EventReset
-					if err := json.Unmarshal(msg.Data, &e); err != nil {
-						s.logErr("unmarshaling EventReset JSON", err)
-						continue
-					}
-					if err := p.OnReset(e, sse); err != nil {
-						s.logErr("handling PageIndex.OnReset", err)
-					}
-				}
-			}
-		})
-}
-
-func (s *Server) handlePageIndexPOSTFilter(
-	w http.ResponseWriter, r *http.Request,
-) {
-	if !s.checkIsDSReq(w, r) {
-		return
-	}
-	var signals struct {
-		FilterType  string          `json:"filtertype"`
-		ShowLocales map[string]bool `json:"showlocales"`
-		InstanceID  string          `json:"instance_id"`
-	}
-	if err := datastar.ReadSignals(r, &signals); err != nil {
-		s.httpErrBad(w, "reading signals", err)
-		return
-	}
-
-	sse := datastar.NewSSE(w, r, datastar.WithCompression())
-	p := app.PageIndex{
-		App: s.app,
-	}
-	err := p.POSTFilter(r, sse, signals)
-	if err != nil {
-		s.httpErrIntern(w, r, sse, "handling action PageIndex.Filter", err)
-		return
-	}
-}
-
 func (s *Server) handlePageProjectDirGET(w http.ResponseWriter, r *http.Request) {
 	p := app.PageProjectDir{
 		App: s.app,
 	}
-	body, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(r)
+	body, _, disableRefreshAfterHidden, err := p.GET(r)
 	if err != nil {
 		s.httpErrIntern(w, r, nil, "handling PageProjectDir.GET", err)
 		return
@@ -1064,4 +964,215 @@ func (s *Server) handlePageTIKGETStream(w http.ResponseWriter, r *http.Request) 
 				}
 			}
 		})
+}
+
+func (s *Server) handlePageTIKsGET(w http.ResponseWriter, r *http.Request) {
+
+	q := r.URL.Query()
+	var query struct {
+		Filter  string `query:"f" reflectsignal:"filtertype"`
+		Locales string `query:"l" reflectsignal:"shownlocales"`
+		Sidebar string `query:"s" reflectsignal:"sidebaropen"`
+	}
+	query.Filter = q.Get("f")
+	query.Locales = q.Get("l")
+	query.Sidebar = q.Get("s")
+
+	p := app.PageTIKs{
+		App: s.app,
+	}
+	body, redirect, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(r, query)
+	if err != nil {
+		s.httpErrIntern(w, r, nil, "handling PageTIKs.GET", err)
+		return
+	}
+	if httpRedirect(w, r, redirect, 0) {
+		return
+	}
+	genericHead := s.app.Head(r)
+
+	bodyAttrs := func(w http.ResponseWriter) {
+		if !disableRefreshAfterHidden {
+			writeBodyAttrOnVisibilityChange(w)
+		}
+
+		_, _ = io.WriteString(w, `data-signals:filtertype="'`)
+		_, _ = io.WriteString(w, query.Filter)
+		_, _ = io.WriteString(w, `'"`)
+
+		_, _ = io.WriteString(w, `data-signals:shownlocales="'`)
+		_, _ = io.WriteString(w, query.Locales)
+		_, _ = io.WriteString(w, `'"`)
+
+		_, _ = io.WriteString(w, `data-signals:sidebaropen="'`)
+		_, _ = io.WriteString(w, query.Sidebar)
+		_, _ = io.WriteString(w, `'"`)
+	}
+
+	bodySuffix := func(w http.ResponseWriter) {
+
+		_, _ = io.WriteString(w, `data-init="@get('/tiks/_$/'`)
+		if enableBackgroundStreaming {
+			_, _ = io.WriteString(w, `,{openWhenHidden:true})"`)
+		} else {
+			_, _ = io.WriteString(w, `)"`)
+		}
+
+		_, _ = io.WriteString(w, `data-effect="const params = new URLSearchParams();
+			if ($filtertype) params.set('f', $filtertype);
+			if ($shownlocales) params.set('l', $shownlocales);
+			if ($sidebaropen) params.set('s', $sidebaropen);
+			const query = params.toString();
+			window.history.replaceState(null, '', query ? '/tiks?' + query : '/tiks');
+		"`)
+	}
+
+	if err := s.writeHTML(
+		w, r, genericHead, nil, body, bodyAttrs, bodySuffix,
+	); err != nil {
+		s.logErr("rendering PageTIKs", err)
+		return
+	}
+}
+
+func (s *Server) handlePageTIKsGETStream(w http.ResponseWriter, r *http.Request) {
+	if !s.checkIsDSReq(w, r) {
+		return
+	}
+
+	var signals struct {
+		FilterType  string          `json:"filtertype"`
+		ShowLocales map[string]bool `json:"showlocales"`
+		InstanceID  string          `json:"instance_id"`
+	}
+	if err := datastar.ReadSignals(r, &signals); err != nil {
+		s.httpErrBad(w, "reading signals", err)
+		return
+	}
+
+	p := app.PageTIKs{
+		App: s.app,
+	}
+	s.handleStreamRequest(w, r, evSubjPageTIKs(),
+		func(
+			streamID uint64,
+			sse *datastar.ServerSentEventGenerator,
+		) error {
+			return p.StreamOpen(r, streamID, signals)
+		},
+		func(streamID uint64) {
+			if err := p.StreamClose(r, streamID); err != nil {
+				s.logErr("handling PageTIKs.StreamClose", err)
+			}
+		},
+		func(
+			streamID uint64,
+			sse *datastar.ServerSentEventGenerator, ch <-chan msgbroker.Message,
+		) {
+			for msg := range ch {
+				switch msg.Subject {
+				case EvSubjUpdated:
+					var e app.EventUpdated
+					if err := json.Unmarshal(msg.Data, &e); err != nil {
+						s.logErr("unmarshaling EventUpdated JSON", err)
+						continue
+					}
+					if err := p.OnUpdated(e, sse, streamID); err != nil {
+						s.logErr("handling PageTIKs.OnUpdated", err)
+					}
+				case EvSubjReset:
+					var e app.EventReset
+					if err := json.Unmarshal(msg.Data, &e); err != nil {
+						s.logErr("unmarshaling EventReset JSON", err)
+						continue
+					}
+					if err := p.OnReset(e, sse); err != nil {
+						s.logErr("handling PageTIKs.OnReset", err)
+					}
+				}
+			}
+		})
+}
+
+func (s *Server) handlePageTIKsPOSTFilter(
+	w http.ResponseWriter, r *http.Request,
+) {
+	if !s.checkIsDSReq(w, r) {
+		return
+	}
+	var signals struct {
+		FilterType  string          `json:"filtertype"`
+		ShowLocales map[string]bool `json:"showlocales"`
+		InstanceID  string          `json:"instance_id"`
+	}
+	if err := datastar.ReadSignals(r, &signals); err != nil {
+		s.httpErrBad(w, "reading signals", err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r, datastar.WithCompression())
+	p := app.PageTIKs{
+		App: s.app,
+	}
+	err := p.POSTFilter(r, sse, signals)
+	if err != nil {
+		s.httpErrIntern(w, r, sse, "handling action PageTIKs.Filter", err)
+		return
+	}
+}
+
+func (s *Server) handlePageTIKsPOSTScrollDown(
+	w http.ResponseWriter, r *http.Request,
+) {
+	if !s.checkIsDSReq(w, r) {
+		return
+	}
+	var signals struct {
+		FilterType  string          `json:"filtertype"`
+		ShowLocales map[string]bool `json:"showlocales"`
+		WindowStart int             `json:"windowstart"`
+		InstanceID  string          `json:"instance_id"`
+	}
+	if err := datastar.ReadSignals(r, &signals); err != nil {
+		s.httpErrBad(w, "reading signals", err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r, datastar.WithCompression())
+	p := app.PageTIKs{
+		App: s.app,
+	}
+	err := p.POSTScrollDown(r, sse, signals)
+	if err != nil {
+		s.httpErrIntern(w, r, sse, "handling action PageTIKs.ScrollDown", err)
+		return
+	}
+}
+
+func (s *Server) handlePageTIKsPOSTScrollUp(
+	w http.ResponseWriter, r *http.Request,
+) {
+	if !s.checkIsDSReq(w, r) {
+		return
+	}
+	var signals struct {
+		FilterType  string          `json:"filtertype"`
+		ShowLocales map[string]bool `json:"showlocales"`
+		WindowStart int             `json:"windowstart"`
+		InstanceID  string          `json:"instance_id"`
+	}
+	if err := datastar.ReadSignals(r, &signals); err != nil {
+		s.httpErrBad(w, "reading signals", err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r, datastar.WithCompression())
+	p := app.PageTIKs{
+		App: s.app,
+	}
+	err := p.POSTScrollUp(r, sse, signals)
+	if err != nil {
+		s.httpErrIntern(w, r, sse, "handling action PageTIKs.ScrollUp", err)
+		return
+	}
 }

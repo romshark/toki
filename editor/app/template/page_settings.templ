@@ -1,0 +1,112 @@
+package template
+
+import "github.com/romshark/toki/editor/datapagesgen/href"
+
+templ PageSettings(sidebarOpen bool) {
+	<div id="page-settings" data-init="initThemeCards()">
+		<aside
+			class="sidebar"
+			id="editor-sidebar"
+			data-side="left"
+			data-initial-open={ boolStr(sidebarOpen) }
+			if !sidebarOpen {
+				aria-hidden="true"
+				inert
+			}
+		>
+			<nav aria-label="Settings navigation">
+				@sidebarHeader()
+				<section>
+					<div role="group" aria-labelledby="settings-nav-label">
+						<h3 id="settings-nav-label">Settings</h3>
+						<ul>
+							<li>
+								//datapages:nolint
+								<a href="#appearance" data-ignore-current>Appearance</a>
+							</li>
+						</ul>
+					</div>
+				</section>
+			</nav>
+		</aside>
+		<div class="main-area">
+			@navbar([]Breadcrumb{
+				{Label: "Dashboard", Href: href.PageIndex(href.QueryPageIndex{})},
+				{Label: "Settings"},
+			}, 0, false)
+			<main>
+				<div class="contents">
+					<h2 id="appearance">Appearance</h2>
+					<div class="theme-picker">
+						<button
+							class="theme-card"
+							onclick="setTheme('light')"
+							data-theme="light"
+						>
+							<div class="theme-preview theme-preview-light">
+								<div class="tp-sidebar"></div>
+								<div class="tp-main">
+									<div class="tp-navbar"></div>
+									<div class="tp-content">
+										<div class="tp-line"></div>
+										<div class="tp-line tp-short"></div>
+									</div>
+								</div>
+							</div>
+							<span class="theme-card-label">Light</span>
+							<span class="theme-card-desc">Bright theme</span>
+						</button>
+						<button
+							class="theme-card"
+							onclick="setTheme('dark')"
+							data-theme="dark"
+						>
+							<div class="theme-preview theme-preview-dark">
+								<div class="tp-sidebar"></div>
+								<div class="tp-main">
+									<div class="tp-navbar"></div>
+									<div class="tp-content">
+										<div class="tp-line"></div>
+										<div class="tp-line tp-short"></div>
+									</div>
+								</div>
+							</div>
+							<span class="theme-card-label">Dark</span>
+							<span class="theme-card-desc">Dark theme</span>
+						</button>
+						<button
+							class="theme-card"
+							onclick="setTheme('system')"
+							data-theme="system"
+						>
+							<div class="theme-preview theme-preview-system">
+								<div class="theme-preview-half theme-preview-light">
+									<div class="tp-sidebar"></div>
+									<div class="tp-main">
+										<div class="tp-navbar"></div>
+										<div class="tp-content">
+											<div class="tp-line"></div>
+											<div class="tp-line tp-short"></div>
+										</div>
+									</div>
+								</div>
+								<div class="theme-preview-half theme-preview-dark">
+									<div class="tp-sidebar"></div>
+									<div class="tp-main">
+										<div class="tp-navbar"></div>
+										<div class="tp-content">
+											<div class="tp-line"></div>
+											<div class="tp-line tp-short"></div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<span class="theme-card-label">System</span>
+							<span class="theme-card-desc">Match OS setting</span>
+						</button>
+					</div>
+				</div>
+			</main>
+		</div>
+	</div>
+}

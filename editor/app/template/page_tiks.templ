@@ -1,0 +1,47 @@
+package template
+
+import (
+	"fmt"
+
+	"github.com/romshark/toki/editor/datapagesgen/href"
+)
+
+templ PageTIKs(data DataIndex) {
+	<div
+		id="page-tiks"
+		data-signals:icumsg="''"
+		data-signals:settikid="''"
+		data-signals:setlocale="''"
+		data-signals:resettikid="''"
+		data-signals:resetlocale="''"
+		data-signals:resetmodalopen="false"
+		data-signals:resetdonetikid="''"
+		data-signals:resetdonelocale="''"
+		data-signals:instance_id="getOrCreateInstanceID('toki-editor-instance-id')"
+		data-signals:showlocales={ initShowLocalesSignal(data) }
+		data-signals:windowstart={ fmt.Sprintf("%d", data.WindowStart) }
+	>
+		<aside
+			class="sidebar"
+			id="editor-sidebar"
+			data-side="left"
+			data-initial-open={ boolStr(data.SidebarOpen) }
+			if !data.SidebarOpen {
+				aria-hidden="true"
+				inert
+			}
+		>
+			@sidebarContent(data)
+		</aside>
+		<div id="main-area" class="main-area">
+			@navbar([]Breadcrumb{
+				{Label: "Dashboard", Href: href.PageIndex(href.QueryPageIndex{})},
+				{Label: "Messages"},
+			}, data.TotalChanges, data.CanApplyChanges)
+			<main>
+				@TiksContentList(data)
+			</main>
+		</div>
+		@editorModals()
+	</div>
+}

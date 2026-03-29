@@ -46,9 +46,7 @@ func Asset(p string) string {
 
 // PageIndex references /{$}
 func PageIndex(query QueryPageIndex) string {
-	anyQuery := query.Filter != "" ||
-		query.Locales != "" ||
-		query.Sidebar != ""
+	anyQuery := query.Sidebar != ""
 
 	var b strings.Builder
 	l := len("/")
@@ -59,20 +57,6 @@ func PageIndex(query QueryPageIndex) string {
 	// n = number of query params already accounted for (for '&')
 	n := 0
 
-	if query.Filter != "" {
-		if n > 0 {
-			l += len("&")
-		}
-		n++
-		l += len("f=") + len(query.Filter)
-	}
-	if query.Locales != "" {
-		if n > 0 {
-			l += len("&")
-		}
-		n++
-		l += len("l=") + len(query.Locales)
-	}
 	if query.Sidebar != "" {
 		if n > 0 {
 			l += len("&")
@@ -91,22 +75,6 @@ func PageIndex(query QueryPageIndex) string {
 
 	n = 0
 
-	if query.Filter != "" {
-		if n > 0 {
-			b.WriteString("&")
-		}
-		n++
-		b.WriteString("f=")
-		b.WriteString(query.Filter)
-	}
-	if query.Locales != "" {
-		if n > 0 {
-			b.WriteString("&")
-		}
-		n++
-		b.WriteString("l=")
-		b.WriteString(query.Locales)
-	}
 	if query.Sidebar != "" {
 		if n > 0 {
 			b.WriteString("&")
@@ -120,8 +88,6 @@ func PageIndex(query QueryPageIndex) string {
 
 // QueryPageIndex is the query parameters for PageIndex
 type QueryPageIndex struct {
-	Filter  string `query:"f"`
-	Locales string `query:"l"`
 	Sidebar string `query:"s"`
 }
 
@@ -223,5 +189,86 @@ func PageTIK(id string, query QueryPageTIK) string {
 
 // QueryPageTIK is the query parameters for PageTIK
 type QueryPageTIK struct {
+	Sidebar string `query:"s"`
+}
+
+// PageTIKs references /tiks/{$}
+func PageTIKs(query QueryPageTIKs) string {
+	anyQuery := query.Filter != "" ||
+		query.Locales != "" ||
+		query.Sidebar != ""
+
+	var b strings.Builder
+	l := len("/tiks/")
+	if anyQuery {
+		l += len("?")
+	}
+
+	// n = number of query params already accounted for (for '&')
+	n := 0
+
+	if query.Filter != "" {
+		if n > 0 {
+			l += len("&")
+		}
+		n++
+		l += len("f=") + len(query.Filter)
+	}
+	if query.Locales != "" {
+		if n > 0 {
+			l += len("&")
+		}
+		n++
+		l += len("l=") + len(query.Locales)
+	}
+	if query.Sidebar != "" {
+		if n > 0 {
+			l += len("&")
+		}
+		n++
+		l += len("s=") + len(query.Sidebar)
+	}
+	_ = n
+
+	b.Grow(l)
+
+	b.WriteString("/tiks/")
+	if anyQuery {
+		b.WriteString("?")
+	}
+
+	n = 0
+
+	if query.Filter != "" {
+		if n > 0 {
+			b.WriteString("&")
+		}
+		n++
+		b.WriteString("f=")
+		b.WriteString(query.Filter)
+	}
+	if query.Locales != "" {
+		if n > 0 {
+			b.WriteString("&")
+		}
+		n++
+		b.WriteString("l=")
+		b.WriteString(query.Locales)
+	}
+	if query.Sidebar != "" {
+		if n > 0 {
+			b.WriteString("&")
+		}
+		b.WriteString("s=")
+		b.WriteString(query.Sidebar)
+	}
+
+	return b.String()
+}
+
+// QueryPageTIKs is the query parameters for PageTIKs
+type QueryPageTIKs struct {
+	Filter  string `query:"f"`
+	Locales string `query:"l"`
 	Sidebar string `query:"s"`
 }

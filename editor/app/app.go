@@ -23,6 +23,7 @@ import (
 	"github.com/starfederation/datastar-go/datastar"
 	"golang.org/x/text/language"
 
+	"github.com/romshark/toki/editor/app/template"
 	"github.com/romshark/toki/editor/datapagesgen/href"
 	"github.com/romshark/toki/editor/datapagesgen/httperr"
 )
@@ -41,63 +42,14 @@ type EventReset struct {
 	Locale      string `json:"locale"`
 }
 
-type ICUMessage struct {
-	ID                string
-	IncompleteReports []string
-	Message           string
-	Error             string
-	MessageOriginal   string
-	Catalog           *Catalog
-	Changed           bool
-	IsReadOnly        bool
-}
-
-type TIK struct {
-	ID          string
-	TIK         string
-	Description string
-	ICU         []*ICUMessage
-	// Status flags for client-side filtering.
-	IsChanged    bool
-	IsEmpty      bool
-	IsComplete   bool
-	IsIncomplete bool
-	IsInvalid    bool
-}
-
-type Catalog struct {
-	Locale  string
-	Default bool
-}
-
 // viewState holds per-instance server-side view parameters so that
 // OnUpdated handlers can fat-morph each stream with the correct filters.
 type viewState struct {
 	filterType  string
 	showLocales map[string]bool
 	tikID       string // only used by PageTIK streams
+	windowStart int
 	refCount    int
-}
-
-type DataIndex struct {
-	Dir      string
-	TIKs     []TIK
-	Catalogs []*Catalog
-
-	// ShownLocales which locales are shown (nil = all)
-	ShownLocales map[string]bool
-
-	// FilterType is "all", "changed", etc.
-	FilterType      string
-	SidebarOpen     bool
-	NumAll          int
-	NumChanged      int
-	NumEmpty        int
-	NumComplete     int
-	NumIncomplete   int
-	NumInvalid      int
-	TotalChanges    int
-	CanApplyChanges bool
 }
 
 type App struct {
@@ -111,10 +63,10 @@ type App struct {
 	tikParser        *tik.Parser
 	tikICUTranslator *tik.ICUTranslator
 	scan             *codeparse.Scan
-	tiks             []*TIK
-	catalogs         []*Catalog
+	tiks             []*template.TIK
+	catalogs         []*template.Catalog
 	localeTags       []language.Tag
-	changed          []*ICUMessage
+	changed          []*template.ICUMessage
 	initErr          string
 
 	// views maps instance_id -> view state
@@ -209,11 +161,11 @@ func (a *App) tryInitLocked() error {
 
 	a.scan = scan
 	a.localeTags = make([]language.Tag, 0, scan.Catalogs.Len())
-	a.catalogs = make([]*Catalog, 0, scan.Catalogs.Len())
-	a.tiks = make([]*TIK, 0, scan.TextIndexByID.Len())
+	a.catalogs = make([]*template.Catalog, 0, scan.Catalogs.Len())
+	a.tiks = make([]*template.TIK, 0, scan.TextIndexByID.Len())
 
 	for cat := range scan.Catalogs.SeqRead() {
-		c := &Catalog{
+		c := &template.Catalog{
 			Locale:  cat.ARB.Locale.String(),
 			Default: cat.ARB.Locale == scan.DefaultLocale,
 		}
@@ -223,11 +175,11 @@ func (a *App) tryInitLocked() error {
 
 	for _, i := range scan.TextIndexByID.SeqRead() {
 		t := scan.Texts.At(i)
-		tmplTIK := &TIK{
+		tmplTIK := &template.TIK{
 			ID:          t.IDHash,
 			TIK:         t.TIK.Raw,
 			Description: strings.Join(t.Comments, " "),
-			ICU:         make([]*ICUMessage, 0, len(a.catalogs)),
+			ICU:         make([]*template.ICUMessage, 0, len(a.catalogs)),
 		}
 		for c := range scan.Catalogs.SeqRead() {
 			m := c.ARB.Messages[t.IDHash]
@@ -235,9 +187,9 @@ func (a *App) tryInitLocked() error {
 			if c.ARB.Locale == scan.DefaultLocale {
 				isReadOnly = tikutil.ProducesCompleteICU(c.ARB.Locale, t.TIK)
 			}
-			tmplMsg := &ICUMessage{
+			tmplMsg := &template.ICUMessage{
 				ID: m.ID,
-				Catalog: func() *Catalog {
+				Catalog: func() *template.Catalog {
 					for i, c2 := range a.catalogs {
 						if c.ARB.Locale == a.localeTags[i] {
 							return c2
@@ -299,7 +251,7 @@ func (a *App) unregisterStreamLocked(streamID uint64) {
 // as a global and then calls initEditors(). This is needed because
 // data-ignore-morph prevents the morph from updating textarea content,
 // so initEditors() can't read the current server value from defaultValue.
-func initEditorsScript(tiks []TIK) string {
+func initEditorsScript(tiks []template.TIK) string {
 	values := make(map[string]string, len(tiks)*2)
 	for i := range tiks {
 		for _, msg := range tiks[i].ICU {
@@ -311,7 +263,7 @@ func initEditorsScript(tiks []TIK) string {
 	return fmt.Sprintf("window._serverValues=%s;initEditors()", j)
 }
 
-func (*App) Head(_ *http.Request) templ.Component { return head() }
+func (*App) Head(_ *http.Request) templ.Component { return template.Head() }
 
 // POSTSet is /set/{$}
 func (a *App) POSTSet(
@@ -334,13 +286,13 @@ func (a *App) POSTSet(
 		return httperr.BadRequest
 	}
 
-	iCatalog := slices.IndexFunc(a.catalogs, func(c *Catalog) bool {
+	iCatalog := slices.IndexFunc(a.catalogs, func(c *template.Catalog) bool {
 		return c.Locale == locale
 	})
 	if iCatalog == -1 {
 		return httperr.BadRequest
 	}
-	iTIK := slices.IndexFunc(a.tiks, func(t *TIK) bool {
+	iTIK := slices.IndexFunc(a.tiks, func(t *template.TIK) bool {
 		return t.ID == id
 	})
 	if iTIK == -1 {
@@ -348,7 +300,7 @@ func (a *App) POSTSet(
 	}
 	tk := a.tiks[iTIK]
 
-	iICUMsg := slices.IndexFunc(tk.ICU, func(m *ICUMessage) bool {
+	iICUMsg := slices.IndexFunc(tk.ICU, func(m *template.ICUMessage) bool {
 		return m.Catalog == a.catalogs[iCatalog]
 	})
 	icuMsg := tk.ICU[iICUMsg]
@@ -375,9 +327,10 @@ func (a *App) POSTSet(
 				icuMsg.Message = newMessage
 				icuMsg.Changed = false
 				icuMsg.MessageOriginal = ""
-				a.changed = slices.DeleteFunc(a.changed, func(m *ICUMessage) bool {
-					return m == icuMsg
-				})
+				a.changed = slices.DeleteFunc(
+					a.changed, func(m *template.ICUMessage) bool {
+						return m == icuMsg
+					})
 			} else {
 				icuMsg.Message = newMessage
 			}
@@ -412,13 +365,13 @@ func (a *App) POSTReset(
 		return httperr.BadRequest
 	}
 
-	iCatalog := slices.IndexFunc(a.catalogs, func(c *Catalog) bool {
+	iCatalog := slices.IndexFunc(a.catalogs, func(c *template.Catalog) bool {
 		return c.Locale == locale
 	})
 	if iCatalog == -1 {
 		return httperr.BadRequest
 	}
-	iTIK := slices.IndexFunc(a.tiks, func(t *TIK) bool {
+	iTIK := slices.IndexFunc(a.tiks, func(t *template.TIK) bool {
 		return t.ID == id
 	})
 	if iTIK == -1 {
@@ -426,7 +379,7 @@ func (a *App) POSTReset(
 	}
 	tk := a.tiks[iTIK]
 
-	iICUMsg := slices.IndexFunc(tk.ICU, func(m *ICUMessage) bool {
+	iICUMsg := slices.IndexFunc(tk.ICU, func(m *template.ICUMessage) bool {
 		return m.Catalog == a.catalogs[iCatalog]
 	})
 	icuMsg := tk.ICU[iICUMsg]
@@ -440,7 +393,7 @@ func (a *App) POSTReset(
 		icuMsg.MessageOriginal = ""
 		icuMsg.Error = ""
 		icuMsg.IncompleteReports = nil
-		a.changed = slices.DeleteFunc(a.changed, func(m *ICUMessage) bool {
+		a.changed = slices.DeleteFunc(a.changed, func(m *template.ICUMessage) bool {
 			return m == icuMsg
 		})
 	}
@@ -521,6 +474,108 @@ type PageIndex struct{ App *App }
 func (p PageIndex) GET(
 	r *http.Request,
 	query struct {
+		Sidebar string `query:"s" reflectsignal:"sidebaropen"`
+	},
+) (
+	body templ.Component,
+	redirect string,
+	err error,
+) {
+	p.App.mu.Lock()
+	defer p.App.mu.Unlock()
+
+	if p.App.dir == "" || p.App.initErr != "" {
+		return nil, href.PageProjectDir(), nil
+	}
+
+	stats := p.App.buildDashboardStats()
+	stats.SidebarOpen = query.Sidebar != "false"
+	return template.PageDashboard(stats), "", nil
+}
+
+func (a *App) buildDashboardStats() template.DashboardStats {
+	s := template.DashboardStats{
+		Dir:             a.dir,
+		NumTIKs:         len(a.tiks),
+		NumLocales:      len(a.catalogs),
+		TotalChanges:    len(a.changed),
+		CanApplyChanges: a.canApplyChangesLocked(),
+	}
+
+	// Build per-locale stats.
+	localeStats := make([]template.LocaleStats, len(a.catalogs))
+	for i, c := range a.catalogs {
+		localeStats[i] = template.LocaleStats{
+			Locale:  c.Locale,
+			Default: c.Default,
+		}
+	}
+
+	for _, tk := range a.tiks {
+		hasEmpty := false
+		hasIncomplete := false
+		hasInvalid := false
+		for _, m := range tk.ICU {
+			// Find the locale index for this message.
+			for li := range localeStats {
+				if localeStats[li].Locale != m.Catalog.Locale {
+					continue
+				}
+				if m.Message == "" {
+					localeStats[li].Untranslated++
+				} else {
+					localeStats[li].Translated++
+				}
+				if m.Changed {
+					localeStats[li].Changed++
+				}
+				if m.Error != "" || len(m.IncompleteReports) > 0 {
+					localeStats[li].Invalid++
+				}
+				break
+			}
+			if m.Message == "" {
+				hasEmpty = true
+				hasIncomplete = true
+			}
+			if m.Error != "" || len(m.IncompleteReports) > 0 {
+				hasInvalid = true
+				hasIncomplete = true
+			}
+		}
+		if hasEmpty {
+			s.NumEmpty++
+		}
+		if hasIncomplete {
+			s.NumIncomplete++
+		} else {
+			s.NumComplete++
+		}
+		if hasInvalid {
+			s.NumInvalid++
+		}
+	}
+
+	for i := range localeStats {
+		total := localeStats[i].Translated + localeStats[i].Untranslated
+		if total > 0 {
+			localeStats[i].Completeness = float64(localeStats[i].Translated) / float64(total)
+		}
+	}
+	s.Locales = localeStats
+
+	if s.NumTIKs > 0 {
+		s.Completeness = float64(s.NumComplete) / float64(s.NumTIKs)
+	}
+	return s
+}
+
+// PageTIKs is /tiks
+type PageTIKs struct{ App *App }
+
+func (p PageTIKs) GET(
+	r *http.Request,
+	query struct {
 		Filter  string `query:"f" reflectsignal:"filtertype"`
 		Locales string `query:"l" reflectsignal:"shownlocales"`
 		Sidebar string `query:"s" reflectsignal:"sidebaropen"`
@@ -544,13 +599,13 @@ func (p PageIndex) GET(
 	}
 
 	showLocales := parseLocalesParam(query.Locales)
-	data := p.App.buildFilteredDataIndex(query.Filter, showLocales)
+	data := p.App.buildFilteredDataIndex(query.Filter, showLocales, 0)
 	data.SidebarOpen = query.Sidebar != "false"
-	body = pageIndex(data)
+	body = template.PageTIKs(data)
 	return
 }
 
-func (p PageIndex) StreamOpen(
+func (p PageTIKs) StreamOpen(
 	r *http.Request,
 	streamID uint64,
 	signals struct {
@@ -568,14 +623,14 @@ func (p PageIndex) StreamOpen(
 	return nil
 }
 
-func (p PageIndex) StreamClose(r *http.Request, streamID uint64) error {
+func (p PageTIKs) StreamClose(r *http.Request, streamID uint64) error {
 	p.App.mu.Lock()
 	defer p.App.mu.Unlock()
 	p.App.unregisterStreamLocked(streamID)
 	return nil
 }
 
-func (p PageIndex) OnUpdated(
+func (p PageTIKs) OnUpdated(
 	event EventUpdated,
 	sse *datastar.ServerSentEventGenerator,
 	streamID uint64,
@@ -594,14 +649,14 @@ func (p PageIndex) OnUpdated(
 		return nil
 	}
 
-	data := p.App.buildFilteredDataIndex(vs.filterType, vs.showLocales)
-	if err := sse.PatchElementTempl(indexContent(data)); err != nil {
+	data := p.App.buildFilteredDataIndex(vs.filterType, vs.showLocales, vs.windowStart)
+	if err := sse.PatchElementTempl(template.IndexContent(data)); err != nil {
 		return err
 	}
-	return sse.ExecuteScript(initEditorsScript(data.TIKs))
+	return sse.ExecuteScript("initEditors()")
 }
 
-func (PageIndex) OnReset(
+func (PageTIKs) OnReset(
 	event EventReset,
 	sse *datastar.ServerSentEventGenerator,
 ) error {
@@ -622,8 +677,8 @@ func (PageIndex) OnReset(
 	))
 }
 
-// POSTFilter is /filter/{$}
-func (p PageIndex) POSTFilter(
+// POSTFilter is /tiks/filter/{$}
+func (p PageTIKs) POSTFilter(
 	r *http.Request,
 	sse *datastar.ServerSentEventGenerator,
 	signals struct {
@@ -640,17 +695,109 @@ func (p PageIndex) POSTFilter(
 	}
 
 	ft := normalizeFilterType(signals.FilterType)
-	// Update server-side view state for this instance.
-	if vs := p.App.views[signals.InstanceID]; vs != nil {
+	windowStart := 0
+	vs := p.App.views[signals.InstanceID]
+	if vs != nil {
+		// Reset window to 0 only when filter type changes.
+		// Locale toggles preserve the scroll position.
+		if vs.filterType != ft {
+			vs.windowStart = 0
+		}
+		windowStart = vs.windowStart
 		vs.filterType = ft
 		vs.showLocales = signals.ShowLocales
 	}
 
-	data := p.App.buildFilteredDataIndex(ft, signals.ShowLocales)
-	if err := sse.PatchElementTempl(indexContent(data)); err != nil {
+	data := p.App.buildFilteredDataIndex(ft, signals.ShowLocales, windowStart)
+	if err := sse.PatchElementTempl(template.IndexContent(data)); err != nil {
 		return err
 	}
-	return sse.ExecuteScript(initEditorsScript(data.TIKs))
+	return sse.ExecuteScript("initEditors()")
+}
+
+// POSTScrollDown is /tiks/scroll-down/{$}
+func (p PageTIKs) POSTScrollDown(
+	r *http.Request,
+	sse *datastar.ServerSentEventGenerator,
+	signals struct {
+		FilterType  string          `json:"filtertype"`
+		ShowLocales map[string]bool `json:"showlocales"`
+		WindowStart int             `json:"windowstart"`
+		InstanceID  string          `json:"instance_id"`
+	},
+) error {
+	return p.handleScroll(sse, signals.FilterType, signals.ShowLocales,
+		signals.WindowStart, signals.InstanceID, false)
+}
+
+// POSTScrollUp is /tiks/scroll-up/{$}
+func (p PageTIKs) POSTScrollUp(
+	r *http.Request,
+	sse *datastar.ServerSentEventGenerator,
+	signals struct {
+		FilterType  string          `json:"filtertype"`
+		ShowLocales map[string]bool `json:"showlocales"`
+		WindowStart int             `json:"windowstart"`
+		InstanceID  string          `json:"instance_id"`
+	},
+) error {
+	return p.handleScroll(sse, signals.FilterType, signals.ShowLocales,
+		signals.WindowStart, signals.InstanceID, true)
+}
+
+func (p PageTIKs) handleScroll(
+	sse *datastar.ServerSentEventGenerator,
+	filterType string, showLocales map[string]bool,
+	windowStart int, instanceID string,
+	scrollUp bool,
+) error {
+	p.App.mu.Lock()
+	defer p.App.mu.Unlock()
+
+	if p.App.dir == "" || p.App.initErr != "" {
+		return httperr.BadRequest
+	}
+
+	ft := normalizeFilterType(filterType)
+	if vs := p.App.views[instanceID]; vs != nil {
+		vs.windowStart = windowStart
+	}
+
+	data := p.App.buildFilteredDataIndex(ft, showLocales, windowStart)
+
+	if scrollUp {
+		// Before morph: find the first visible card and record its viewport
+		// position so we can restore it after items are inserted above.
+		if err := sse.ExecuteScript(
+			`(function(){` +
+				`var m=document.querySelector('#page-tiks main');` +
+				`var cards=m.querySelectorAll('section.card[id]');` +
+				`for(var i=0;i<cards.length;i++){` +
+				`var r=cards[i].getBoundingClientRect();` +
+				`if(r.bottom>0){window._tikAnchor={id:cards[i].id,top:r.top};return}}` +
+				`})()`,
+		); err != nil {
+			return err
+		}
+	}
+
+	if err := sse.PatchElementTempl(template.TiksContentList(data)); err != nil {
+		return err
+	}
+
+	if scrollUp {
+		// After morph: find the same card and scroll so it's at the
+		// same viewport position as before.
+		return sse.ExecuteScript(
+			`if(window._tikAnchor&&window._tikAnchor.id){` +
+				`var el=document.getElementById(window._tikAnchor.id);` +
+				`if(el){` +
+				`var m=document.querySelector('#page-tiks main');` +
+				`m.scrollTop+=el.getBoundingClientRect().top-window._tikAnchor.top` +
+				`}}`,
+		)
+	}
+	return nil
 }
 
 func navigate(url string) string {
@@ -671,7 +818,7 @@ func (p PageProjectDir) GET(r *http.Request) (
 
 	p.App.mu.Lock()
 	defer p.App.mu.Unlock()
-	body = pageProjectDir(p.App.dir, p.App.initErr, len(p.App.changed))
+	body = template.PageProjectDir(p.App.dir, p.App.initErr, len(p.App.changed))
 	return
 }
 
@@ -702,7 +849,7 @@ func (p PageProjectDir) POSTOpen(
 	if err := p.App.SetDir(folder); err != nil {
 		return sse.ExecuteScript(navigate(href.PageProjectDir()))
 	}
-	return sse.ExecuteScript(navigate(href.PageIndex(href.QueryPageIndex{})))
+	return sse.ExecuteScript(navigate("/tiks/"))
 }
 
 // PageTIK is /tik/{id}
@@ -734,7 +881,7 @@ func (p PageTIK) GET(
 		return
 	}
 
-	iTIK := slices.IndexFunc(p.App.tiks, func(t *TIK) bool {
+	iTIK := slices.IndexFunc(p.App.tiks, func(t *template.TIK) bool {
 		return t.ID == path.ID
 	})
 	if iTIK == -1 {
@@ -743,7 +890,7 @@ func (p PageTIK) GET(
 	}
 
 	tk := p.App.orderTIK(p.App.tiks[iTIK])
-	body = pageTIK(tk, query.Sidebar != "false")
+	body = template.PageTIK(tk, query.Sidebar != "false")
 	return
 }
 
@@ -785,7 +932,7 @@ func (p PageTIK) OnUpdated(
 		return nil
 	}
 
-	iTIK := slices.IndexFunc(p.App.tiks, func(t *TIK) bool {
+	iTIK := slices.IndexFunc(p.App.tiks, func(t *template.TIK) bool {
 		return t.ID == vs.tikID
 	})
 	if iTIK == -1 {
@@ -793,10 +940,10 @@ func (p PageTIK) OnUpdated(
 	}
 
 	tk := p.App.orderTIK(p.App.tiks[iTIK])
-	if err := sse.PatchElementTempl(tikContent(tk)); err != nil {
+	if err := sse.PatchElementTempl(template.TIKContent(tk)); err != nil {
 		return err
 	}
-	return sse.ExecuteScript(initEditorsScript([]TIK{*tk}))
+	return sse.ExecuteScript(initEditorsScript([]template.TIK{*tk}))
 }
 
 func (PageTIK) OnReset(
@@ -829,14 +976,14 @@ func (PageSettings) GET(
 		Sidebar string `query:"s" reflectsignal:"sidebaropen"`
 	},
 ) (body templ.Component, err error) {
-	return pageSettings(query.Sidebar != "false"), nil
+	return template.PageSettings(query.Sidebar != "false"), nil
 }
 
 // Helper methods on App (must be called with mu held).
 
 // orderTIK returns a copy of the TIK with ICU messages reordered (default locale first).
-func (a *App) orderTIK(tk *TIK) *TIK {
-	ordered := make([]*ICUMessage, 0, len(tk.ICU))
+func (a *App) orderTIK(tk *template.TIK) *template.TIK {
+	ordered := make([]*template.ICUMessage, 0, len(tk.ICU))
 	for _, m := range tk.ICU {
 		if m.Catalog.Default {
 			ordered = append(ordered, m)
@@ -848,7 +995,7 @@ func (a *App) orderTIK(tk *TIK) *TIK {
 			ordered = append(ordered, m)
 		}
 	}
-	return &TIK{
+	return &template.TIK{
 		ID:          tk.ID,
 		TIK:         tk.TIK,
 		Description: tk.Description,
@@ -895,26 +1042,82 @@ func (a *App) canApplyChangesLocked() bool {
 	return true
 }
 
-// buildFilteredDataIndex builds a DataIndex with server-side filtering.
-// filterType/showLocales come from client signals (via event or defaults).
-func (a *App) buildFilteredDataIndex(
-	filterType string, showLocales map[string]bool,
-) DataIndex {
+// buildTIKForDisplay builds a full TIK with ICU messages for display,
+// filtering by shown locales and running ICU validation.
+func (a *App) buildTIKForDisplay(
+	tk *template.TIK, showLocales map[string]bool,
+) template.TIK {
 	isLocaleShown := func(locale string) bool {
 		if showLocales == nil {
-			return true // default: show all
+			return true
 		}
 		shown, ok := showLocales[locale]
 		return ok && shown
 	}
 
-	data := DataIndex{
+	tmplTIK := template.TIK{
+		ID:          tk.ID,
+		TIK:         tk.TIK,
+		Description: tk.Description,
+		ICU:         make([]*template.ICUMessage, 0, len(a.catalogs)),
+	}
+	for catIndex, c := range a.catalogs {
+		if !isLocaleShown(c.Locale) {
+			continue
+		}
+		m := func() *template.ICUMessage {
+			for _, msg := range tk.ICU {
+				if msg.Catalog == c {
+					return msg
+				}
+			}
+			return nil
+		}()
+
+		var icuErr error
+		a.icuTokBuffer = a.icuTokBuffer[:0]
+		a.icuTokBuffer, icuErr = a.icuTokenizer.Tokenize(
+			a.localeTags[catIndex], a.icuTokBuffer, m.Message,
+		)
+		if icuErr != nil {
+			tmplTIK.IsInvalid = true
+			m.Error = fmt.Sprintf("at index %d: %v", a.icuTokenizer.Pos(), icuErr)
+		}
+		m.IncompleteReports = icu.AnalysisReport(
+			a.localeTags[catIndex], m.Message, a.icuTokBuffer,
+			codeparse.ICUSelectOptions,
+		)
+		if len(m.IncompleteReports) != 0 {
+			tmplTIK.IsIncomplete = true
+			tmplTIK.IsInvalid = true
+		}
+		if m.Message == "" {
+			tmplTIK.IsEmpty = true
+			tmplTIK.IsIncomplete = true
+		}
+		if m.Changed {
+			tmplTIK.IsChanged = true
+		}
+		tmplTIK.ICU = append(tmplTIK.ICU, m)
+	}
+	tmplTIK.IsComplete = !tmplTIK.IsIncomplete
+	return tmplTIK
+}
+
+// buildFilteredDataIndex builds a DataIndex with server-side filtering
+// and virtual scroll windowing. Only TIKs within the window get full
+// ICU validation; the rest are just counted for filter stats.
+func (a *App) buildFilteredDataIndex(
+	filterType string, showLocales map[string]bool, windowStart int,
+) template.DataIndex {
+	data := template.DataIndex{
 		Dir:             a.dir,
 		Catalogs:        a.catalogs,
 		ShownLocales:    showLocales,
 		FilterType:      filterType,
 		CanApplyChanges: a.canApplyChangesLocked(),
 		TotalChanges:    len(a.changed),
+		WindowSize:      template.DefaultWindowSize,
 	}
 
 	// Move default catalog to first index.
@@ -925,95 +1128,100 @@ func (a *App) buildFilteredDataIndex(
 		}
 	}
 
-	for _, tk := range a.tiks {
-		tmplTIK := TIK{
-			ID:          tk.ID,
-			TIK:         tk.TIK,
-			Description: tk.Description,
-			ICU:         make([]*ICUMessage, 0, len(a.catalogs)),
-		}
-		for catIndex, c := range a.catalogs {
-			if !isLocaleShown(c.Locale) {
-				continue
-			}
-			m := func() *ICUMessage {
-				for _, msg := range tk.ICU {
-					if msg.Catalog == c {
-						return msg
-					}
-				}
-				return nil
-			}()
-
-			var icuErr error
-			a.icuTokBuffer = a.icuTokBuffer[:0]
-			a.icuTokBuffer, icuErr = a.icuTokenizer.Tokenize(
-				a.localeTags[catIndex], a.icuTokBuffer, m.Message,
-			)
-			if icuErr != nil {
-				tmplTIK.IsInvalid = true
-				m.Error = fmt.Sprintf("at index %d: %v", a.icuTokenizer.Pos(), icuErr)
-			}
-			m.IncompleteReports = icu.AnalysisReport(
-				a.localeTags[catIndex], m.Message, a.icuTokBuffer,
-				codeparse.ICUSelectOptions,
-			)
-			if len(m.IncompleteReports) != 0 {
-				tmplTIK.IsIncomplete = true
-				tmplTIK.IsInvalid = true
-			}
-			if m.Message == "" {
-				tmplTIK.IsEmpty = true
-				tmplTIK.IsIncomplete = true
-			}
-			if m.Changed {
-				tmplTIK.IsChanged = true
-			}
-			tmplTIK.ICU = append(tmplTIK.ICU, m)
-		}
-		tmplTIK.IsComplete = !tmplTIK.IsIncomplete
+	// First pass: count stats and collect indices of filtered TIKs.
+	filtered := make([]int, 0, len(a.tiks))
+	for i, tk := range a.tiks {
+		hasChanged, hasEmpty, hasIncomplete, hasInvalid := a.tikStatusFlags(tk, showLocales)
+		isComplete := !hasIncomplete
 
 		data.NumAll++
-		if tmplTIK.IsComplete {
+		if isComplete {
 			data.NumComplete++
 		}
-		if tmplTIK.IsIncomplete {
+		if hasIncomplete {
 			data.NumIncomplete++
 		}
-		if tmplTIK.IsEmpty {
+		if hasEmpty {
 			data.NumEmpty++
 		}
-		if tmplTIK.IsInvalid {
+		if hasInvalid {
 			data.NumInvalid++
 		}
-		if tmplTIK.IsChanged {
+		if hasChanged {
 			data.NumChanged++
 		}
 
-		// Apply TIK filter.
 		switch filterType {
 		case "changed":
-			if !tmplTIK.IsChanged {
+			if !hasChanged {
 				continue
 			}
 		case "empty":
-			if !tmplTIK.IsEmpty {
+			if !hasEmpty {
 				continue
 			}
 		case "complete":
-			if !tmplTIK.IsComplete {
+			if !isComplete {
 				continue
 			}
 		case "incomplete":
-			if !tmplTIK.IsIncomplete {
+			if !hasIncomplete {
 				continue
 			}
 		case "invalid":
-			if !tmplTIK.IsInvalid {
+			if !hasInvalid {
 				continue
 			}
 		}
-		data.TIKs = append(data.TIKs, tmplTIK)
+		filtered = append(filtered, i)
 	}
+
+	data.TotalFiltered = len(filtered)
+
+	// Clamp window.
+	if windowStart < 0 {
+		windowStart = 0
+	}
+	if windowStart >= len(filtered) {
+		windowStart = max(0, len(filtered)-data.WindowSize)
+	}
+	data.WindowStart = windowStart
+
+	end := windowStart + data.WindowSize
+	if end > len(filtered) {
+		end = len(filtered)
+	}
+
+	// Second pass: build full TIKs only for the window.
+	for _, idx := range filtered[windowStart:end] {
+		tk := a.buildTIKForDisplay(a.tiks[idx], showLocales)
+		data.TIKs = append(data.TIKs, tk)
+	}
+
 	return data
+}
+
+// tikStatusFlags computes status flags for a TIK without building the
+// full display data. Used for fast counting in the first pass.
+func (a *App) tikStatusFlags(
+	tk *template.TIK, showLocales map[string]bool,
+) (hasChanged, hasEmpty, hasIncomplete, hasInvalid bool) {
+	for _, m := range tk.ICU {
+		if showLocales != nil {
+			if shown, ok := showLocales[m.Catalog.Locale]; !ok || !shown {
+				continue
+			}
+		}
+		if m.Message == "" {
+			hasEmpty = true
+			hasIncomplete = true
+		}
+		if m.Changed {
+			hasChanged = true
+		}
+		// Note: we skip full ICU validation here for speed.
+		// Invalid/incomplete flags from ICU analysis are only
+		// computed for windowed TIKs.
+	}
+	return
 }

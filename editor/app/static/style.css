@@ -206,7 +206,8 @@ body {
 
 /* --- Dashboard layout --- */
 
-#page-index,
+#page-dashboard,
+#page-tiks,
 #page-tik,
 #page-settings {
 	inline-size: 100%;
@@ -240,6 +241,94 @@ main {
 		min-block-size: 10rem;
 		opacity: 0.5;
 	}
+}
+
+/* --- Dashboard --- */
+
+.dashboard-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+	gap: 1rem;
+}
+
+.dashboard-stat-value {
+	font-size: 1.8rem;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.dashboard-stat-label {
+	font-size: 0.85rem;
+	opacity: 0.6;
+}
+
+.dashboard-stat-desc {
+	font-size: 0.8rem;
+	opacity: 0.5;
+	margin: 0;
+}
+
+.dashboard-stat-link {
+	text-decoration: none;
+	cursor: pointer;
+	transition: border-color 0.15s;
+
+	&:hover {
+		border-color: var(--primary, oklch(0.55 0.15 250));
+	}
+}
+
+.locale-stats {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+	font-size: 0.85rem;
+}
+
+.locale-stat-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.locale-progress {
+	block-size: 0.4rem;
+	border-radius: 9999px;
+	background: var(--border, oklch(0 0 0 / 0.1));
+	overflow: hidden;
+}
+
+.locale-progress-bar {
+	block-size: 100%;
+	border-radius: 9999px;
+	background: var(--primary, oklch(0.55 0.15 250));
+	transition: inline-size 0.3s;
+}
+
+/* --- TIK skeletons --- */
+
+.skeleton-body {
+	padding: 1rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.skeleton-line {
+	block-size: 0.75rem;
+	border-radius: 0.25rem;
+	background: var(--border, oklch(0 0 0 / 0.1));
+	animation: skeleton-pulse 1.5s ease-in-out infinite;
+	inline-size: 80%;
+}
+
+.skeleton-short {
+	inline-size: 50%;
+}
+
+@keyframes skeleton-pulse {
+	0%, 100% { opacity: 0.4; }
+	50% { opacity: 1; }
 }
 
 /* --- TIK sections --- */
@@ -343,6 +432,51 @@ main {
 	font-size: 0.75rem;
 	opacity: 0.6;
 }
+
+/* --- Loading indicators --- */
+
+.loading-indicator {
+	display: flex;
+	justify-content: center;
+	padding: 1.5rem;
+}
+
+.loading-dots {
+	display: flex;
+	gap: 0.4rem;
+	align-items: center;
+
+	& span {
+		display: block;
+		inline-size: 0.5rem;
+		block-size: 0.5rem;
+		border-radius: 50%;
+		background: var(--foreground, oklch(0.3 0 0));
+		opacity: 0.4;
+		animation: dot-bounce 1.2s ease-in-out infinite;
+	}
+
+	& span:nth-child(2) {
+		animation-delay: 0.15s;
+	}
+
+	& span:nth-child(3) {
+		animation-delay: 0.3s;
+	}
+}
+
+@keyframes dot-bounce {
+	0%, 80%, 100% {
+		transform: scale(1);
+		opacity: 0.4;
+	}
+	40% {
+		transform: scale(1.4);
+		opacity: 1;
+	}
+}
+
+
 
 /* Modal overlay */
 .modal-overlay {

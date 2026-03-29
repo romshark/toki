@@ -1,0 +1,210 @@
+package template
+
+import (
+	"fmt"
+	"github.com/romshark/toki/editor/datapagesgen/href"
+)
+
+templ PageDashboard(stats DashboardStats) {
+	<div id="page-dashboard">
+		<aside
+			class="sidebar"
+			id="editor-sidebar"
+			data-side="left"
+			data-initial-open={ boolStr(stats.SidebarOpen) }
+			if !stats.SidebarOpen {
+				aria-hidden="true"
+				inert
+			}
+		>
+			<nav aria-label="Dashboard navigation">
+				@sidebarHeader()
+				<section>
+					<div role="group">
+						<h3>Navigation</h3>
+						<ul>
+							<li>
+								//datapages:nolint
+								<a href="#overview" data-ignore-current>Overview</a>
+							</li>
+							<li>
+								//datapages:nolint
+								<a href="#locales" data-ignore-current>Locales</a>
+							</li>
+						</ul>
+					</div>
+				</section>
+				<footer>
+					<a href={ href.PageProjectDir() } class="alert sidebar-project-dir">
+						<section>
+							<strong>Project Directory</strong>
+							<p>{ stats.Dir }</p>
+						</section>
+					</a>
+				</footer>
+			</nav>
+		</aside>
+		<div class="main-area">
+			@navbar([]Breadcrumb{
+				{Label: "Dashboard"},
+			}, stats.TotalChanges, stats.CanApplyChanges)
+			<main>
+				<div class="contents">
+					<h2 id="overview">Overview</h2>
+					<div class="dashboard-grid">
+						<a
+							href={ href.PageTIKs(href.QueryPageTIKs{}) }
+							class="card dashboard-stat-link"
+						>
+							<header>
+								<span class="dashboard-stat-value">
+									{ fmt.Sprintf("%d", stats.NumTIKs) }
+								</span>
+								<span class="dashboard-stat-label">TIKs</span>
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">Total translation keys</p>
+							</section>
+						</a>
+						@dashboardCard(
+							"Locales", fmt.Sprintf("%d", stats.NumLocales),
+							"Languages configured",
+						)
+						<a
+							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "complete"}) }
+							class="card dashboard-stat-link"
+						>
+							<header>
+								<span class="dashboard-stat-value">
+									{ fmt.Sprintf("%.0f%%", stats.Completeness*100) }
+								</span>
+								<span class="dashboard-stat-label">Complete</span>
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">
+									{ fmt.Sprintf("%d of %d TIKs",
+										stats.NumComplete, stats.NumTIKs) }
+								</p>
+							</section>
+						</a>
+						<a
+							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "changed"}) }
+							class="card dashboard-stat-link"
+						>
+							<header>
+								<span class="dashboard-stat-value">
+									{ fmt.Sprintf("%d", stats.TotalChanges) }
+								</span>
+								<span class="dashboard-stat-label">Unsaved</span>
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">Pending changes</p>
+							</section>
+						</a>
+					</div>
+					<div class="dashboard-grid">
+						<a
+							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "incomplete"}) }
+							class="card dashboard-stat-link"
+						>
+							<header>
+								<span class="dashboard-stat-value">
+									{ fmt.Sprintf("%d", stats.NumIncomplete) }
+								</span>
+								<span class="dashboard-stat-label">Incomplete</span>
+							</header>
+						</a>
+						//datapages:nolint
+						<a href="/tiks/?f=empty" class="card dashboard-stat-link">
+							<header>
+								<span class="dashboard-stat-value">
+									{ fmt.Sprintf("%d", stats.NumEmpty) }
+								</span>
+								<span class="dashboard-stat-label">Empty</span>
+							</header>
+						</a>
+						//datapages:nolint
+						<a href="/tiks/?f=invalid" class="card dashboard-stat-link">
+							<header>
+								<span class="dashboard-stat-value">
+									{ fmt.Sprintf("%d", stats.NumInvalid) }
+								</span>
+								<span class="dashboard-stat-label">Invalid</span>
+							</header>
+						</a>
+					</div>
+					<h2 id="locales">Locales</h2>
+					<div class="dashboard-grid">
+						for _, ls := range stats.Locales {
+							<div class="card locale-card">
+								<header>
+									<span class="dashboard-stat-value">
+										{ ls.Locale }
+									</span>
+									if ls.Default {
+										<span class="badge-secondary">Default</span>
+									}
+								</header>
+								<section>
+									<div class="locale-stats">
+										<div class="locale-stat-row">
+											<span>Completeness</span>
+											<strong>{ fmt.Sprintf("%.0f%%", ls.Completeness*100) }</strong>
+										</div>
+										<div class="locale-progress">
+											<div
+												class="locale-progress-bar"
+												style={ fmt.Sprintf("inline-size:%.1f%%",
+													ls.Completeness*100) }
+											></div>
+										</div>
+										<div class="locale-stat-row">
+											<span>Translated</span>
+											<span>
+												{ fmt.Sprintf("%d", ls.Translated) }
+											</span>
+										</div>
+										<div class="locale-stat-row">
+											<span>Untranslated</span>
+											<span>
+												{ fmt.Sprintf("%d", ls.Untranslated) }
+											</span>
+										</div>
+										if ls.Changed > 0 {
+											<div class="locale-stat-row">
+												<span>Unsaved</span>
+												<span class="badge-changed">
+													{ fmt.Sprintf("%d", ls.Changed) }
+												</span>
+											</div>
+										}
+										if ls.Invalid > 0 {
+											<div class="locale-stat-row">
+												<span>Invalid</span>
+												<span class="badge-destructive">
+													{ fmt.Sprintf("%d", ls.Invalid) }
+												</span>
+											</div>
+										}
+									</div>
+								</section>
+							</div>
+						}
+					</div>
+				</div>
+			</main>
+		</div>
+	</div>
+}
+
+templ dashboardCard(title, value, description string) {
+	<div class="card">
+		<header>
+			<span class="dashboard-stat-value">{ value }</span>
+			<span class="dashboard-stat-label">{ title }</span>
+		</header>
+		<section>
+			<p class="dashboard-stat-desc">{ description }</p>
+		</section>
+	</div>
+}
