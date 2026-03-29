@@ -272,9 +272,25 @@ main {
 	text-decoration: none;
 	cursor: pointer;
 	transition: border-color 0.15s;
+	position: relative;
+
+	&::after {
+		content: "\2197"; /* ↗ */
+		position: absolute;
+		inset-block-start: 0.75rem;
+		inset-inline-end: 0.75rem;
+		font-size: 1.1rem;
+		opacity: 0.3;
+		transition: opacity 0.15s, transform 0.15s;
+	}
 
 	&:hover {
 		border-color: var(--primary, oklch(0.55 0.15 250));
+	}
+
+	&:hover::after {
+		opacity: 0.7;
+		transform: translateX(2px);
 	}
 }
 
