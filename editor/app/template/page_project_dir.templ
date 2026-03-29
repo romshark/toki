@@ -2,6 +2,8 @@ package template
 
 import (
 	"fmt"
+
+	"github.com/romshark/toki/editor/app/template/strfmt"
 	"github.com/romshark/toki/editor/datapagesgen/action"
 )
 
@@ -11,7 +13,7 @@ templ PageProjectDir(dir string, errMsg string, numChanges int) {
 		class="page-center"
 		data-signals:folder={ fmt.Sprintf("'%s'", dir) }
 		data-signals:origfolder={ fmt.Sprintf("'%s'", dir) }
-		data-signals:haserror={ boolStr(errMsg != "") }
+		data-signals:haserror={ strfmt.Bool(errMsg != "") }
 		data-signals:confirmdiscard="false"
 	>
 		<div class="card">
@@ -85,8 +87,8 @@ templ PageProjectDir(dir string, errMsg string, numChanges int) {
 					</header>
 					<section>
 						<p>
-							You have { fmt.Sprintf("%d", numChanges) } unsaved
-							{ changeWord(numChanges) }. Opening a new project will
+							You have { strfmt.Int(numChanges) } unsaved
+							{ strfmt.ChangeWord(numChanges) }. Opening a new project will
 							irreversibly discard them.
 						</p>
 					</section>

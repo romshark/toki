@@ -1,8 +1,7 @@
 package template
 
 import (
-	"fmt"
-
+	"github.com/romshark/toki/editor/app/template/strfmt"
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
@@ -19,13 +18,13 @@ templ PageTIKs(data DataIndex) {
 		data-signals:resetdonelocale="''"
 		data-signals:instance_id="getOrCreateInstanceID('toki-editor-instance-id')"
 		data-signals:showlocales={ initShowLocalesSignal(data) }
-		data-signals:windowstart={ fmt.Sprintf("%d", data.WindowStart) }
+		data-signals:windowstart={ strfmt.Int(data.WindowStart) }
 	>
 		<aside
 			class="sidebar"
 			id="editor-sidebar"
 			data-side="left"
-			data-initial-open={ boolStr(data.SidebarOpen) }
+			data-initial-open={ strfmt.Bool(data.SidebarOpen) }
 			if !data.SidebarOpen {
 				aria-hidden="true"
 				inert

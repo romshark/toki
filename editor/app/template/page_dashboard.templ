@@ -2,6 +2,8 @@ package template
 
 import (
 	"fmt"
+
+	"github.com/romshark/toki/editor/app/template/strfmt"
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
@@ -11,7 +13,7 @@ templ PageDashboard(stats DashboardStats) {
 			class="sidebar"
 			id="editor-sidebar"
 			data-side="left"
-			data-initial-open={ boolStr(stats.SidebarOpen) }
+			data-initial-open={ strfmt.Bool(stats.SidebarOpen) }
 			if !stats.SidebarOpen {
 				aria-hidden="true"
 				inert
@@ -58,7 +60,7 @@ templ PageDashboard(stats DashboardStats) {
 						>
 							<header>
 								<span class="dashboard-stat-value">
-									{ fmt.Sprintf("%d", stats.NumTIKs) }
+									{ strfmt.Int(stats.NumTIKs) }
 								</span>
 								<span class="dashboard-stat-label">TIKs</span>
 							</header>
@@ -67,7 +69,7 @@ templ PageDashboard(stats DashboardStats) {
 							</section>
 						</a>
 						@dashboardCard(
-							"Locales", fmt.Sprintf("%d", stats.NumLocales),
+							"Locales", strfmt.Int(stats.NumLocales),
 							"Languages configured",
 						)
 						<a
@@ -76,7 +78,7 @@ templ PageDashboard(stats DashboardStats) {
 						>
 							<header>
 								<span class="dashboard-stat-value">
-									{ fmt.Sprintf("%.0f%%", stats.Completeness*100) }
+									{ strfmt.Percent(stats.Completeness) }
 								</span>
 								<span class="dashboard-stat-label">Complete</span>
 							</header>
@@ -93,7 +95,7 @@ templ PageDashboard(stats DashboardStats) {
 						>
 							<header>
 								<span class="dashboard-stat-value">
-									{ fmt.Sprintf("%d", stats.TotalChanges) }
+									{ strfmt.Int(stats.TotalChanges) }
 								</span>
 								<span class="dashboard-stat-label">Unsaved</span>
 							</header>
@@ -104,12 +106,14 @@ templ PageDashboard(stats DashboardStats) {
 					</div>
 					<div class="dashboard-grid">
 						<a
-							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "incomplete"}) }
+							href={ href.PageTIKs(href.QueryPageTIKs{
+								Filter: "incomplete",
+							}) }
 							class="card dashboard-stat-link"
 						>
 							<header>
 								<span class="dashboard-stat-value">
-									{ fmt.Sprintf("%d", stats.NumIncomplete) }
+									{ strfmt.Int(stats.NumIncomplete) }
 								</span>
 								<span class="dashboard-stat-label">Incomplete</span>
 							</header>
@@ -118,7 +122,7 @@ templ PageDashboard(stats DashboardStats) {
 						<a href="/tiks/?f=empty" class="card dashboard-stat-link">
 							<header>
 								<span class="dashboard-stat-value">
-									{ fmt.Sprintf("%d", stats.NumEmpty) }
+									{ strfmt.Int(stats.NumEmpty) }
 								</span>
 								<span class="dashboard-stat-label">Empty</span>
 							</header>
@@ -127,7 +131,7 @@ templ PageDashboard(stats DashboardStats) {
 						<a href="/tiks/?f=invalid" class="card dashboard-stat-link">
 							<header>
 								<span class="dashboard-stat-value">
-									{ fmt.Sprintf("%d", stats.NumInvalid) }
+									{ strfmt.Int(stats.NumInvalid) }
 								</span>
 								<span class="dashboard-stat-label">Invalid</span>
 							</header>
@@ -149,7 +153,9 @@ templ PageDashboard(stats DashboardStats) {
 									<div class="locale-stats">
 										<div class="locale-stat-row">
 											<span>Completeness</span>
-											<strong>{ fmt.Sprintf("%.0f%%", ls.Completeness*100) }</strong>
+											<strong>
+												{ strfmt.Percent(ls.Completeness) }
+											</strong>
 										</div>
 										<div class="locale-progress">
 											<div
@@ -161,20 +167,20 @@ templ PageDashboard(stats DashboardStats) {
 										<div class="locale-stat-row">
 											<span>Translated</span>
 											<span>
-												{ fmt.Sprintf("%d", ls.Translated) }
+												{ strfmt.Int(ls.Translated) }
 											</span>
 										</div>
 										<div class="locale-stat-row">
 											<span>Untranslated</span>
 											<span>
-												{ fmt.Sprintf("%d", ls.Untranslated) }
+												{ strfmt.Int(ls.Untranslated) }
 											</span>
 										</div>
 										if ls.Changed > 0 {
 											<div class="locale-stat-row">
 												<span>Unsaved</span>
 												<span class="badge-changed">
-													{ fmt.Sprintf("%d", ls.Changed) }
+													{ strfmt.Int(ls.Changed) }
 												</span>
 											</div>
 										}
@@ -182,7 +188,7 @@ templ PageDashboard(stats DashboardStats) {
 											<div class="locale-stat-row">
 												<span>Invalid</span>
 												<span class="badge-destructive">
-													{ fmt.Sprintf("%d", ls.Invalid) }
+													{ strfmt.Int(ls.Invalid) }
 												</span>
 											</div>
 										}

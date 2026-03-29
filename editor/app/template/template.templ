@@ -3,6 +3,7 @@ package template
 import (
 	"fmt"
 
+	"github.com/romshark/toki/editor/app/template/strfmt"
 	"github.com/romshark/toki/editor/datapagesgen/action"
 	"github.com/romshark/toki/editor/datapagesgen/assets"
 	"github.com/romshark/toki/editor/datapagesgen/href"
@@ -80,7 +81,7 @@ templ navbar(breadcrumbs []Breadcrumb, totalChanges int, canApplyChanges bool) {
 					}
 					data-on:click={ action.POSTAppApplyChanges() }
 				>
-					Apply Changes ({ fmt.Sprintf("%d", totalChanges) })
+					Apply Changes ({ strfmt.Int(totalChanges) })
 				</button>
 			</div>
 		}
@@ -127,18 +128,18 @@ templ sidebarContent(data DataIndex) {
 				<div role="group" class="button-group">
 					<button
 						class="btn btn-secondary btn-sm"
-						data-attr:disabled={ allLocalesExpr(data, true) }
-						data-on:click={ action.POSTPageTIKsFilter(
-							action.WithBefore(setAllLocales(data, true)),
-						) }
-					>Enable All</button>
-					<button
-						class="btn btn-secondary btn-sm"
 						data-attr:disabled={ allLocalesExpr(data, false) }
 						data-on:click={ action.POSTPageTIKsFilter(
 							action.WithBefore(setAllLocales(data, false)),
 						) }
 					>Disable All</button>
+					<button
+						class="btn btn-secondary btn-sm"
+						data-attr:disabled={ allLocalesExpr(data, true) }
+						data-on:click={ action.POSTPageTIKsFilter(
+							action.WithBefore(setAllLocales(data, true)),
+						) }
+					>Enable All</button>
 				</div>
 				<ul>
 					for _, catalog := range data.Catalogs {
@@ -450,7 +451,7 @@ templ filterRadio(value, label string, count int, selected bool) {
 				data-bind:filtertype
 				data-on:change={ action.POSTPageTIKsFilter() }
 			/>
-			<span>{ label } <span class="badge-outline">{ fmt.Sprintf("%d", count) }</span></span>
+			<span>{ label } <span class="badge-outline">{ strfmt.Int(count) }</span></span>
 		</label>
 	</li>
 }
@@ -525,20 +526,6 @@ func allLocalesExpr(data DataIndex, enabled bool) string {
 		b = append(b, c.Locale...)
 	}
 	return string(b)
-}
-
-func changeWord(n int) string {
-	if n == 1 {
-		return "change"
-	}
-	return "changes"
-}
-
-func boolStr(b bool) string {
-	if b {
-		return "true"
-	}
-	return "false"
 }
 
 func tikChangedCount(tk *TIK) int {

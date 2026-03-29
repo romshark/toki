@@ -2,6 +2,8 @@ package template
 
 import (
 	"fmt"
+
+	"github.com/romshark/toki/editor/app/template/strfmt"
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
@@ -23,7 +25,7 @@ templ PageTIK(tk *TIK, sidebarOpen bool) {
 			class="sidebar"
 			id="editor-sidebar"
 			data-side="left"
-			data-initial-open={ boolStr(sidebarOpen) }
+			data-initial-open={ strfmt.Bool(sidebarOpen) }
 			if !sidebarOpen {
 				aria-hidden="true"
 				inert
