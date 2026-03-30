@@ -200,7 +200,10 @@ templ PageDashboard(stats DashboardStats) {
 					<h2 id="locales">Locales</h2>
 					<div class="dashboard-grid">
 						for _, ls := range stats.Locales {
-							<div class="card locale-card">
+							<a
+								href={ href.PageTIKs(href.QueryPageTIKs{Locales: ls.Locale}) }
+								class="card locale-card dashboard-stat-link"
+							>
 								<header>
 									<span class="dashboard-stat-value">
 										<strong class="locale-code">{ ls.Locale }</strong>
@@ -256,7 +259,7 @@ templ PageDashboard(stats DashboardStats) {
 										}
 									</div>
 								</section>
-							</div>
+							</a>
 						}
 					</div>
 				</div>
