@@ -1,5 +1,29 @@
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)");
 
+// --- Sidebar state (tab-scoped) ---
+
+// Sidebar: persist open/closed state in sessionStorage (tab-scoped).
+// MutationObserver sets data-initial-open before basecoat's deferred script.
+if (sessionStorage.getItem("toki-sidebar") === "false") {
+	new MutationObserver(function(_, obs) {
+		var sidebar = document.getElementById("editor-sidebar");
+		if (sidebar) {
+			sidebar.setAttribute("data-initial-open", "false");
+			sidebar.setAttribute("aria-hidden", "true");
+			sidebar.setAttribute("inert", "");
+			obs.disconnect();
+		}
+	}).observe(document.documentElement, { childList: true, subtree: true });
+}
+
+function toggleSidebar() {
+	var isOpen = sessionStorage.getItem("toki-sidebar") !== "false";
+	sessionStorage.setItem("toki-sidebar", isOpen ? "false" : "true");
+	document.dispatchEvent(new CustomEvent(
+		"basecoat:sidebar", { detail: { id: "editor-sidebar" } },
+	));
+}
+
 // --- Theme management ---
 
 function getStoredTheme() {

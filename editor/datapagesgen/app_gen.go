@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -709,16 +708,10 @@ func (s *Server) handlePageIndexGET(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q := r.URL.Query()
-	var query struct {
-		Sidebar string `query:"s" reflectsignal:"sidebaropen"`
-	}
-	query.Sidebar = q.Get("s")
-
 	p := app.PageIndex{
 		App: s.app,
 	}
-	body, redirect, err := p.GET(r, query)
+	body, redirect, err := p.GET(r)
 	if err != nil {
 		s.httpErrIntern(w, r, nil, "handling PageIndex.GET", err)
 		return
@@ -730,23 +723,10 @@ func (s *Server) handlePageIndexGET(w http.ResponseWriter, r *http.Request) {
 
 	bodyAttrs := func(w http.ResponseWriter) {
 		writeBodyAttrOnVisibilityChange(w)
-
-		_, _ = io.WriteString(w, `data-signals:sidebaropen="'`)
-		_, _ = io.WriteString(w, query.Sidebar)
-		_, _ = io.WriteString(w, `'"`)
-	}
-
-	bodySuffix := func(w http.ResponseWriter) {
-
-		_, _ = io.WriteString(w, `data-effect="const params = new URLSearchParams();
-			if ($sidebaropen) params.set('s', $sidebaropen);
-			const query = params.toString();
-			window.history.replaceState(null, '', query ? '/?' + query : '/');
-		"`)
 	}
 
 	if err := s.writeHTML(
-		w, r, genericHead, nil, body, bodyAttrs, bodySuffix,
+		w, r, genericHead, nil, body, bodyAttrs, nil,
 	); err != nil {
 		s.logErr("rendering PageIndex", err)
 		return
@@ -804,17 +784,10 @@ func (s *Server) handlePageProjectDirPOSTOpen(
 }
 
 func (s *Server) handlePageSettingsGET(w http.ResponseWriter, r *http.Request) {
-
-	q := r.URL.Query()
-	var query struct {
-		Sidebar string `query:"s" reflectsignal:"sidebaropen"`
-	}
-	query.Sidebar = q.Get("s")
-
 	p := app.PageSettings{
 		App: s.app,
 	}
-	body, err := p.GET(r, query)
+	body, err := p.GET(r)
 	if err != nil {
 		s.httpErrIntern(w, r, nil, "handling PageSettings.GET", err)
 		return
@@ -823,23 +796,10 @@ func (s *Server) handlePageSettingsGET(w http.ResponseWriter, r *http.Request) {
 
 	bodyAttrs := func(w http.ResponseWriter) {
 		writeBodyAttrOnVisibilityChange(w)
-
-		_, _ = io.WriteString(w, `data-signals:sidebaropen="'`)
-		_, _ = io.WriteString(w, query.Sidebar)
-		_, _ = io.WriteString(w, `'"`)
-	}
-
-	bodySuffix := func(w http.ResponseWriter) {
-
-		_, _ = io.WriteString(w, `data-effect="const params = new URLSearchParams();
-			if ($sidebaropen) params.set('s', $sidebaropen);
-			const query = params.toString();
-			window.history.replaceState(null, '', query ? '/settings?' + query : '/settings');
-		"`)
 	}
 
 	if err := s.writeHTML(
-		w, r, genericHead, nil, body, bodyAttrs, bodySuffix,
+		w, r, genericHead, nil, body, bodyAttrs, nil,
 	); err != nil {
 		s.logErr("rendering PageSettings", err)
 		return
@@ -847,12 +807,6 @@ func (s *Server) handlePageSettingsGET(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePageTIKGET(w http.ResponseWriter, r *http.Request) {
-
-	q := r.URL.Query()
-	var query struct {
-		Sidebar string `query:"s" reflectsignal:"sidebaropen"`
-	}
-	query.Sidebar = q.Get("s")
 
 	var path struct {
 		ID string `path:"id"`
@@ -862,7 +816,7 @@ func (s *Server) handlePageTIKGET(w http.ResponseWriter, r *http.Request) {
 	p := app.PageTIK{
 		App: s.app,
 	}
-	body, redirect, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(r, path, query)
+	body, redirect, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(r, path)
 	if err != nil {
 		s.httpErrIntern(w, r, nil, "handling PageTIK.GET", err)
 		return
@@ -876,10 +830,6 @@ func (s *Server) handlePageTIKGET(w http.ResponseWriter, r *http.Request) {
 		if !disableRefreshAfterHidden {
 			writeBodyAttrOnVisibilityChange(w)
 		}
-
-		_, _ = io.WriteString(w, `data-signals:sidebaropen="'`)
-		_, _ = io.WriteString(w, query.Sidebar)
-		_, _ = io.WriteString(w, `'"`)
 	}
 
 	bodySuffix := func(w http.ResponseWriter) {
@@ -894,16 +844,6 @@ func (s *Server) handlePageTIKGET(w http.ResponseWriter, r *http.Request) {
 		} else {
 			_, _ = io.WriteString(w, `)"`)
 		}
-
-		_, _ = io.WriteString(w, `data-effect="const params = new URLSearchParams();
-			if ($sidebaropen) params.set('s', $sidebaropen);
-			const query = params.toString();
-			window.history.replaceState(null, '', query ? '/tik/`)
-		template.HTMLEscape(w, []byte(path.ID))
-		_, _ = io.WriteString(w, `?' + query : '/tik/`)
-		template.HTMLEscape(w, []byte(path.ID))
-		_, _ = io.WriteString(w, `');
-		"`)
 	}
 
 	if err := s.writeHTML(
@@ -977,11 +917,9 @@ func (s *Server) handlePageTIKsGET(w http.ResponseWriter, r *http.Request) {
 	var query struct {
 		Filter  string `query:"f" reflectsignal:"filtertype"`
 		Locales string `query:"l" reflectsignal:"shownlocales"`
-		Sidebar string `query:"s" reflectsignal:"sidebaropen"`
 	}
 	query.Filter = q.Get("f")
 	query.Locales = q.Get("l")
-	query.Sidebar = q.Get("s")
 
 	p := app.PageTIKs{
 		App: s.app,
@@ -1008,10 +946,6 @@ func (s *Server) handlePageTIKsGET(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, `data-signals:shownlocales="'`)
 		_, _ = io.WriteString(w, query.Locales)
 		_, _ = io.WriteString(w, `'"`)
-
-		_, _ = io.WriteString(w, `data-signals:sidebaropen="'`)
-		_, _ = io.WriteString(w, query.Sidebar)
-		_, _ = io.WriteString(w, `'"`)
 	}
 
 	bodySuffix := func(w http.ResponseWriter) {
@@ -1026,7 +960,6 @@ func (s *Server) handlePageTIKsGET(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, `data-effect="const params = new URLSearchParams();
 			if ($filtertype) params.set('f', $filtertype);
 			if ($shownlocales) params.set('l', $shownlocales);
-			if ($sidebaropen) params.set('s', $sidebaropen);
 			const query = params.toString();
 			window.history.replaceState(null, '', query ? '/tiks?' + query : '/tiks');
 		"`)

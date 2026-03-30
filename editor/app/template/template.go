@@ -2,9 +2,8 @@ package template
 
 // DashboardStats holds statistics for the dashboard page.
 type DashboardStats struct {
-	Dir             string
-	SidebarOpen     bool
-	NumTIKs         int
+	Dir         string
+	NumTIKs     int
 	NumLocales      int
 	NativeLocale    LocaleStats
 	Locales         []LocaleStats
@@ -39,8 +38,7 @@ type DataIndex struct {
 	ShownLocales map[string]bool
 
 	// FilterType is "all", "changed", etc.
-	FilterType  string
-	SidebarOpen bool
+	FilterType string
 
 	// Virtual scroll window.
 	WindowStart   int // index of first TIK in the window
@@ -88,3 +86,4 @@ type Catalog struct {
 	Name    string // e.g. "German", "English"
 	Default bool
 }
+

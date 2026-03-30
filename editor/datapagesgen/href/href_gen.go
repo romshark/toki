@@ -45,158 +45,32 @@ func Asset(p string) string {
 }
 
 // PageIndex references /{$}
-func PageIndex(query QueryPageIndex) string {
-	anyQuery := query.Sidebar != ""
-
-	var b strings.Builder
-	l := len("/")
-	if anyQuery {
-		l += len("?")
-	}
-
-	// n = number of query params already accounted for (for '&')
-	n := 0
-
-	if query.Sidebar != "" {
-		if n > 0 {
-			l += len("&")
-		}
-		n++
-		l += len("s=") + len(query.Sidebar)
-	}
-	_ = n
-
-	b.Grow(l)
-
-	b.WriteString("/")
-	if anyQuery {
-		b.WriteString("?")
-	}
-
-	n = 0
-
-	if query.Sidebar != "" {
-		if n > 0 {
-			b.WriteString("&")
-		}
-		b.WriteString("s=")
-		b.WriteString(query.Sidebar)
-	}
-
-	return b.String()
-}
-
-// QueryPageIndex is the query parameters for PageIndex
-type QueryPageIndex struct {
-	Sidebar string `query:"s"`
-}
+func PageIndex() string { return "/" }
 
 // PageProjectDir references /project-dir/{$}
 func PageProjectDir() string { return "/project-dir/" }
 
 // PageSettings references /settings/{$}
-func PageSettings(query QueryPageSettings) string {
-	anyQuery := query.Sidebar != ""
-
-	var b strings.Builder
-	l := len("/settings/")
-	if anyQuery {
-		l += len("?")
-	}
-
-	// n = number of query params already accounted for (for '&')
-	n := 0
-
-	if query.Sidebar != "" {
-		if n > 0 {
-			l += len("&")
-		}
-		n++
-		l += len("s=") + len(query.Sidebar)
-	}
-	_ = n
-
-	b.Grow(l)
-
-	b.WriteString("/settings/")
-	if anyQuery {
-		b.WriteString("?")
-	}
-
-	n = 0
-
-	if query.Sidebar != "" {
-		if n > 0 {
-			b.WriteString("&")
-		}
-		b.WriteString("s=")
-		b.WriteString(query.Sidebar)
-	}
-
-	return b.String()
-}
-
-// QueryPageSettings is the query parameters for PageSettings
-type QueryPageSettings struct {
-	Sidebar string `query:"s"`
-}
+func PageSettings() string { return "/settings/" }
 
 // PageTIK references /tik/{id}/{$}
-func PageTIK(id string, query QueryPageTIK) string {
-	anyQuery := query.Sidebar != ""
-
+func PageTIK(id string) string {
 	var b strings.Builder
-	l := len("/tik/") +
-		len(id) +
-		len("/")
-	if anyQuery {
-		l += len("?")
-	}
-
-	// n = number of query params already accounted for (for '&')
-	n := 0
-
-	if query.Sidebar != "" {
-		if n > 0 {
-			l += len("&")
-		}
-		n++
-		l += len("s=") + len(query.Sidebar)
-	}
-	_ = n
-
-	b.Grow(l)
-
+	b.Grow(
+		len("/tik/") +
+			len(id) +
+			len("/"),
+	)
 	b.WriteString("/tik/")
 	b.WriteString(id)
 	b.WriteString("/")
-	if anyQuery {
-		b.WriteString("?")
-	}
-
-	n = 0
-
-	if query.Sidebar != "" {
-		if n > 0 {
-			b.WriteString("&")
-		}
-		b.WriteString("s=")
-		b.WriteString(query.Sidebar)
-	}
-
 	return b.String()
-}
-
-// QueryPageTIK is the query parameters for PageTIK
-type QueryPageTIK struct {
-	Sidebar string `query:"s"`
 }
 
 // PageTIKs references /tiks/{$}
 func PageTIKs(query QueryPageTIKs) string {
 	anyQuery := query.Filter != "" ||
-		query.Locales != "" ||
-		query.Sidebar != ""
+		query.Locales != ""
 
 	var b strings.Builder
 	l := len("/tiks/")
@@ -221,13 +95,6 @@ func PageTIKs(query QueryPageTIKs) string {
 		n++
 		l += len("l=") + len(query.Locales)
 	}
-	if query.Sidebar != "" {
-		if n > 0 {
-			l += len("&")
-		}
-		n++
-		l += len("s=") + len(query.Sidebar)
-	}
 	_ = n
 
 	b.Grow(l)
@@ -251,16 +118,8 @@ func PageTIKs(query QueryPageTIKs) string {
 		if n > 0 {
 			b.WriteString("&")
 		}
-		n++
 		b.WriteString("l=")
 		b.WriteString(query.Locales)
-	}
-	if query.Sidebar != "" {
-		if n > 0 {
-			b.WriteString("&")
-		}
-		b.WriteString("s=")
-		b.WriteString(query.Sidebar)
 	}
 
 	return b.String()
@@ -270,5 +129,4 @@ func PageTIKs(query QueryPageTIKs) string {
 type QueryPageTIKs struct {
 	Filter  string `query:"f"`
 	Locales string `query:"l"`
-	Sidebar string `query:"s"`
 }

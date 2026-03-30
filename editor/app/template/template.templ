@@ -36,11 +36,7 @@ templ navbar(breadcrumbs []Breadcrumb, totalChanges int, canApplyChanges bool) {
 			<button
 				class="btn-secondary btn-icon"
 				type="button"
-				data-on:click="
-					$sidebaropen=$sidebaropen==='true'?'false':'true';
-					document.dispatchEvent(new CustomEvent(
-						'basecoat:sidebar',{detail:{id:'editor-sidebar'}},
-					))"
+				onclick="toggleSidebar()"
 				aria-label="Toggle sidebar"
 			>
 				@iconMenu()
@@ -82,11 +78,11 @@ templ sidebarHeader() {
 	<header>
 		<div class="sidebar-title">
 			<a
-				href={ href.PageIndex(href.QueryPageIndex{}) }
+				href={ href.PageIndex() }
 				class="sidebar-app-name"
 			>Toki Editor</a>
 			<a
-				href={ href.PageSettings(href.QueryPageSettings{}) }
+				href={ href.PageSettings() }
 				class="btn-secondary btn-icon"
 				aria-label="Settings"
 			>
@@ -187,7 +183,7 @@ templ IndexContent(data DataIndex) {
 	@sidebarContent(data)
 	<div id="main-area" class="main-area">
 		@navbar([]Breadcrumb{
-			{Label: "Dashboard", Href: href.PageIndex(href.QueryPageIndex{})},
+			{Label: "Dashboard", Href: href.PageIndex()},
 			{Label: "Messages"},
 		}, data.TotalChanges, data.CanApplyChanges)
 		<main>
@@ -256,7 +252,7 @@ templ TikSectionFull(tik TIK) {
 				<span>
 					TIK
 					<a
-						href={ href.PageTIK(tik.ID, href.QueryPageTIK{}) }
+						href={ href.PageTIK(tik.ID) }
 						class="msg-id"
 					>{ tik.ID }</a>
 					if tik.IsChanged {

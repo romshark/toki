@@ -3,11 +3,10 @@ package template
 import (
 	"fmt"
 
-	"github.com/romshark/toki/editor/app/template/strfmt"
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
-templ PageTIK(tk *TIK, sidebarOpen bool) {
+templ PageTIK(tk *TIK) {
 	<div
 		id="page-tik"
 		data-signals:icumsg="''"
@@ -25,11 +24,7 @@ templ PageTIK(tk *TIK, sidebarOpen bool) {
 			class="sidebar"
 			id="editor-sidebar"
 			data-side="left"
-			data-initial-open={ strfmt.Bool(sidebarOpen) }
-			if !sidebarOpen {
-				aria-hidden="true"
-				inert
-			}
+			data-initial-open="true"
 		>
 			@tikSidebarNav(tk)
 		</aside>
@@ -99,7 +94,7 @@ templ tikSidebarNav(tk *TIK) {
 templ tikMainArea(tk *TIK) {
 	<div id="tik-main-area" class="main-area">
 		@navbar([]Breadcrumb{
-			{Label: "Dashboard", Href: href.PageIndex(href.QueryPageIndex{})},
+			{Label: "Dashboard", Href: href.PageIndex()},
 			{Label: "Messages", Href: href.PageTIKs(href.QueryPageTIKs{})},
 			{Label: tk.ID},
 		}, tikChangedCount(tk), true)

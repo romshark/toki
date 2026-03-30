@@ -24,17 +24,13 @@ templ PageTIKs(data DataIndex) {
 			class="sidebar"
 			id="editor-sidebar"
 			data-side="left"
-			data-initial-open={ strfmt.Bool(data.SidebarOpen) }
-			if !data.SidebarOpen {
-				aria-hidden="true"
-				inert
-			}
+			data-initial-open="true"
 		>
 			@sidebarContent(data)
 		</aside>
 		<div id="main-area" class="main-area">
 			@navbar([]Breadcrumb{
-				{Label: "Dashboard", Href: href.PageIndex(href.QueryPageIndex{})},
+				{Label: "Dashboard", Href: href.PageIndex()},
 				{Label: "Messages"},
 			}, data.TotalChanges, data.CanApplyChanges)
 			<main>

@@ -1,21 +1,16 @@
 package template
 
 import (
-	"github.com/romshark/toki/editor/app/template/strfmt"
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
-templ PageSettings(sidebarOpen bool) {
+templ PageSettings() {
 	<div id="page-settings" data-init="initThemeCards();initEditors()">
 		<aside
 			class="sidebar"
 			id="editor-sidebar"
 			data-side="left"
-			data-initial-open={ strfmt.Bool(sidebarOpen) }
-			if !sidebarOpen {
-				aria-hidden="true"
-				inert
-			}
+			data-initial-open="true"
 		>
 			<nav aria-label="Settings navigation">
 				@sidebarHeader()
@@ -38,7 +33,7 @@ templ PageSettings(sidebarOpen bool) {
 		</aside>
 		<div class="main-area">
 			@navbar([]Breadcrumb{
-				{Label: "Dashboard", Href: href.PageIndex(href.QueryPageIndex{})},
+				{Label: "Dashboard", Href: href.PageIndex()},
 				{Label: "Settings"},
 			}, 0, false)
 			<main>

@@ -493,9 +493,6 @@ type PageIndex struct{ App *App }
 
 func (p PageIndex) GET(
 	r *http.Request,
-	query struct {
-		Sidebar string `query:"s" reflectsignal:"sidebaropen"`
-	},
 ) (
 	body templ.Component,
 	redirect string,
@@ -509,7 +506,6 @@ func (p PageIndex) GET(
 	}
 
 	stats := p.App.buildDashboardStats()
-	stats.SidebarOpen = query.Sidebar != "false"
 	return template.PageDashboard(stats), "", nil
 }
 
@@ -615,7 +611,6 @@ func (p PageTIKs) GET(
 	query struct {
 		Filter  string `query:"f" reflectsignal:"filtertype"`
 		Locales string `query:"l" reflectsignal:"shownlocales"`
-		Sidebar string `query:"s" reflectsignal:"sidebaropen"`
 	},
 ) (
 	body templ.Component,
@@ -637,7 +632,6 @@ func (p PageTIKs) GET(
 
 	showLocales := parseLocalesParam(query.Locales)
 	data := p.App.buildFilteredDataIndex(query.Filter, showLocales, 0)
-	data.SidebarOpen = query.Sidebar != "false"
 	body = template.PageTIKs(data)
 	return
 }
@@ -897,9 +891,6 @@ func (p PageTIK) GET(
 	path struct {
 		ID string `path:"id"`
 	},
-	query struct {
-		Sidebar string `query:"s" reflectsignal:"sidebaropen"`
-	},
 ) (
 	body templ.Component,
 	redirect string,
@@ -927,7 +918,7 @@ func (p PageTIK) GET(
 	}
 
 	tk := p.App.orderTIK(p.App.tiks[iTIK])
-	body = template.PageTIK(tk, query.Sidebar != "false")
+	body = template.PageTIK(tk)
 	return
 }
 
@@ -1009,11 +1000,8 @@ type PageSettings struct{ App *App }
 
 func (PageSettings) GET(
 	r *http.Request,
-	query struct {
-		Sidebar string `query:"s" reflectsignal:"sidebaropen"`
-	},
 ) (body templ.Component, err error) {
-	return template.PageSettings(query.Sidebar != "false"), nil
+	return template.PageSettings(), nil
 }
 
 // Helper methods on App (must be called with mu held).

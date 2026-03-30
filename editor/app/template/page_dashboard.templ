@@ -13,11 +13,7 @@ templ PageDashboard(stats DashboardStats) {
 			class="sidebar"
 			id="editor-sidebar"
 			data-side="left"
-			data-initial-open={ strfmt.Bool(stats.SidebarOpen) }
-			if !stats.SidebarOpen {
-				aria-hidden="true"
-				inert
-			}
+			data-initial-open="true"
 		>
 			<nav aria-label="Dashboard navigation">
 				@sidebarHeader()

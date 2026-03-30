@@ -9,11 +9,10 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"github.com/romshark/toki/editor/app/template/strfmt"
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
-func PageSettings(sidebarOpen bool) templ.Component {
+func PageSettings() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -34,30 +33,7 @@ func PageSettings(sidebarOpen bool) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"page-settings\" data-init=\"initThemeCards();initEditors()\"><aside class=\"sidebar\" id=\"editor-sidebar\" data-side=\"left\" data-initial-open=\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(strfmt.Bool(sidebarOpen))
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 14, Col: 47}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		if !sidebarOpen {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, " aria-hidden=\"true\" inert")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "><nav aria-label=\"Settings navigation\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"page-settings\" data-init=\"initThemeCards();initEditors()\"><aside class=\"sidebar\" id=\"editor-sidebar\" data-side=\"left\" data-initial-open=\"true\"><nav aria-label=\"Settings navigation\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -65,70 +41,70 @@ func PageSettings(sidebarOpen bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<section><div role=\"group\" aria-labelledby=\"settings-nav-label\"><h3 id=\"settings-nav-label\">Settings</h3><ul><li><a href=\"#appearance\" data-ignore-current>Appearance</a></li><li><a href=\"#fonts\" data-ignore-current>Fonts</a></li></ul></div></section></nav></aside><div class=\"main-area\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<section><div role=\"group\" aria-labelledby=\"settings-nav-label\"><h3 id=\"settings-nav-label\">Settings</h3><ul><li><a href=\"#appearance\" data-ignore-current>Appearance</a></li><li><a href=\"#fonts\" data-ignore-current>Fonts</a></li></ul></div></section></nav></aside><div class=\"main-area\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = navbar([]Breadcrumb{
-			{Label: "Dashboard", Href: href.PageIndex(href.QueryPageIndex{})},
+			{Label: "Dashboard", Href: href.PageIndex()},
 			{Label: "Settings"},
 		}, 0, false).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<main><div class=\"contents\"><h2 id=\"appearance\">Appearance</h2><div class=\"theme-picker\"><button class=\"theme-card\" onclick=\"setTheme('light')\" data-theme=\"light\"><div class=\"theme-preview theme-preview-light\"><div class=\"tp-sidebar\"></div><div class=\"tp-main\"><div class=\"tp-navbar\"></div><div class=\"tp-content\"><div class=\"tp-line\"></div><div class=\"tp-line tp-short\"></div></div></div></div><span class=\"theme-card-label\">Light</span> <span class=\"theme-card-desc\">Bright theme</span></button> <button class=\"theme-card\" onclick=\"setTheme('dark')\" data-theme=\"dark\"><div class=\"theme-preview theme-preview-dark\"><div class=\"tp-sidebar\"></div><div class=\"tp-main\"><div class=\"tp-navbar\"></div><div class=\"tp-content\"><div class=\"tp-line\"></div><div class=\"tp-line tp-short\"></div></div></div></div><span class=\"theme-card-label\">Dark</span> <span class=\"theme-card-desc\">Dark theme</span></button> <button class=\"theme-card\" onclick=\"setTheme('system')\" data-theme=\"system\"><div class=\"theme-preview theme-preview-system\"><div class=\"theme-preview-half theme-preview-light\"><div class=\"tp-sidebar\"></div><div class=\"tp-main\"><div class=\"tp-navbar\"></div><div class=\"tp-content\"><div class=\"tp-line\"></div><div class=\"tp-line tp-short\"></div></div></div></div><div class=\"theme-preview-half theme-preview-dark\"><div class=\"tp-sidebar\"></div><div class=\"tp-main\"><div class=\"tp-navbar\"></div><div class=\"tp-content\"><div class=\"tp-line\"></div><div class=\"tp-line tp-short\"></div></div></div></div></div><span class=\"theme-card-label\">System</span> <span class=\"theme-card-desc\">Match OS setting</span></button></div><h2 id=\"fonts\">Fonts</h2><h3>Interface Font</h3><div class=\"font-picker\"><button class=\"font-card\" onclick=\"setFont('toki-ui-font','system')\" data-font-key=\"toki-ui-font\" data-font-value=\"system\"><span class=\"font-preview\">The quick brown fox jumps over the lazy dog</span> <span class=\"font-card-label\">System Default</span></button> <button class=\"font-card\" onclick=\"setFont('toki-ui-font','georgia')\" data-font-key=\"toki-ui-font\" data-font-value=\"georgia\"><span class=\"font-preview\" style=\"font-family: Georgia, 'Times New Roman', serif\">The quick brown fox jumps over the lazy dog</span> <span class=\"font-card-label\">Georgia</span></button> <button class=\"font-card\" onclick=\"setFont('toki-ui-font','helvetica')\" data-font-key=\"toki-ui-font\" data-font-value=\"helvetica\"><span class=\"font-preview\" style=\"font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif\">The quick brown fox jumps over the lazy dog</span> <span class=\"font-card-label\">Helvetica</span></button></div><h4>Interface Font Size</h4><div class=\"font-size-picker\"><button class=\"font-size-card\" onclick=\"setFontSize('toki-ui-font-size','very-small')\" data-size-key=\"toki-ui-font-size\" data-size-value=\"very-small\"><span class=\"font-size-preview\" style=\"font-size: 0.8rem\">Aa</span> <span class=\"font-size-label\">Very Small</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-ui-font-size','small')\" data-size-key=\"toki-ui-font-size\" data-size-value=\"small\"><span class=\"font-size-preview\" style=\"font-size: 0.9rem\">Aa</span> <span class=\"font-size-label\">Small</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-ui-font-size','default')\" data-size-key=\"toki-ui-font-size\" data-size-value=\"default\"><span class=\"font-size-preview\" style=\"font-size: 1rem\">Aa</span> <span class=\"font-size-label\">Default</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-ui-font-size','big')\" data-size-key=\"toki-ui-font-size\" data-size-value=\"big\"><span class=\"font-size-preview\" style=\"font-size: 1.1rem\">Aa</span> <span class=\"font-size-label\">Big</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-ui-font-size','bigger')\" data-size-key=\"toki-ui-font-size\" data-size-value=\"bigger\"><span class=\"font-size-preview\" style=\"font-size: 1.25rem\">Aa</span> <span class=\"font-size-label\">Bigger</span></button></div><h3>Editor Font</h3><div class=\"editor-font-settings\"><div class=\"editor-font-controls\"><div class=\"font-picker\"><button class=\"font-card\" onclick=\"setFont('toki-editor-font','mono-system')\" data-font-key=\"toki-editor-font\" data-font-value=\"mono-system\"><span class=\"font-preview\" style=\"font-family: ui-monospace, monospace\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<main><div class=\"contents\"><h2 id=\"appearance\">Appearance</h2><div class=\"theme-picker\"><button class=\"theme-card\" onclick=\"setTheme('light')\" data-theme=\"light\"><div class=\"theme-preview theme-preview-light\"><div class=\"tp-sidebar\"></div><div class=\"tp-main\"><div class=\"tp-navbar\"></div><div class=\"tp-content\"><div class=\"tp-line\"></div><div class=\"tp-line tp-short\"></div></div></div></div><span class=\"theme-card-label\">Light</span> <span class=\"theme-card-desc\">Bright theme</span></button> <button class=\"theme-card\" onclick=\"setTheme('dark')\" data-theme=\"dark\"><div class=\"theme-preview theme-preview-dark\"><div class=\"tp-sidebar\"></div><div class=\"tp-main\"><div class=\"tp-navbar\"></div><div class=\"tp-content\"><div class=\"tp-line\"></div><div class=\"tp-line tp-short\"></div></div></div></div><span class=\"theme-card-label\">Dark</span> <span class=\"theme-card-desc\">Dark theme</span></button> <button class=\"theme-card\" onclick=\"setTheme('system')\" data-theme=\"system\"><div class=\"theme-preview theme-preview-system\"><div class=\"theme-preview-half theme-preview-light\"><div class=\"tp-sidebar\"></div><div class=\"tp-main\"><div class=\"tp-navbar\"></div><div class=\"tp-content\"><div class=\"tp-line\"></div><div class=\"tp-line tp-short\"></div></div></div></div><div class=\"theme-preview-half theme-preview-dark\"><div class=\"tp-sidebar\"></div><div class=\"tp-main\"><div class=\"tp-navbar\"></div><div class=\"tp-content\"><div class=\"tp-line\"></div><div class=\"tp-line tp-short\"></div></div></div></div></div><span class=\"theme-card-label\">System</span> <span class=\"theme-card-desc\">Match OS setting</span></button></div><h2 id=\"fonts\">Fonts</h2><h3>Interface Font</h3><div class=\"font-picker\"><button class=\"font-card\" onclick=\"setFont('toki-ui-font','system')\" data-font-key=\"toki-ui-font\" data-font-value=\"system\"><span class=\"font-preview\">The quick brown fox jumps over the lazy dog</span> <span class=\"font-card-label\">System Default</span></button> <button class=\"font-card\" onclick=\"setFont('toki-ui-font','georgia')\" data-font-key=\"toki-ui-font\" data-font-value=\"georgia\"><span class=\"font-preview\" style=\"font-family: Georgia, 'Times New Roman', serif\">The quick brown fox jumps over the lazy dog</span> <span class=\"font-card-label\">Georgia</span></button> <button class=\"font-card\" onclick=\"setFont('toki-ui-font','helvetica')\" data-font-key=\"toki-ui-font\" data-font-value=\"helvetica\"><span class=\"font-preview\" style=\"font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif\">The quick brown fox jumps over the lazy dog</span> <span class=\"font-card-label\">Helvetica</span></button></div><h4>Interface Font Size</h4><div class=\"font-size-picker\"><button class=\"font-size-card\" onclick=\"setFontSize('toki-ui-font-size','very-small')\" data-size-key=\"toki-ui-font-size\" data-size-value=\"very-small\"><span class=\"font-size-preview\" style=\"font-size: 0.8rem\">Aa</span> <span class=\"font-size-label\">Very Small</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-ui-font-size','small')\" data-size-key=\"toki-ui-font-size\" data-size-value=\"small\"><span class=\"font-size-preview\" style=\"font-size: 0.9rem\">Aa</span> <span class=\"font-size-label\">Small</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-ui-font-size','default')\" data-size-key=\"toki-ui-font-size\" data-size-value=\"default\"><span class=\"font-size-preview\" style=\"font-size: 1rem\">Aa</span> <span class=\"font-size-label\">Default</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-ui-font-size','big')\" data-size-key=\"toki-ui-font-size\" data-size-value=\"big\"><span class=\"font-size-preview\" style=\"font-size: 1.1rem\">Aa</span> <span class=\"font-size-label\">Big</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-ui-font-size','bigger')\" data-size-key=\"toki-ui-font-size\" data-size-value=\"bigger\"><span class=\"font-size-preview\" style=\"font-size: 1.25rem\">Aa</span> <span class=\"font-size-label\">Bigger</span></button></div><h3>Editor Font</h3><div class=\"editor-font-settings\"><div class=\"editor-font-controls\"><div class=\"font-picker\"><button class=\"font-card\" onclick=\"setFont('toki-editor-font','mono-system')\" data-font-key=\"toki-editor-font\" data-font-value=\"mono-system\"><span class=\"font-preview\" style=\"font-family: ui-monospace, monospace\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var2 string
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs("{ plural, one {# item} other {# items} }")
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 154, Col: 125}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span> <span class=\"font-card-label\">System Mono</span></button> <button class=\"font-card\" onclick=\"setFont('toki-editor-font','mono-menlo')\" data-font-key=\"toki-editor-font\" data-font-value=\"mono-menlo\"><span class=\"font-preview\" style=\"font-family: Menlo, Monaco, 'Cascadia Code', monospace\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs("{ plural, one {# item} other {# items} }")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 159, Col: 125}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 158, Col: 143}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</span> <span class=\"font-card-label\">System Mono</span></button> <button class=\"font-card\" onclick=\"setFont('toki-editor-font','mono-menlo')\" data-font-key=\"toki-editor-font\" data-font-value=\"mono-menlo\"><span class=\"font-preview\" style=\"font-family: Menlo, Monaco, 'Cascadia Code', monospace\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "</span> <span class=\"font-card-label\">Menlo</span></button> <button class=\"font-card\" onclick=\"setFont('toki-editor-font','mono-courier')\" data-font-key=\"toki-editor-font\" data-font-value=\"mono-courier\"><span class=\"font-preview\" style=\"font-family: 'Courier New', Courier, monospace\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs("{ plural, one {# item} other {# items} }")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 163, Col: 143}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 162, Col: 135}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</span> <span class=\"font-card-label\">Menlo</span></button> <button class=\"font-card\" onclick=\"setFont('toki-editor-font','mono-courier')\" data-font-key=\"toki-editor-font\" data-font-value=\"mono-courier\"><span class=\"font-preview\" style=\"font-family: 'Courier New', Courier, monospace\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</span> <span class=\"font-card-label\">Courier New</span></button></div><h4>Editor Font Size</h4><div class=\"font-size-picker\"><button class=\"font-size-card\" onclick=\"setFontSize('toki-editor-font-size','very-small')\" data-size-key=\"toki-editor-font-size\" data-size-value=\"very-small\"><span class=\"font-size-preview\" style=\"font-size: 0.8rem; font-family: ui-monospace, monospace\">Aa</span> <span class=\"font-size-label\">Very Small</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-editor-font-size','small')\" data-size-key=\"toki-editor-font-size\" data-size-value=\"small\"><span class=\"font-size-preview\" style=\"font-size: 0.9rem; font-family: ui-monospace, monospace\">Aa</span> <span class=\"font-size-label\">Small</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-editor-font-size','default')\" data-size-key=\"toki-editor-font-size\" data-size-value=\"default\"><span class=\"font-size-preview\" style=\"font-size: 1rem; font-family: ui-monospace, monospace\">Aa</span> <span class=\"font-size-label\">Default</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-editor-font-size','big')\" data-size-key=\"toki-editor-font-size\" data-size-value=\"big\"><span class=\"font-size-preview\" style=\"font-size: 1.1rem; font-family: ui-monospace, monospace\">Aa</span> <span class=\"font-size-label\">Big</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-editor-font-size','bigger')\" data-size-key=\"toki-editor-font-size\" data-size-value=\"bigger\"><span class=\"font-size-preview\" style=\"font-size: 1.25rem; font-family: ui-monospace, monospace\">Aa</span> <span class=\"font-size-label\">Bigger</span></button></div></div><div class=\"editor-font-preview\"><h4>Preview</h4><textarea id=\"settings-editor-preview\" class=\"editor\" data-mode=\"icu\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
-		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs("{ plural, one {# item} other {# items} }")
+		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs("{count, plural,\n  one {You have # new message}\n  other {You have # new messages}\n}")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 167, Col: 135}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 196, Col: 97}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</span> <span class=\"font-card-label\">Courier New</span></button></div><h4>Editor Font Size</h4><div class=\"font-size-picker\"><button class=\"font-size-card\" onclick=\"setFontSize('toki-editor-font-size','very-small')\" data-size-key=\"toki-editor-font-size\" data-size-value=\"very-small\"><span class=\"font-size-preview\" style=\"font-size: 0.8rem; font-family: ui-monospace, monospace\">Aa</span> <span class=\"font-size-label\">Very Small</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-editor-font-size','small')\" data-size-key=\"toki-editor-font-size\" data-size-value=\"small\"><span class=\"font-size-preview\" style=\"font-size: 0.9rem; font-family: ui-monospace, monospace\">Aa</span> <span class=\"font-size-label\">Small</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-editor-font-size','default')\" data-size-key=\"toki-editor-font-size\" data-size-value=\"default\"><span class=\"font-size-preview\" style=\"font-size: 1rem; font-family: ui-monospace, monospace\">Aa</span> <span class=\"font-size-label\">Default</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-editor-font-size','big')\" data-size-key=\"toki-editor-font-size\" data-size-value=\"big\"><span class=\"font-size-preview\" style=\"font-size: 1.1rem; font-family: ui-monospace, monospace\">Aa</span> <span class=\"font-size-label\">Big</span></button> <button class=\"font-size-card\" onclick=\"setFontSize('toki-editor-font-size','bigger')\" data-size-key=\"toki-editor-font-size\" data-size-value=\"bigger\"><span class=\"font-size-preview\" style=\"font-size: 1.25rem; font-family: ui-monospace, monospace\">Aa</span> <span class=\"font-size-label\">Bigger</span></button></div></div><div class=\"editor-font-preview\"><h4>Preview</h4><textarea id=\"settings-editor-preview\" class=\"editor\" data-mode=\"icu\">")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var6 string
-		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs("{count, plural,\n  one {You have # new message}\n  other {You have # new messages}\n}")
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 201, Col: 97}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</textarea><script>\n\t\t\t\t\t\t\t\t// Retry until ICU mode is registered.\n\t\t\t\t\t\t\t\t(function waitForMode() {\n\t\t\t\t\t\t\t\t\tif (CodeMirror.modes.icu) { initEditors(); }\n\t\t\t\t\t\t\t\t\telse { setTimeout(waitForMode, 50); }\n\t\t\t\t\t\t\t\t})();\n\t\t\t\t\t\t\t</script></div></div></div></main></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</textarea><script>\n\t\t\t\t\t\t\t\t// Retry until ICU mode is registered.\n\t\t\t\t\t\t\t\t(function waitForMode() {\n\t\t\t\t\t\t\t\t\tif (CodeMirror.modes.icu) { initEditors(); }\n\t\t\t\t\t\t\t\t\telse { setTimeout(waitForMode, 50); }\n\t\t\t\t\t\t\t\t})();\n\t\t\t\t\t\t\t</script></div></div></div></main></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
