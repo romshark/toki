@@ -109,14 +109,14 @@ templ sidebarContent(data DataIndex) {
 						data-on:click={ action.POSTPageTIKsFilter(
 							action.WithBefore(setAllLocales(data, false)),
 						) }
-					>Disable All</button>
+					>Hide All</button>
 					<button
 						class="btn-secondary btn-sm"
 						data-attr:disabled={ allLocalesExpr(data, true) }
 						data-on:click={ action.POSTPageTIKsFilter(
 							action.WithBefore(setAllLocales(data, true)),
 						) }
-					>Enable All</button>
+					>Show All</button>
 				</div>
 				<ul>
 					for _, catalog := range data.Catalogs {
@@ -302,10 +302,10 @@ templ icuMessageBadges(msg *ICUMessage) {
 	if msg.IsReadOnly {
 		<span
 			class="badge-secondary"
-			title="This is a literal translation with no parameters. Edit the TIK in your source code to change it."
-			data-tooltip="Literal translation — edit the TIK in source code"
-			data-side="bottom"
-		>Read Only</span>
+			title="Read only — literal translation with no parameters. Edit the TIK in source code to change it."
+		>
+			@iconLock()
+		</span>
 	}
 	if msg.Changed {
 		<span class="badge badge-changed" title="Unsaved change">

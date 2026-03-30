@@ -87,16 +87,27 @@ templ PageDashboard(stats DashboardStats) {
 								<span class="dashboard-stat-value">
 									{ strfmt.Int(stats.NumTIKs) }
 								</span>
-								<span class="dashboard-stat-label">TIKs</span>
+								<span class="dashboard-stat-label">
+									@iconList()
+									TIKs
+								</span>
 							</header>
 							<section>
 								<p class="dashboard-stat-desc">Total translation keys</p>
 							</section>
 						</a>
-						@dashboardCard(
-							"Locales", strfmt.Int(stats.NumLocales),
-							"Languages configured",
-						)
+						<div class="card">
+							<header>
+								<span class="dashboard-stat-value">{ strfmt.Int(stats.NumLocales) }</span>
+								<span class="dashboard-stat-label">
+									@iconLanguages()
+									Locales
+								</span>
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">Languages configured</p>
+							</section>
+						</div>
 						<a
 							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "complete"}) }
 							class="card dashboard-stat-link"
@@ -105,7 +116,10 @@ templ PageDashboard(stats DashboardStats) {
 								<span class="dashboard-stat-value">
 									{ strfmt.Percent(stats.Completeness) }
 								</span>
-								<span class="dashboard-stat-label">Complete</span>
+								<span class="dashboard-stat-label">
+									@iconCircleCheck()
+									Complete
+								</span>
 							</header>
 							<section>
 								<p class="dashboard-stat-desc">
@@ -122,7 +136,10 @@ templ PageDashboard(stats DashboardStats) {
 								<span class="dashboard-stat-value">
 									{ strfmt.Int(stats.TotalChanges) }
 								</span>
-								<span class="dashboard-stat-label">Unsaved</span>
+								<span class="dashboard-stat-label">
+									@iconPencil()
+									Unsaved
+								</span>
 							</header>
 							<section>
 								<p class="dashboard-stat-desc">Pending changes</p>
@@ -140,8 +157,14 @@ templ PageDashboard(stats DashboardStats) {
 								<span class="dashboard-stat-value">
 									{ strfmt.Int(stats.NumIncomplete) }
 								</span>
-								<span class="dashboard-stat-label">Incomplete</span>
+								<span class="dashboard-stat-label">
+									@iconCircleSlash()
+									Incomplete
+								</span>
 							</header>
+							<section>
+								<p class="dashboard-stat-desc">TIKs with missing translations</p>
+							</section>
 						</a>
 						//datapages:nolint
 						<a href="/tiks/?f=empty" class="card dashboard-stat-link">
@@ -149,8 +172,14 @@ templ PageDashboard(stats DashboardStats) {
 								<span class="dashboard-stat-value">
 									{ strfmt.Int(stats.NumEmpty) }
 								</span>
-								<span class="dashboard-stat-label">Empty</span>
+								<span class="dashboard-stat-label">
+									@iconCircleMinus()
+									Empty
+								</span>
 							</header>
+							<section>
+								<p class="dashboard-stat-desc">TIKs with no translation</p>
+							</section>
 						</a>
 						//datapages:nolint
 						<a href="/tiks/?f=invalid" class="card dashboard-stat-link">
@@ -158,8 +187,14 @@ templ PageDashboard(stats DashboardStats) {
 								<span class="dashboard-stat-value">
 									{ strfmt.Int(stats.NumInvalid) }
 								</span>
-								<span class="dashboard-stat-label">Invalid</span>
+								<span class="dashboard-stat-label">
+									@iconAlertTriangle()
+									Invalid
+								</span>
 							</header>
+							<section>
+								<p class="dashboard-stat-desc">TIKs with ICU errors</p>
+							</section>
 						</a>
 					</div>
 					<h2 id="locales">Locales</h2>
