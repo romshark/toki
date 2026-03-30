@@ -23,11 +23,17 @@ templ PageDashboard(stats DashboardStats) {
 						<ul>
 							<li>
 								//datapages:nolint
-								<a href="#overview" data-ignore-current>Overview</a>
+								<a href="#overview" data-ignore-current>
+									@iconLayoutDashboard()
+									Overview
+								</a>
 							</li>
 							<li>
 								//datapages:nolint
-								<a href="#locales" data-ignore-current>Locales</a>
+								<a href="#locales" data-ignore-current>
+									@iconLanguages()
+									Locales
+								</a>
 							</li>
 						</ul>
 					</div>
@@ -48,7 +54,7 @@ templ PageDashboard(stats DashboardStats) {
 			}, stats.TotalChanges, stats.CanApplyChanges)
 			<main>
 				<div class="contents">
-					<h2 id="overview">Overview</h2>
+					<h2 id="overview">@iconLayoutDashboard() Overview</h2>
 					<div class="dashboard-grid">
 						<div class="card native-locale-cell">
 							<header>
@@ -193,7 +199,7 @@ templ PageDashboard(stats DashboardStats) {
 							</section>
 						</a>
 					</div>
-					<h2 id="locales">Locales</h2>
+					<h2 id="locales">@iconLanguages() Locales</h2>
 					<div class="dashboard-grid">
 						for _, ls := range stats.Locales {
 							<a
