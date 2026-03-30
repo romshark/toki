@@ -24,7 +24,6 @@ type ConfigGenerate struct {
 
 var ErrLocaleNotBCP47 = errors.New("must be a valid non-und BCP 47 locale")
 
-
 // ParseCLIArgsGenerate parses CLI arguments for command "generate"
 func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
 	c := &ConfigGenerate{}

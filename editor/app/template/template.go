@@ -32,19 +32,19 @@ type LocaleStats struct {
 
 type DataIndex struct {
 	Dir      string
-	TIKs     []TIK    // windowed slice of full TIKs to render
+	TIKs     []TIK // windowed slice of full TIKs to render
 	Catalogs []*Catalog
 
 	// ShownLocales which locales are shown (nil = all)
 	ShownLocales map[string]bool
 
 	// FilterType is "all", "changed", etc.
-	FilterType string
+	FilterType  string
 	SidebarOpen bool
 
 	// Virtual scroll window.
-	WindowStart int // index of first TIK in the window
-	WindowSize  int // number of TIKs in the window
+	WindowStart   int // index of first TIK in the window
+	WindowSize    int // number of TIKs in the window
 	TotalFiltered int // total TIKs after filtering
 
 	NumAll          int
