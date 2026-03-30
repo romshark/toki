@@ -39,7 +39,7 @@ templ PageProjectDir(dir string, errMsg string, numChanges int) {
 					}
 					if dir != "" && errMsg == "" {
 						<button
-							class="btn btn-primary"
+							class="btn-primary"
 							data-on:click="window.location='/'"
 							data-show="$folder===$origfolder"
 						>
@@ -47,7 +47,7 @@ templ PageProjectDir(dir string, errMsg string, numChanges int) {
 						</button>
 					}
 					<button
-						class="btn btn-primary"
+						class="btn-primary"
 						data-show="$folder!==$origfolder || $origfolder==='' || $haserror"
 						data-attr:disabled="$folder===''"
 						if numChanges > 0 {

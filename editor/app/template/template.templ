@@ -61,13 +61,17 @@ templ navbar(breadcrumbs []Breadcrumb, totalChanges int, canApplyChanges bool) {
 		if totalChanges > 0 {
 			<div class="navbar-right">
 				<button
-					class="btn btn-primary"
+					class="btn-primary"
 					if !canApplyChanges {
 						disabled
 					}
 					data-on:click={ action.POSTAppApplyChanges() }
 				>
-					Apply Changes ({ strfmt.Int(totalChanges) })
+					@iconSave()
+					Apply Changes 
+					<span class="badge badge-changed">
+						{ strfmt.Int(totalChanges) }
+					</span>
 				</button>
 			</div>
 		}
@@ -100,14 +104,14 @@ templ sidebarContent(data DataIndex) {
 				<h3 id="locales-label">Locales</h3>
 				<div role="group" class="button-group">
 					<button
-						class="btn btn-secondary btn-sm"
+						class="btn-secondary btn-sm"
 						data-attr:disabled={ allLocalesExpr(data, false) }
 						data-on:click={ action.POSTPageTIKsFilter(
 							action.WithBefore(setAllLocales(data, false)),
 						) }
 					>Disable All</button>
 					<button
-						class="btn btn-secondary btn-sm"
+						class="btn-secondary btn-sm"
 						data-attr:disabled={ allLocalesExpr(data, true) }
 						data-on:click={ action.POSTPageTIKsFilter(
 							action.WithBefore(setAllLocales(data, true)),
@@ -136,7 +140,9 @@ templ sidebarContent(data DataIndex) {
 										– { catalog.Name }
 									}
 									if catalog.Default {
-										<span class="badge-secondary">Default</span>
+										<span class="badge-secondary" title="Default locale">
+											@iconCode()
+										</span>
 									}
 								</span>
 							</label>
@@ -254,7 +260,7 @@ templ TikSectionFull(tik TIK) {
 						class="msg-id"
 					>{ tik.ID }</a>
 					if tik.IsChanged {
-						<span class="badge-changed">Changed</span>
+						<span class="badge badge-changed">Changed</span>
 					}
 					if tik.IsInvalid {
 						<span class="badge-destructive">Invalid</span>
@@ -289,7 +295,9 @@ templ TikSectionFull(tik TIK) {
 
 templ icuMessageBadges(msg *ICUMessage) {
 	if msg.Catalog.Default {
-		<span class="badge-secondary">Default</span>
+		<span class="badge-secondary" title="Default locale">
+			@iconCode()
+		</span>
 	}
 	if msg.IsReadOnly {
 		<span
@@ -300,13 +308,19 @@ templ icuMessageBadges(msg *ICUMessage) {
 		>Read Only</span>
 	}
 	if msg.Changed {
-		<span class="badge-changed">Changed</span>
+		<span class="badge badge-changed" title="Unsaved change">
+			@iconPencil()
+		</span>
 	}
 	if msg.Message == "" {
-		<span class="badge-destructive">Missing Translation</span>
+		<span class="badge-secondary" title="Missing Translation">
+			@iconCircleMinus()
+		</span>
 	}
 	if msg.Error != "" || len(msg.IncompleteReports) > 0 {
-		<span class="badge-destructive">Invalid</span>
+		<span class="badge-destructive" title="Invalid ICU message">
+			@iconAlertTriangle()
+		</span>
 	}
 }
 
@@ -343,7 +357,7 @@ templ icuMessageForm(tikID string, msg *ICUMessage, showLabel bool) {
 				>{ msg.MessageOriginal }</textarea>
 				//datapages:nolint // sets signals + opens modal, not a Datastar action
 				<button
-					class="btn btn-destructive"
+					class="btn-destructive"
 					style="align-self:start"
 					data-on:click={ fmt.Sprintf(
 						"$resettikid='%s';$resetlocale='%s';$resetdonetikid='';$resetdonelocale='';$resetmodalopen=true",
@@ -402,7 +416,7 @@ templ resetModal() {
 					data-on:click="$resetmodalopen=false"
 				>Cancel</button>
 				<button
-					class="btn btn-destructive"
+					class="btn-destructive"
 					data-on:click={ action.POSTAppReset(
 						action.WithBefore("$resetmodalopen=false"),
 					) }

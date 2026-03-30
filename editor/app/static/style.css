@@ -29,18 +29,9 @@ body {
 }
 
 .badge-changed {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	border-radius: 9999px;
-	padding-inline: 0.5rem;
-	padding-block: 0.125rem;
-	font-size: 0.75rem;
-	font-weight: 500;
-	white-space: nowrap;
-	background: var(--changed);
+	background-color: var(--changed);
 	color: var(--changed-foreground);
-	border: 1px solid transparent;
+	border-color: transparent;
 }
 
 /* --- Pages: select / error --- */
@@ -81,8 +72,7 @@ body {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding-inline: 1rem;
-	padding-block: 0.5rem;
+	padding: 0.75rem 1rem;
 	border-block-end: 1px solid var(--border, oklch(0 0 0 / 0.1));
 	min-block-size: 3rem;
 	gap: 0.5rem;
@@ -148,7 +138,7 @@ body {
 }
 
 #editor-sidebar nav > :is(header, section, footer) {
-	padding: 0.2rem .5rem;
+	padding: 0.75rem 1rem;
 }
 
 .sidebar-index {
@@ -421,6 +411,12 @@ main {
 	margin-inline-start: 0.5rem;
 	font-size: 0.8rem;
 	opacity: 0.5;
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
+
+	&:hover {
+		opacity: 0.8;
+	}
 }
 
 .icu-list {
@@ -432,7 +428,6 @@ main {
 	inline-size: 100%;
 	list-style: none;
 	margin: 0;
-	padding: 1rem;
 }
 
 .icu-message {
@@ -440,6 +435,11 @@ main {
 	display: flex;
 	flex-direction: column;
 	min-inline-size: 14rem;
+
+	& + & {
+		border-inline-start: 1px solid var(--border, oklch(0 0 0 / 0.1));
+		padding-inline-start: 1rem;
+	}
 }
 
 .icu-form-label {

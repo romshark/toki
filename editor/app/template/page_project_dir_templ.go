@@ -107,12 +107,12 @@ func PageProjectDir(dir string, errMsg string, numChanges int) templ.Component {
 			}
 		}
 		if dir != "" && errMsg == "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<button class=\"btn btn-primary\" data-on:click=\"window.location='/'\" data-show=\"$folder===$origfolder\">Continue</button> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<button class=\"btn-primary\" data-on:click=\"window.location='/'\" data-show=\"$folder===$origfolder\">Continue</button> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<button class=\"btn btn-primary\" data-show=\"$folder!==$origfolder || $origfolder==='' || $haserror\" data-attr:disabled=\"$folder===''\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<button class=\"btn-primary\" data-show=\"$folder!==$origfolder || $origfolder==='' || $haserror\" data-attr:disabled=\"$folder===''\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

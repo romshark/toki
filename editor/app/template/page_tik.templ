@@ -55,16 +55,35 @@ templ tikSidebarNav(tk *TIK) {
 					for _, msg := range tk.ICU {
 						<li>
 							//datapages:nolint
-							<a href={ templ.SafeURL(fmt.Sprintf("#icu-%s-%s", tk.ID, msg.Catalog.Locale)) } data-ignore-current>
+							<a
+								href={ templ.SafeURL(fmt.Sprintf("#icu-%s-%s",
+									tk.ID, msg.Catalog.Locale,
+								)) }
+								data-ignore-current
+							>
 								<strong class="locale-code">{ msg.Catalog.Locale }</strong>
 								if msg.Catalog.Name != "" {
 									– { msg.Catalog.Name }
 								}
 								if msg.Catalog.Default {
-									<span class="badge-secondary">Default</span>
+									<span class="badge-secondary" title="Default locale">
+										@iconCode()
+									</span>
 								}
 								if msg.Changed {
-									<span class="badge-changed">Changed</span>
+									<span class="badge badge-changed" title="Unsaved change">
+										@iconPencil()
+									</span>
+								}
+								if msg.Message == "" {
+									<span class="badge-secondary" title="Missing Translation">
+										@iconCircleMinus()
+									</span>
+								}
+								if msg.Error != "" || len(msg.IncompleteReports) > 0 {
+									<span class="badge-destructive" title="Invalid ICU message">
+										@iconAlertTriangle()
+									</span>
 								}
 							</a>
 						</li>

@@ -60,7 +60,9 @@ templ PageDashboard(stats DashboardStats) {
 									{ stats.NativeLocale.Locale }
 								</span>
 								if stats.NativeLocale.Name != "" {
-									<span class="dashboard-stat-label">{ stats.NativeLocale.Name }</span>
+									<span class="dashboard-stat-label">
+										{ stats.NativeLocale.Name }
+									</span>
 								}
 							</header>
 							<section>
@@ -204,13 +206,17 @@ templ PageDashboard(stats DashboardStats) {
 										if ls.Invalid > 0 {
 											<div class="locale-stat-row">
 												<span>Invalid</span>
-												<span class="badge-destructive">{ strfmt.Int(ls.Invalid) }</span>
+												<span class="badge-destructive">
+													{ strfmt.Int(ls.Invalid) }
+												</span>
 											</div>
 										}
 										if ls.Changed > 0 {
 											<div class="locale-stat-row">
 												<span>Unsaved</span>
-												<span class="badge-changed">{ strfmt.Int(ls.Changed) }</span>
+												<span class="badge badge-changed">
+													{ strfmt.Int(ls.Changed) }
+												</span>
 											</div>
 										}
 									</div>
