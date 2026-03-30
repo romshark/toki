@@ -61,10 +61,12 @@ templ tikSidebarNav(tk *TIK) {
 								)) }
 								data-ignore-current
 							>
-								<strong class="locale-code">{ msg.Catalog.Locale }</strong>
-								if msg.Catalog.Name != "" {
-									– { msg.Catalog.Name }
-								}
+								<span class="locale-link-name">
+									<strong class="locale-code">{ msg.Catalog.Locale }</strong>
+									if msg.Catalog.Name != "" {
+										– { msg.Catalog.Name }
+									}
+								</span>
 								if msg.Catalog.Default {
 									<span class="badge-secondary" title="Default locale">
 										@iconCode()

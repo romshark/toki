@@ -37,7 +37,107 @@ function updateThemeCards() {
 
 function initThemeCards() {
 	updateThemeCards();
+	updateFontCards();
+	updateFontSizeCards();
 }
+
+// --- Font management ---
+
+var fontDefaults = {
+	"toki-ui-font": "system",
+	"toki-editor-font": "mono-system",
+};
+
+var fontFamilies = {
+	// UI fonts
+	"system": "",
+	"georgia": "Georgia, 'Times New Roman', serif",
+	"helvetica": "'Helvetica Neue', Helvetica, Arial, sans-serif",
+	// Editor fonts
+	"mono-system": "",
+	"mono-menlo": "Menlo, Monaco, 'Cascadia Code', monospace",
+	"mono-courier": "'Courier New', Courier, monospace",
+};
+
+function getStoredFont(key) {
+	return localStorage.getItem(key) || fontDefaults[key];
+}
+
+function setFont(key, value) {
+	localStorage.setItem(key, value);
+	applyFont(key, value);
+	updateFontCards();
+}
+
+function applyFont(key, value) {
+	var family = fontFamilies[value] || "";
+	if (key === "toki-ui-font") {
+		document.documentElement.style.setProperty("--font-ui", family || "");
+	} else if (key === "toki-editor-font") {
+		document.documentElement.style.setProperty("--font-editor", family || "");
+	}
+}
+
+function updateFontCards() {
+	var uiFont = getStoredFont("toki-ui-font");
+	var editorFont = getStoredFont("toki-editor-font");
+	document.querySelectorAll(".font-card").forEach(function(card) {
+		var key = card.dataset.fontKey;
+		var val = card.dataset.fontValue;
+		var current = key === "toki-ui-font" ? uiFont : editorFont;
+		card.setAttribute("aria-pressed", val === current);
+	});
+}
+
+// --- Font size management ---
+
+var fontSizeDefaults = {
+	"toki-ui-font-size": "default",
+	"toki-editor-font-size": "default",
+};
+
+var fontSizes = {
+	"very-small": "0.8rem",
+	"small": "0.9rem",
+	"default": "",
+	"big": "1.1rem",
+	"bigger": "1.25rem",
+};
+
+function getStoredFontSize(key) {
+	return localStorage.getItem(key) || fontSizeDefaults[key];
+}
+
+function setFontSize(key, value) {
+	localStorage.setItem(key, value);
+	applyFontSize(key, value);
+	updateFontSizeCards();
+}
+
+function applyFontSize(key, value) {
+	var size = fontSizes[value] || "";
+	if (key === "toki-ui-font-size") {
+		document.documentElement.style.setProperty("--font-size-ui", size || "");
+	} else if (key === "toki-editor-font-size") {
+		document.documentElement.style.setProperty("--font-size-editor", size || "");
+	}
+}
+
+function updateFontSizeCards() {
+	var uiSize = getStoredFontSize("toki-ui-font-size");
+	var editorSize = getStoredFontSize("toki-editor-font-size");
+	document.querySelectorAll(".font-size-card").forEach(function(card) {
+		var key = card.dataset.sizeKey;
+		var val = card.dataset.sizeValue;
+		var current = key === "toki-ui-font-size" ? uiSize : editorSize;
+		card.setAttribute("aria-pressed", val === current);
+	});
+}
+
+applyFont("toki-ui-font", getStoredFont("toki-ui-font"));
+applyFont("toki-editor-font", getStoredFont("toki-editor-font"));
+applyFontSize("toki-ui-font-size", getStoredFontSize("toki-ui-font-size"));
+applyFontSize("toki-editor-font-size", getStoredFontSize("toki-editor-font-size"));
 
 applyTheme(getStoredTheme());
 
@@ -120,13 +220,10 @@ function initEditors() {
 			lineNumbers: true,
 			inputStyle: "textarea",
 			scrollbarStyle: "null",
-			specialChars: /[\t \u00a0]/g,
+			specialChars: /[ \u00a0]/g,
 			specialCharPlaceholder: function(ch) {
 				var span = document.createElement("span");
-				if (ch === "\t") {
-					span.className = "cm-whitespace cm-tab-char";
-					span.textContent = "\t";
-				} else if (ch === "\u00a0") {
+				if (ch === "\u00a0") {
 					span.className = "cm-whitespace cm-nbsp";
 					span.textContent = "\u00a0";
 				} else {

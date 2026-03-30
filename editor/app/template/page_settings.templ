@@ -6,7 +6,7 @@ import (
 )
 
 templ PageSettings(sidebarOpen bool) {
-	<div id="page-settings" data-init="initThemeCards()">
+	<div id="page-settings" data-init="initThemeCards();initEditors()">
 		<aside
 			class="sidebar"
 			id="editor-sidebar"
@@ -26,6 +26,10 @@ templ PageSettings(sidebarOpen bool) {
 							<li>
 								//datapages:nolint
 								<a href="#appearance" data-ignore-current>Appearance</a>
+								</li>
+								<li>
+									//datapages:nolint
+									<a href="#fonts" data-ignore-current>Fonts</a>
 							</li>
 						</ul>
 					</div>
@@ -107,6 +111,102 @@ templ PageSettings(sidebarOpen bool) {
 							<span class="theme-card-label">System</span>
 							<span class="theme-card-desc">Match OS setting</span>
 						</button>
+					</div>
+					<h2 id="fonts">Fonts</h2>
+					<h3>Interface Font</h3>
+					<div class="font-picker">
+						<button class="font-card" onclick="setFont('toki-ui-font','system')" data-font-key="toki-ui-font" data-font-value="system">
+							<span class="font-preview">The quick brown fox jumps over the lazy dog</span>
+							<span class="font-card-label">System Default</span>
+						</button>
+<button class="font-card" onclick="setFont('toki-ui-font','georgia')" data-font-key="toki-ui-font" data-font-value="georgia">
+							<span class="font-preview" style="font-family: Georgia, 'Times New Roman', serif">The quick brown fox jumps over the lazy dog</span>
+							<span class="font-card-label">Georgia</span>
+						</button>
+						<button class="font-card" onclick="setFont('toki-ui-font','helvetica')" data-font-key="toki-ui-font" data-font-value="helvetica">
+							<span class="font-preview" style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif">The quick brown fox jumps over the lazy dog</span>
+							<span class="font-card-label">Helvetica</span>
+						</button>
+					</div>
+					<h4>Interface Font Size</h4>
+					<div class="font-size-picker">
+						<button class="font-size-card" onclick="setFontSize('toki-ui-font-size','very-small')" data-size-key="toki-ui-font-size" data-size-value="very-small">
+							<span class="font-size-preview" style="font-size: 0.8rem">Aa</span>
+							<span class="font-size-label">Very Small</span>
+						</button>
+						<button class="font-size-card" onclick="setFontSize('toki-ui-font-size','small')" data-size-key="toki-ui-font-size" data-size-value="small">
+							<span class="font-size-preview" style="font-size: 0.9rem">Aa</span>
+							<span class="font-size-label">Small</span>
+						</button>
+						<button class="font-size-card" onclick="setFontSize('toki-ui-font-size','default')" data-size-key="toki-ui-font-size" data-size-value="default">
+							<span class="font-size-preview" style="font-size: 1rem">Aa</span>
+							<span class="font-size-label">Default</span>
+						</button>
+						<button class="font-size-card" onclick="setFontSize('toki-ui-font-size','big')" data-size-key="toki-ui-font-size" data-size-value="big">
+							<span class="font-size-preview" style="font-size: 1.1rem">Aa</span>
+							<span class="font-size-label">Big</span>
+						</button>
+						<button class="font-size-card" onclick="setFontSize('toki-ui-font-size','bigger')" data-size-key="toki-ui-font-size" data-size-value="bigger">
+							<span class="font-size-preview" style="font-size: 1.25rem">Aa</span>
+							<span class="font-size-label">Bigger</span>
+						</button>
+					</div>
+					<h3>Editor Font</h3>
+					<div class="editor-font-settings">
+						<div class="editor-font-controls">
+							<div class="font-picker">
+								<button class="font-card" onclick="setFont('toki-editor-font','mono-system')" data-font-key="toki-editor-font" data-font-value="mono-system">
+									<span class="font-preview" style="font-family: ui-monospace, monospace">{ "{ plural, one {# item} other {# items} }" }</span>
+									<span class="font-card-label">System Mono</span>
+								</button>
+								<button class="font-card" onclick="setFont('toki-editor-font','mono-menlo')" data-font-key="toki-editor-font" data-font-value="mono-menlo">
+									<span class="font-preview" style="font-family: Menlo, Monaco, 'Cascadia Code', monospace">{ "{ plural, one {# item} other {# items} }" }</span>
+									<span class="font-card-label">Menlo</span>
+								</button>
+								<button class="font-card" onclick="setFont('toki-editor-font','mono-courier')" data-font-key="toki-editor-font" data-font-value="mono-courier">
+									<span class="font-preview" style="font-family: 'Courier New', Courier, monospace">{ "{ plural, one {# item} other {# items} }" }</span>
+									<span class="font-card-label">Courier New</span>
+								</button>
+							</div>
+							<h4>Editor Font Size</h4>
+							<div class="font-size-picker">
+								<button class="font-size-card" onclick="setFontSize('toki-editor-font-size','very-small')" data-size-key="toki-editor-font-size" data-size-value="very-small">
+									<span class="font-size-preview" style="font-size: 0.8rem; font-family: ui-monospace, monospace">Aa</span>
+									<span class="font-size-label">Very Small</span>
+								</button>
+								<button class="font-size-card" onclick="setFontSize('toki-editor-font-size','small')" data-size-key="toki-editor-font-size" data-size-value="small">
+									<span class="font-size-preview" style="font-size: 0.9rem; font-family: ui-monospace, monospace">Aa</span>
+									<span class="font-size-label">Small</span>
+								</button>
+								<button class="font-size-card" onclick="setFontSize('toki-editor-font-size','default')" data-size-key="toki-editor-font-size" data-size-value="default">
+									<span class="font-size-preview" style="font-size: 1rem; font-family: ui-monospace, monospace">Aa</span>
+									<span class="font-size-label">Default</span>
+								</button>
+								<button class="font-size-card" onclick="setFontSize('toki-editor-font-size','big')" data-size-key="toki-editor-font-size" data-size-value="big">
+									<span class="font-size-preview" style="font-size: 1.1rem; font-family: ui-monospace, monospace">Aa</span>
+									<span class="font-size-label">Big</span>
+								</button>
+								<button class="font-size-card" onclick="setFontSize('toki-editor-font-size','bigger')" data-size-key="toki-editor-font-size" data-size-value="bigger">
+									<span class="font-size-preview" style="font-size: 1.25rem; font-family: ui-monospace, monospace">Aa</span>
+									<span class="font-size-label">Bigger</span>
+								</button>
+							</div>
+						</div>
+						<div class="editor-font-preview">
+							<h4>Preview</h4>
+							<textarea
+								id="settings-editor-preview"
+								class="editor"
+								data-mode="icu"
+							>{ "{count, plural,\n  one {You have # new message}\n  other {You have # new messages}\n}" }</textarea>
+							<script>
+								// Retry until ICU mode is registered.
+								(function waitForMode() {
+									if (CodeMirror.modes.icu) { initEditors(); }
+									else { setTimeout(waitForMode, 50); }
+								})();
+							</script>
+						</div>
 					</div>
 				</div>
 			</main>

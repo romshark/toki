@@ -203,6 +203,24 @@ func (a *App) tryInitLocked() error {
 				Message:    m.ICUMessage,
 				IsReadOnly: isReadOnly,
 			}
+			// Validate ICU message on load.
+			if tmplMsg.Message != "" {
+				loc := language.MustParse(c.ARB.Locale.String())
+				a.icuTokBuffer = a.icuTokBuffer[:0]
+				var icuErr error
+				a.icuTokBuffer, icuErr = a.icuTokenizer.Tokenize(
+					loc, a.icuTokBuffer, tmplMsg.Message,
+				)
+				if icuErr != nil {
+					tmplMsg.Error = fmt.Sprintf("at index %d: %v",
+						a.icuTokenizer.Pos(), icuErr)
+				} else {
+					tmplMsg.IncompleteReports = icu.AnalysisReport(
+						loc, tmplMsg.Message, a.icuTokBuffer,
+						codeparse.ICUSelectOptions,
+					)
+				}
+			}
 			tmplTIK.ICU = append(tmplTIK.ICU, tmplMsg)
 		}
 		a.tiks = append(a.tiks, tmplTIK)

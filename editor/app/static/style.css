@@ -3,12 +3,14 @@ html {
 	height: 100dvh;
 	overflow: hidden;
 	overscroll-behavior: none;
+	font-size: var(--font-size-ui);
 }
 
 body {
 	height: 100dvh;
 	margin: 0;
 	overflow: hidden;
+	font-family: var(--font-ui);
 }
 
 /* Softer primary buttons in dark mode */
@@ -318,6 +320,10 @@ main {
 	}
 }
 
+.locale-link-name {
+	white-space: nowrap;
+}
+
 .locale-code {
 	text-transform: uppercase;
 }
@@ -402,7 +408,8 @@ main {
 /* --- TIK sections --- */
 
 .tik-card {
-	background: var(--color-accent, var(--accent));
+	outline: 3px solid var(--border, oklch(49.351% 0.02483 17.903 / 0.15));
+	outline-offset: -3px;
 }
 
 .tik-label {
@@ -477,12 +484,13 @@ main {
 	& .CodeMirror {
 		inline-size: 100%;
 		max-block-size: 90dvh;
-		font-size: 1rem;
 	}
 }
 
 .CodeMirror {
 	block-size: auto;
+	font-family: var(--font-editor);
+	font-size: var(--font-size-editor);
 }
 
 /* Whitespace visibility in CodeMirror */
@@ -501,12 +509,16 @@ main {
 	pointer-events: none;
 }
 
-.cm-tab-char::before {
-	content: "→";
-	position: absolute;
-	inset-inline-start: 0;
-	color: var(--border, oklch(0 0 0 / 0.2));
-	pointer-events: none;
+.cm-tab {
+	position: relative;
+
+	&::before {
+		content: "→";
+		position: absolute;
+		inset-inline-start: 0;
+		color: var(--border, oklch(0 0 0 / 0.2));
+		pointer-events: none;
+	}
 }
 
 .cm-nbsp::before {
@@ -632,6 +644,13 @@ main {
 
 /* --- Settings --- */
 
+#page-settings h2 {
+	font-size: 1.5rem;
+	font-weight: 700;
+	border-block-end: 1px solid var(--border, oklch(0 0 0 / 0.1));
+	padding-block-end: 0.5rem;
+}
+
 /* Theme picker — GitHub Desktop style */
 
 .theme-picker {
@@ -742,5 +761,109 @@ main {
 
 	&.tp-short {
 		inline-size: 50%;
+	}
+}
+
+/* Font picker */
+
+.font-picker {
+	display: flex;
+	gap: 1rem;
+	flex-wrap: wrap;
+}
+
+.font-card {
+	all: unset;
+	cursor: pointer;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	padding: 0.75rem 1rem;
+	border-radius: 0.5rem;
+	border: 2px solid var(--border, oklch(0 0 0 / 0.15));
+	transition: border-color 0.15s;
+	min-inline-size: 10rem;
+
+	&:hover {
+		border-color: var(--primary, oklch(0.55 0.15 250));
+	}
+
+	&[aria-pressed="true"] {
+		border-color: var(--primary, oklch(0.55 0.15 250));
+		background: var(--accent, oklch(0 0 0 / 0.04));
+	}
+}
+
+.font-preview {
+	font-size: 1.1rem;
+	line-height: 1.4;
+	white-space: nowrap;
+}
+
+.font-card-label {
+	font-weight: 600;
+	font-size: 0.8rem;
+	opacity: 0.6;
+}
+
+.font-size-picker {
+	display: flex;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+	align-items: stretch;
+}
+
+.font-size-card {
+	all: unset;
+	cursor: pointer;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: end;
+	gap: 0.25rem;
+	padding: 0.5rem 1rem;
+	border-radius: 0.5rem;
+	border: 2px solid var(--border, oklch(0 0 0 / 0.15));
+	transition: border-color 0.15s;
+
+	&:hover {
+		border-color: var(--primary, oklch(0.55 0.15 250));
+	}
+
+	&[aria-pressed="true"] {
+		border-color: var(--primary, oklch(0.55 0.15 250));
+		background: var(--accent, oklch(0 0 0 / 0.04));
+	}
+}
+
+.font-size-preview {
+	font-weight: 600;
+	line-height: 1;
+}
+
+.font-size-label {
+	font-size: 0.7rem;
+	opacity: 0.6;
+}
+
+.editor-font-settings {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.editor-font-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.editor-font-preview {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+
+	& .CodeMirror {
+		min-block-size: 6rem;
 	}
 }
