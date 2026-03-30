@@ -1,5 +1,5 @@
 vulncheck:
-	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+	CGO_ENABLED=0 go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
 fmt:
 	go run mvdan.cc/gofumpt@latest -w .
