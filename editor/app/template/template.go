@@ -2,8 +2,8 @@ package template
 
 // DashboardStats holds statistics for the dashboard page.
 type DashboardStats struct {
-	Dir         string
-	NumTIKs     int
+	Dir             string
+	NumTIKs         int
 	NumLocales      int
 	NativeLocale    LocaleStats
 	Locales         []LocaleStats
@@ -86,4 +86,3 @@ type Catalog struct {
 	Name    string // e.g. "German", "English"
 	Default bool
 }
-
