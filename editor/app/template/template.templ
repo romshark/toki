@@ -43,21 +43,7 @@ templ navbar(breadcrumbs []Breadcrumb, totalChanges int, canApplyChanges bool) {
 					))"
 				aria-label="Toggle sidebar"
 			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="20"
-					height="20"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-				>
-					<line x1="4" x2="20" y1="12" y2="12"></line>
-					<line x1="4" x2="20" y1="6" y2="6"></line>
-					<line x1="4" x2="20" y1="18" y2="18"></line>
-				</svg>
+				@iconMenu()
 			</button>
 			<ol class="breadcrumb" aria-label="Breadcrumb">
 				for _, bc := range breadcrumbs {
@@ -100,20 +86,7 @@ templ sidebarHeader() {
 				class="btn-secondary btn-icon"
 				aria-label="Settings"
 			>
-				<svg
-					xmlns="http://www.w3.org/2000/svg"
-					width="18"
-					height="18"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-				>
-					<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-					<circle cx="12" cy="12" r="3"></circle>
-				</svg>
+				@iconSettings()
 			</a>
 		</div>
 	</header>
@@ -158,9 +131,12 @@ templ sidebarContent(data DataIndex) {
 									) }
 								/>
 								<span>
-									{ catalog.Locale }
+									<strong class="locale-code">{ catalog.Locale }</strong>
+									if catalog.Name != "" {
+										– { catalog.Name }
+									}
 									if catalog.Default {
-										(Default)
+										<span class="badge-secondary">Default</span>
 									}
 								</span>
 							</label>
@@ -338,7 +314,7 @@ templ icuMessageForm(tikID string, msg *ICUMessage, showLabel bool) {
 	<div class="icu-form">
 		if showLabel {
 			<span class="icu-form-label">
-				<strong>{ msg.Catalog.Locale }</strong> — ICU Message
+				<strong class="locale-code">{ msg.Catalog.Locale }</strong> — ICU Message
 				@icuMessageBadges(msg)
 			</span>
 		} else {

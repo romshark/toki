@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -897,7 +898,11 @@ func (s *Server) handlePageTIKGET(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, `data-effect="const params = new URLSearchParams();
 			if ($sidebaropen) params.set('s', $sidebaropen);
 			const query = params.toString();
-			window.history.replaceState(null, '', query ? '/tik/{id}?' + query : '/tik/{id}');
+			window.history.replaceState(null, '', query ? '/tik/`)
+		template.HTMLEscape(w, []byte(path.ID))
+		_, _ = io.WriteString(w, `?' + query : '/tik/`)
+		template.HTMLEscape(w, []byte(path.ID))
+		_, _ = io.WriteString(w, `');
 		"`)
 	}
 

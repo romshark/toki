@@ -148,7 +148,7 @@ body {
 }
 
 #editor-sidebar nav > :is(header, section, footer) {
-	padding: 0.75rem 1rem;
+	padding: 0.2rem .5rem;
 }
 
 .sidebar-index {
@@ -162,6 +162,15 @@ body {
 	flex: 1 1 0;
 	min-block-size: 0;
 	overflow-y: auto;
+
+	& .button-group {
+		display: flex;
+		inline-size: 100%;
+
+		& button {
+			flex: 1;
+		}
+	}
 }
 
 .sidebar-project-dir {
@@ -255,6 +264,11 @@ main {
 	font-size: 1.8rem;
 	font-weight: 700;
 	line-height: 1;
+
+	& .locale-code {
+		font-size: 1.8rem;
+		line-height: 1;
+	}
 }
 
 .dashboard-stat-label {
@@ -264,8 +278,10 @@ main {
 
 .dashboard-stat-desc {
 	font-size: 0.8rem;
-	opacity: 0.5;
+	color: color-mix(in oklch, currentColor 50%, transparent);
 	margin: 0;
+	display: flex;
+	gap: .25rem;
 }
 
 .dashboard-stat-link {
@@ -286,11 +302,53 @@ main {
 
 	&:hover {
 		border-color: var(--primary, oklch(0.55 0.15 250));
+
+		&::after {
+			opacity: 0.7;
+			transform: translateX(2px);
+		}
+	}
+}
+
+.locale-card {
+	& > header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
 	}
 
-	&:hover::after {
-		opacity: 0.7;
-		transform: translateX(2px);
+	& .dashboard-stat-value {
+		display: flex;
+		align-items: baseline;
+		gap: 0.4rem;
+	}
+}
+
+.locale-code {
+	text-transform: uppercase;
+}
+
+.locale-name {
+	font-size: 1rem;
+	font-weight: 400;
+	opacity: 0.6;
+}
+
+.info-icon {
+	display: inline-flex;
+	align-items: center;
+	cursor: help;
+
+	& > svg {
+		opacity: 0.35;
+	}
+
+	&:hover > svg {
+		opacity: 0.6;
+	}
+
+	&::before {
+		max-width: none;
 	}
 }
 
@@ -404,11 +462,11 @@ main {
 		display: flex;
 		flex-direction: column;
 		gap: 0.4rem;
-	}
 
-	& label > span {
-		font-weight: bold;
-		font-size: 0.8rem;
+		& > span {
+			font-weight: bold;
+			font-size: 0.8rem;
+		}
 	}
 
 	& textarea,
@@ -423,16 +481,64 @@ main {
 	block-size: auto;
 }
 
+/* Whitespace visibility in CodeMirror */
+.cm-whitespace {
+	position: relative;
+}
+
+.cm-space::before {
+	content: "·";
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--border, oklch(0 0 0 / 0.2));
+	pointer-events: none;
+}
+
+.cm-tab-char::before {
+	content: "→";
+	position: absolute;
+	inset-inline-start: 0;
+	color: var(--border, oklch(0 0 0 / 0.2));
+	pointer-events: none;
+}
+
+.cm-nbsp::before {
+	content: "␣";
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--border, oklch(0 0 0 / 0.2));
+	pointer-events: none;
+}
+
 /* Prevent CodeMirror from overflowing cards */
 .card {
 	min-inline-size: 0;
 	overflow: hidden;
-}
 
-.card > header,
-.card > section {
-	min-inline-size: 0;
-	overflow: hidden;
+	& > header,
+	& > section {
+		min-inline-size: 0;
+		overflow: hidden;
+	}
+
+	/* Native locale card: allow tooltip to escape */
+	&.native-locale-cell {
+		overflow: visible;
+
+		& > section {
+			overflow: visible;
+		}
+
+		&:hover {
+			z-index: 10;
+		}
+	}
 }
 
 .icu-original {
@@ -470,14 +576,14 @@ main {
 		background: var(--foreground, oklch(0.3 0 0));
 		opacity: 0.4;
 		animation: dot-bounce 1.2s ease-in-out infinite;
-	}
 
-	& span:nth-child(2) {
-		animation-delay: 0.15s;
-	}
+		&:nth-child(2) {
+			animation-delay: 0.15s;
+		}
 
-	& span:nth-child(3) {
-		animation-delay: 0.3s;
+		&:nth-child(3) {
+			animation-delay: 0.3s;
+		}
 	}
 }
 
@@ -491,8 +597,6 @@ main {
 		opacity: 1;
 	}
 }
-
-
 
 /* Modal overlay */
 .modal-overlay {
@@ -523,7 +627,6 @@ main {
 }
 
 /* --- Settings --- */
-
 
 /* Theme picker — GitHub Desktop style */
 
@@ -632,8 +735,8 @@ main {
 	block-size: 0.3rem;
 	border-radius: 0.1rem;
 	inline-size: 80%;
-}
 
-.tp-line.tp-short {
-	inline-size: 50%;
+	&.tp-short {
+		inline-size: 50%;
+	}
 }

@@ -6,6 +6,7 @@ type DashboardStats struct {
 	SidebarOpen     bool
 	NumTIKs         int
 	NumLocales      int
+	NativeLocale    LocaleStats
 	Locales         []LocaleStats
 	TotalChanges    int
 	CanApplyChanges bool
@@ -19,11 +20,13 @@ type DashboardStats struct {
 // LocaleStats holds per-locale statistics for the dashboard.
 type LocaleStats struct {
 	Locale       string
+	Name         string // e.g. "German", "English"
 	Default      bool
-	Translated   int     // messages with non-empty ICU text
-	Untranslated int     // messages with empty ICU text
+	Complete     int     // TIKs fully translated and valid for this locale
+	Incomplete   int     // TIKs with empty message for this locale
+	Empty        int     // TIKs with empty message for this locale
+	Invalid      int     // TIKs with ICU errors for this locale
 	Changed      int     // messages with unsaved edits
-	Invalid      int     // messages with ICU errors
 	Completeness float64 // 0.0–1.0
 }
 
@@ -82,5 +85,6 @@ type TIK struct {
 
 type Catalog struct {
 	Locale  string
+	Name    string // e.g. "German", "English"
 	Default bool
 }

@@ -120,6 +120,21 @@ function initEditors() {
 			lineNumbers: true,
 			inputStyle: "textarea",
 			scrollbarStyle: "null",
+			specialChars: /[\t \u00a0]/g,
+			specialCharPlaceholder: function(ch) {
+				var span = document.createElement("span");
+				if (ch === "\t") {
+					span.className = "cm-whitespace cm-tab-char";
+					span.textContent = "\t";
+				} else if (ch === "\u00a0") {
+					span.className = "cm-whitespace cm-nbsp";
+					span.textContent = "\u00a0";
+				} else {
+					span.className = "cm-whitespace cm-space";
+					span.textContent = ch;
+				}
+				return span;
+			},
 		});
 
 		// Auto-save: debounced POST on change for editable editors.

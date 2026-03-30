@@ -56,7 +56,10 @@ templ tikSidebarNav(tk *TIK) {
 						<li>
 							//datapages:nolint
 							<a href={ templ.SafeURL(fmt.Sprintf("#icu-%s-%s", tk.ID, msg.Catalog.Locale)) } data-ignore-current>
-								{ msg.Catalog.Locale }
+								<strong class="locale-code">{ msg.Catalog.Locale }</strong>
+								if msg.Catalog.Name != "" {
+									– { msg.Catalog.Name }
+								}
 								if msg.Catalog.Default {
 									<span class="badge-secondary">Default</span>
 								}
@@ -109,7 +112,7 @@ templ tikMainArea(tk *TIK) {
 					>
 						<header>
 							<span class="icu-form-label">
-								<strong>{ msg.Catalog.Locale }</strong> — ICU Message
+								<strong class="locale-code">{ msg.Catalog.Locale }</strong> — ICU Message
 								@icuMessageBadges(msg)
 							</span>
 						</header>

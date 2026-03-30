@@ -54,6 +54,29 @@ templ PageDashboard(stats DashboardStats) {
 				<div class="contents">
 					<h2 id="overview">Overview</h2>
 					<div class="dashboard-grid">
+						<div class="card native-locale-cell">
+							<header>
+								<span class="dashboard-stat-value locale-code">
+									{ stats.NativeLocale.Locale }
+								</span>
+								if stats.NativeLocale.Name != "" {
+									<span class="dashboard-stat-label">{ stats.NativeLocale.Name }</span>
+								}
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">
+									Native locale
+									<span
+										class="info-icon"
+										data-tooltip="The language used in source code message declarations"
+										data-side="bottom"
+										data-align="start"
+									>
+										@iconInfo()
+									</span>
+								</p>
+							</section>
+						</div>
 						<a
 							href={ href.PageTIKs(href.QueryPageTIKs{}) }
 							class="card dashboard-stat-link"
@@ -143,11 +166,11 @@ templ PageDashboard(stats DashboardStats) {
 							<div class="card locale-card">
 								<header>
 									<span class="dashboard-stat-value">
-										{ ls.Locale }
+										<strong class="locale-code">{ ls.Locale }</strong>
+										if ls.Name != "" {
+											<span class="locale-name">– { ls.Name }</span>
+										}
 									</span>
-									if ls.Default {
-										<span class="badge-secondary">Default</span>
-									}
 								</header>
 								<section>
 									<div class="locale-stats">
@@ -165,31 +188,29 @@ templ PageDashboard(stats DashboardStats) {
 											></div>
 										</div>
 										<div class="locale-stat-row">
-											<span>Translated</span>
-											<span>
-												{ strfmt.Int(ls.Translated) }
-											</span>
+											<span>Complete</span>
+											<span>{ strfmt.Int(ls.Complete) }</span>
 										</div>
 										<div class="locale-stat-row">
-											<span>Untranslated</span>
-											<span>
-												{ strfmt.Int(ls.Untranslated) }
-											</span>
+											<span>Incomplete</span>
+											<span>{ strfmt.Int(ls.Incomplete) }</span>
 										</div>
-										if ls.Changed > 0 {
+										if ls.Empty > 0 {
 											<div class="locale-stat-row">
-												<span>Unsaved</span>
-												<span class="badge-changed">
-													{ strfmt.Int(ls.Changed) }
-												</span>
+												<span>Empty</span>
+												<span>{ strfmt.Int(ls.Empty) }</span>
 											</div>
 										}
 										if ls.Invalid > 0 {
 											<div class="locale-stat-row">
 												<span>Invalid</span>
-												<span class="badge-destructive">
-													{ strfmt.Int(ls.Invalid) }
-												</span>
+												<span class="badge-destructive">{ strfmt.Int(ls.Invalid) }</span>
+											</div>
+										}
+										if ls.Changed > 0 {
+											<div class="locale-stat-row">
+												<span>Unsaved</span>
+												<span class="badge-changed">{ strfmt.Int(ls.Changed) }</span>
 											</div>
 										}
 									</div>

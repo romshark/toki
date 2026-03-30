@@ -22,6 +22,7 @@ import (
 	tikutil "github.com/romshark/toki/internal/tik"
 	"github.com/starfederation/datastar-go/datastar"
 	"golang.org/x/text/language"
+	"golang.org/x/text/language/display"
 
 	"github.com/romshark/toki/editor/app/template"
 	"github.com/romshark/toki/editor/datapagesgen/href"
@@ -165,12 +166,14 @@ func (a *App) tryInitLocked() error {
 	a.tiks = make([]*template.TIK, 0, scan.TextIndexByID.Len())
 
 	for cat := range scan.Catalogs.SeqRead() {
+		tag := language.MustParse(cat.ARB.Locale.String())
 		c := &template.Catalog{
 			Locale:  cat.ARB.Locale.String(),
+			Name:    display.English.Languages().Name(tag),
 			Default: cat.ARB.Locale == scan.DefaultLocale,
 		}
 		a.catalogs = append(a.catalogs, c)
-		a.localeTags = append(a.localeTags, language.MustParse(c.Locale))
+		a.localeTags = append(a.localeTags, tag)
 	}
 
 	for _, i := range scan.TextIndexByID.SeqRead() {
@@ -504,8 +507,13 @@ func (a *App) buildDashboardStats() template.DashboardStats {
 	// Build per-locale stats.
 	localeStats := make([]template.LocaleStats, len(a.catalogs))
 	for i, c := range a.catalogs {
+		var name string
+		if tag, err := language.Parse(c.Locale); err == nil {
+			name = display.English.Languages().Name(tag)
+		}
 		localeStats[i] = template.LocaleStats{
 			Locale:  c.Locale,
+			Name:    name,
 			Default: c.Default,
 		}
 	}
@@ -518,13 +526,31 @@ func (a *App) buildDashboardStats() template.DashboardStats {
 				if localeStats[li].Locale != m.Catalog.Locale {
 					continue
 				}
-				if m.Message == "" {
-					localeStats[li].Untranslated++
-				} else {
-					localeStats[li].Translated++
-				}
 				if m.Changed {
 					localeStats[li].Changed++
+				}
+				if m.Message == "" {
+					localeStats[li].Empty++
+					localeStats[li].Incomplete++
+				} else {
+					// Check for ICU errors.
+					locTag := a.localeTagByLocale(m.Catalog.Locale)
+					var icuErr error
+					a.icuTokBuffer = a.icuTokBuffer[:0]
+					a.icuTokBuffer, icuErr = a.icuTokenizer.Tokenize(
+						locTag, a.icuTokBuffer, m.Message,
+					)
+					hasErr := icuErr != nil ||
+						m.Error != "" ||
+						len(icu.AnalysisReport(
+							locTag, m.Message, a.icuTokBuffer,
+							codeparse.ICUSelectOptions,
+						)) > 0
+					if hasErr {
+						localeStats[li].Invalid++
+					} else {
+						localeStats[li].Complete++
+					}
 				}
 				break
 			}
@@ -543,12 +569,19 @@ func (a *App) buildDashboardStats() template.DashboardStats {
 	}
 
 	for i := range localeStats {
-		total := localeStats[i].Translated + localeStats[i].Untranslated
+		total := localeStats[i].Complete + localeStats[i].Empty + localeStats[i].Invalid
 		if total > 0 {
-			localeStats[i].Completeness = float64(localeStats[i].Translated) / float64(total)
+			localeStats[i].Completeness = float64(localeStats[i].Complete) / float64(total)
 		}
 	}
-	s.Locales = localeStats
+	// Separate native (default) locale from the rest.
+	for _, ls := range localeStats {
+		if ls.Default {
+			s.NativeLocale = ls
+		} else {
+			s.Locales = append(s.Locales, ls)
+		}
+	}
 
 	if s.NumTIKs > 0 {
 		s.Completeness = float64(s.NumComplete) / float64(s.NumTIKs)
