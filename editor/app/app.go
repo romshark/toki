@@ -203,7 +203,7 @@ func (a *App) tryInitLocked() error {
 
 // fullRebuildLocked runs full codeparse and rebuilds the index DB.
 func (a *App) fullRebuildLocked() error {
-	parser := codeparse.NewParser(a.hasher, a.tikParser, a.tikICUTranslator, true)
+	parser := codeparse.NewParser(a.hasher, a.tikParser, a.tikICUTranslator)
 	scan, err := parser.Parse(a.env, a.dir, "./...", a.bundlePkgPath, false)
 	if err != nil {
 		a.initErr = fmt.Sprintf("Analyzing source: %v", err)
@@ -215,6 +215,7 @@ func (a *App) fullRebuildLocked() error {
 	}
 
 	a.scan = scan
+	a.ensureNativeCatalogExists(scan)
 	a.buildTemplateDataFromScanLocked()
 	a.numCorrupt = a.nativeCatalogCorruptCount()
 
@@ -869,6 +870,27 @@ func (a *App) nativeCatalogCorruptCount() int {
 	return 0
 }
 
+// ensureNativeCatalogExists creates an empty native catalog in the scan
+// if the ARB file is missing. This allows detectCorruptMessages to flag
+// every message as corrupt so the repair flow can regenerate the file.
+func (a *App) ensureNativeCatalogExists(scan *codeparse.Scan) {
+	for c := range scan.Catalogs.SeqRead() {
+		if c.ARB.Locale == scan.DefaultLocale {
+			return
+		}
+	}
+	scan.Catalogs.Append(&codeparse.Catalog{
+		ARB: &arb.File{
+			Locale:   scan.DefaultLocale,
+			Messages: make(map[string]arb.Message),
+		},
+		ARBFilePath: filepath.Join(
+			a.dir, a.bundlePkgPath,
+			fmt.Sprintf("catalog_%s.arb", scan.DefaultLocale),
+		),
+	})
+}
+
 // PageTIKs is /tiks
 type PageTIKs struct{ App *App }
 
@@ -1460,7 +1482,7 @@ func (a *App) doBuildBundleLocked(changed []*template.ICUMessage) error {
 	}
 
 	// Step 2: Run codeparse (reads current .arb files from disk).
-	parser := codeparse.NewParser(a.hasher, a.tikParser, a.tikICUTranslator, true)
+	parser := codeparse.NewParser(a.hasher, a.tikParser, a.tikICUTranslator)
 	scan, err := parser.Parse(a.env, a.dir, "./...", a.bundlePkgPath, false)
 	if err != nil {
 		return fmt.Errorf("analyzing source: %w", err)
@@ -1606,11 +1628,12 @@ func (a *App) RepairCorrupt() error {
 	}
 
 	// Parse source to get a scan (needed for repair).
-	parser := codeparse.NewParser(a.hasher, a.tikParser, a.tikICUTranslator, true)
+	parser := codeparse.NewParser(a.hasher, a.tikParser, a.tikICUTranslator)
 	scan, err := parser.Parse(a.env, a.dir, "./...", a.bundlePkgPath, false)
 	if err != nil {
 		return fmt.Errorf("parsing source: %w", err)
 	}
+	a.ensureNativeCatalogExists(scan)
 
 	// Fix corrupt messages in memory.
 	repaired := bundlerepair.Repair(scan, a.tikICUTranslator, a.icuTokenizer)

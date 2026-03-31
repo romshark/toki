@@ -106,7 +106,7 @@ func (g *Generate) Run(
 		}
 	}
 
-	parser := codeparse.NewParser(g.hasher, g.tikParser, g.tikICUTranslator, false)
+	parser := codeparse.NewParser(g.hasher, g.tikParser, g.tikICUTranslator)
 
 	// Parse source code and bundle.
 	result.Scan, result.Err = parser.Parse(

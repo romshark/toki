@@ -62,20 +62,15 @@ func (p *Parser) ICUTranslator() *tik.ICUTranslator { return p.icuTranslator }
 func (p *Parser) ICUTokenizer() *icumsg.Tokenizer { return p.icuDecoder }
 
 // NewParser creates a new source code parser.
-// If lenient is true, the ARB decoder skips non-fatal validation errors
-// (e.g. undefined placeholders) so that corrupt files can be loaded and repaired.
 func NewParser(
 	hasher *xxhash.Digest,
 	tikParser *tik.Parser,
 	translatorICU *tik.ICUTranslator,
-	lenient bool,
 ) *Parser {
-	dec := arb.NewDecoder()
-	dec.Lenient = lenient
 	return &Parser{
 		hasher:        hasher,
 		tikParser:     tikParser,
-		arbDecoder:    dec,
+		arbDecoder:    arb.NewDecoder(),
 		icuDecoder:    new(icumsg.Tokenizer),
 		icuTranslator: translatorICU,
 	}
@@ -200,30 +195,6 @@ func (p *Parser) Parse(
 		err = p.CollectARBFiles(pkgBundle.Dir, scan)
 		if err != nil {
 			return scan, fmt.Errorf("searching .arb files: %w", err)
-		}
-
-		// If the native locale catalog is missing, create an empty one
-		// so that detectCorruptMessages can flag every message as corrupt
-		// and the repair flow can regenerate it.
-		hasNative := false
-		for c := range scan.Catalogs.SeqRead() {
-			if c.ARB.Locale == scan.DefaultLocale {
-				hasNative = true
-				break
-			}
-		}
-		if !hasNative {
-			nativeARBPath := filepath.Join(
-				pkgBundle.Dir,
-				fmt.Sprintf("catalog_%s.arb", scan.DefaultLocale),
-			)
-			scan.Catalogs.Append(&Catalog{
-				ARB: &arb.File{
-					Locale:   scan.DefaultLocale,
-					Messages: make(map[string]arb.Message),
-				},
-				ARBFilePath: nativeARBPath,
-			})
 		}
 
 		p.genderType = pkgBundle.PkgPath + ".Gender"

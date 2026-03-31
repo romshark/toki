@@ -132,9 +132,6 @@ var (
 type Decoder struct {
 	tokenizer icumsg.Tokenizer
 	buffer    []icumsg.Token
-	// Lenient skips non-fatal validation errors (e.g. undefined placeholders)
-	// so that corrupt ARB files can still be loaded and repaired.
-	Lenient bool
 }
 
 func NewDecoder() *Decoder { return new(Decoder) }
@@ -280,17 +277,6 @@ func (d *Decoder) Decode(r io.Reader) (*File, error) {
 				if err := validatePlaceholderType(string(p.Type)); err != nil {
 					return nil, fmt.Errorf(
 						"%w (for key %q): %w", ErrInvalid, k, err)
-				}
-			}
-
-			if !d.Lenient {
-				for _, tok := range msg.ICUMessageTokens {
-					if tok.Type == icumsg.TokenTypeArgName {
-						name := tok.String(msgText, msg.ICUMessageTokens)
-						if _, ok := meta.Placeholders[name]; !ok {
-							return nil, fmt.Errorf("%w: %q", ErrUndefinedPlaceholder, name)
-						}
-					}
 				}
 			}
 
