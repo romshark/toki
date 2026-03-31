@@ -94,6 +94,9 @@ type App struct {
 	// Set by the Wails runner; nil in server mode.
 	PickDirectory func() (string, error)
 
+	// Version is the Toki version string. Set by editor.Setup.
+	Version string
+
 	// CleanGenerated deletes stale generated Go files and creates a minimal
 	// bundle so codeparse can succeed. Set by editor.Setup.
 	CleanGenerated func(bundlePkgPath string) error
@@ -1309,7 +1312,7 @@ func (p PageSettings) GET(
 	if building {
 		return nil, href.PageBuildBundle(), nil
 	}
-	return template.PageSettings(), "", nil
+	return template.PageSettings(p.App.Version), "", nil
 }
 
 // PageBuildBundle is /build-bundle

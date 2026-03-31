@@ -26,7 +26,7 @@ func main() {
 	dir, _ := filepath.Abs(".")
 	log.SetWriter(os.Stderr, false)
 
-	a, s := editor.Setup(dir, *bundlePkg, os.Environ(), intapp.CleanGenerated, intapp.GenerateBundle)
+	a, s := editor.Setup(dir, *bundlePkg, intapp.Version, os.Environ(), intapp.CleanGenerated, intapp.GenerateBundle)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

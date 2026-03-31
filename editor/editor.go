@@ -31,7 +31,7 @@ type GenerateBundleFunc func(bundlePkgPath string, scan *codeparse.Scan) error
 
 // Setup creates the App and datapages Server for the given directory.
 func Setup(
-	dir, bundlePkgPath string, env []string,
+	dir, bundlePkgPath, version string, env []string,
 	cleanGenerated CleanGeneratedFunc,
 	generateBundle GenerateBundleFunc,
 ) (*app.App, *datapagesgen.Server) {
@@ -47,6 +47,7 @@ func Setup(
 	}
 
 	a := app.NewApp(dir, bundlePkgPath, env, db)
+	a.Version = version
 	a.CleanGenerated = cleanGenerated
 	a.GenerateGoBundle = generateBundle
 

@@ -4,7 +4,7 @@ import (
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
-templ PageSettings() {
+templ PageSettings(version string) {
 	<div id="page-settings" data-init="initThemeCards();initEditors()">
 		<aside
 			class="sidebar"
@@ -29,6 +29,11 @@ templ PageSettings() {
 						</ul>
 					</div>
 				</section>
+				<footer>
+					<div class="sidebar-version">
+						<small>Toki Editor { version }</small>
+					</div>
+				</footer>
 			</nav>
 		</aside>
 		<div class="main-area">
