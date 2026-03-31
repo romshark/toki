@@ -7,7 +7,7 @@ import (
 	"github.com/romshark/toki/editor/datapagesgen/action"
 )
 
-templ PageProjectDir(dir string, errMsg string, numChanges int) {
+templ PageProjectDir(dir string, errMsg string, numChanges int, numCorrupt int) {
 	<div
 		id="page-project-dir"
 		class="page-center"
@@ -37,7 +37,27 @@ templ PageProjectDir(dir string, errMsg string, numChanges int) {
 							<section>{ errMsg }</section>
 						</div>
 					}
-					if dir != "" && errMsg == "" {
+					if numCorrupt > 0 {
+						<div class="alert alert-destructive">
+							@iconAlertTriangle()
+							<section>
+								<strong>Corrupted Bundle</strong>
+								<p>
+									{ strfmt.Int(numCorrupt) } native locale
+									if numCorrupt == 1 {
+										message doesn't
+									} else {
+										messages don't
+									}
+									match what should have been generated from source code.
+								</p>
+								<a href="/repair/" class="btn-destructive">
+									Repair Bundle
+								</a>
+							</section>
+						</div>
+					}
+					if dir != "" && errMsg == "" && numCorrupt == 0 {
 						<button
 							class="btn-primary"
 							data-on:click="window.location='/'"

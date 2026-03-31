@@ -44,6 +44,9 @@ func Asset(p string) string {
 	return path.Join("/static/", p)
 }
 
+// PageBuildBundle references /build-bundle/{$}
+func PageBuildBundle() string { return "/build-bundle/" }
+
 // PageIndex references /{$}
 func PageIndex() string { return "/" }
 

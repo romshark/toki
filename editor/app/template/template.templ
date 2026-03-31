@@ -61,10 +61,10 @@ templ navbar(breadcrumbs []Breadcrumb, totalChanges int, canApplyChanges bool) {
 					if !canApplyChanges {
 						disabled
 					}
-					data-on:click={ action.POSTAppApplyChanges() }
+					onclick="window.location='/build-bundle/'"
 				>
 					@iconSave()
-					Apply Changes 
+					Build Bundle
 					<span class="badge badge-changed">
 						{ strfmt.Int(totalChanges) }
 					</span>

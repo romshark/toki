@@ -19,6 +19,7 @@ import (
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/log"
 	"github.com/romshark/toki/internal/sync"
+	tikutil "github.com/romshark/toki/internal/tik"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/romshark/icumsg"
@@ -54,15 +55,27 @@ type Parser struct {
 	readerType string
 }
 
+// ICUTranslator returns the parser's TIK-to-ICU translator.
+func (p *Parser) ICUTranslator() *tik.ICUTranslator { return p.icuTranslator }
+
+// ICUTokenizer returns the parser's ICU message tokenizer.
+func (p *Parser) ICUTokenizer() *icumsg.Tokenizer { return p.icuDecoder }
+
+// NewParser creates a new source code parser.
+// If lenient is true, the ARB decoder skips non-fatal validation errors
+// (e.g. undefined placeholders) so that corrupt files can be loaded and repaired.
 func NewParser(
 	hasher *xxhash.Digest,
 	tikParser *tik.Parser,
 	translatorICU *tik.ICUTranslator,
+	lenient bool,
 ) *Parser {
+	dec := arb.NewDecoder()
+	dec.Lenient = lenient
 	return &Parser{
 		hasher:        hasher,
 		tikParser:     tikParser,
-		arbDecoder:    arb.NewDecoder(),
+		arbDecoder:    dec,
 		icuDecoder:    new(icumsg.Tokenizer),
 		icuTranslator: translatorICU,
 	}
@@ -91,7 +104,18 @@ type SourceError struct {
 }
 
 type CatalogStatistics struct {
+	// MessagesIncomplete counts non-empty messages that fail
+	// [IsMsgIncomplete] (e.g. missing required plural/select options).
 	MessagesIncomplete atomic.Int64
+	// MessagesCorrupt counts native locale messages with auto-repairable
+	// corruption. A native locale message is corrupt when:
+	//  1. Empty — the TIK always generates an ICU for the native locale,
+	//     so an empty message means generation was skipped or failed.
+	//  2. Locked mismatch — [tikutil.ProducesCompleteICU] returns true (the TIK
+	//     fully determines the ICU) but the ARB value differs from the expected one.
+	//  3. Placeholder mismatch — the message's placeholder metadata doesn't
+	//     match what the TIK expects (see [PlaceholdersMismatch]).
+	MessagesCorrupt atomic.Int64
 }
 
 type Catalog struct {
@@ -121,12 +145,17 @@ type Scan struct {
 	Catalogs      *sync.Slice[*Catalog]
 }
 
+// Parse parses Go source code and ARB files to produce a Scan.
+// If dir is non-empty, package loading is rooted there instead of the
+// process working directory. Callers should prefer passing dir over
+// using os.Chdir, which is process-global and unsafe in servers.
 func (p *Parser) Parse(
-	env []string, pathPattern, bundlePkgPath string, trimpath bool,
+	env []string, dir, pathPattern, bundlePkgPath string, trimpath bool,
 ) (scan *Scan, err error) {
 	fset := token.NewFileSet()
 
 	conf := &packages.Config{
+		Dir: dir,
 		Mode: packages.NeedFiles |
 			packages.NeedSyntax |
 			packages.NeedTypes |
@@ -172,11 +201,38 @@ func (p *Parser) Parse(
 		if err != nil {
 			return scan, fmt.Errorf("searching .arb files: %w", err)
 		}
+
+		// If the native locale catalog is missing, create an empty one
+		// so that detectCorruptMessages can flag every message as corrupt
+		// and the repair flow can regenerate it.
+		hasNative := false
+		for c := range scan.Catalogs.SeqRead() {
+			if c.ARB.Locale == scan.DefaultLocale {
+				hasNative = true
+				break
+			}
+		}
+		if !hasNative {
+			nativeARBPath := filepath.Join(
+				pkgBundle.Dir,
+				fmt.Sprintf("catalog_%s.arb", scan.DefaultLocale),
+			)
+			scan.Catalogs.Append(&Catalog{
+				ARB: &arb.File{
+					Locale:   scan.DefaultLocale,
+					Messages: make(map[string]arb.Message),
+				},
+				ARBFilePath: nativeARBPath,
+			})
+		}
+
 		p.genderType = pkgBundle.PkgPath + ".Gender"
 		p.readerType = pkgBundle.PkgPath + ".Reader"
 	}
 
 	p.collectTexts(fset, pkgs, bundlePkg, pathPattern, trimpath, scan)
+
+	p.detectCorruptMessages(scan)
 
 	return scan, nil
 }
@@ -301,6 +357,53 @@ func IsMsgIncomplete(
 		},
 	)
 	return incomplete
+}
+
+// detectCorruptMessages counts native locale messages with auto-repairable
+// corruption (see [CatalogStatistics.MessagesCorrupt]).
+// Must be called after both CollectARBFiles and collectTexts.
+func (p *Parser) detectCorruptMessages(scan *Scan) {
+	var nativeCatalog *Catalog
+	for c := range scan.Catalogs.SeqRead() {
+		if c.ARB.Locale == scan.DefaultLocale {
+			nativeCatalog = c
+			break
+		}
+	}
+	if nativeCatalog == nil {
+		return
+	}
+	for _, i := range scan.TextIndexByID.SeqRead() {
+		t := scan.Texts.At(i)
+		msg := nativeCatalog.ARB.Messages[t.IDHash]
+		expectedICU := p.icuTranslator.TIK2ICU(t.TIK)
+		switch {
+		case msg.ICUMessage == "":
+			// Case 1: empty native message.
+			nativeCatalog.MessagesCorrupt.Add(1)
+		case tikutil.ProducesCompleteICU(scan.DefaultLocale, t.TIK) &&
+			msg.ICUMessage != expectedICU:
+			// Case 2: locked message doesn't match expected ICU.
+			nativeCatalog.MessagesCorrupt.Add(1)
+		case PlaceholdersMismatch(t.TIK, msg):
+			// Case 3: missing or wrong placeholder metadata.
+			nativeCatalog.MessagesCorrupt.Add(1)
+		}
+	}
+}
+
+// PlaceholdersMismatch returns true if the message's placeholder metadata
+// doesn't match what the TIK expects (wrong count or missing entries).
+func PlaceholdersMismatch(tk tik.TIK, msg arb.Message) bool {
+	n := 0
+	for range tk.Placeholders() {
+		name := fmt.Sprintf("var%d", n)
+		if _, ok := msg.Placeholders[name]; !ok {
+			return true
+		}
+		n++
+	}
+	return len(msg.Placeholders) != n
 }
 
 func (p *Parser) collectTexts(

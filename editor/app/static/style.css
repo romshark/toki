@@ -577,6 +577,54 @@ main {
 	opacity: 0.6;
 }
 
+/* --- Loading screen --- */
+
+.loading-screen {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 1rem;
+	padding: 2rem 1rem;
+	text-align: center;
+}
+
+.loading-hint {
+	font-size: 0.875rem;
+	opacity: 0.6;
+}
+
+/* --- Build Bundle --- */
+
+.build-bundle-card > section {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	align-items: flex-start;
+}
+
+.build-result {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 1rem;
+	padding: 1rem 0;
+	text-align: center;
+}
+
+.build-result .alert {
+	align-self: stretch;
+}
+
+.build-success-alert {
+	border-color: var(--primary, oklch(0.55 0.15 160));
+	color: var(--primary, oklch(0.55 0.15 160));
+}
+
+.build-duration {
+	font-size: 0.875rem;
+	opacity: 0.6;
+}
+
 /* --- Loading indicators --- */
 
 .loading-indicator {

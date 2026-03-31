@@ -15,6 +15,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/romshark/toki/editor"
+	intapp "github.com/romshark/toki/internal/app"
 	"github.com/romshark/toki/internal/log"
 )
 
@@ -25,7 +26,7 @@ func main() {
 	dir, _ := filepath.Abs(".")
 	log.SetWriter(os.Stderr, false)
 
-	a, s := editor.Setup(dir, *bundlePkg, os.Environ())
+	a, s := editor.Setup(dir, *bundlePkg, os.Environ(), intapp.CleanGenerated, intapp.GenerateBundle)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

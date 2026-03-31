@@ -11,22 +11,25 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/a-h/templ"
 	"github.com/cespare/xxhash/v2"
 	"github.com/romshark/icumsg"
 	"github.com/romshark/tik/tik-go"
+	"github.com/romshark/toki/editor/app/template"
+	"github.com/romshark/toki/editor/datapagesgen/href"
+	"github.com/romshark/toki/editor/datapagesgen/httperr"
+	"github.com/romshark/toki/editor/indexdb"
 	"github.com/romshark/toki/internal/arb"
+	"github.com/romshark/toki/internal/bundlerepair"
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/icu"
 	tikutil "github.com/romshark/toki/internal/tik"
 	"github.com/starfederation/datastar-go/datastar"
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
-
-	"github.com/romshark/toki/editor/app/template"
-	"github.com/romshark/toki/editor/datapagesgen/href"
-	"github.com/romshark/toki/editor/datapagesgen/httperr"
 )
 
 const MainBundleFileGo = "bundle_gen.go"
@@ -68,7 +71,19 @@ type App struct {
 	catalogs         []*template.Catalog
 	localeTags       []language.Tag
 	changed          []*template.ICUMessage
+	numCorrupt       int // corrupt native locale messages (from scan or DB)
 	initErr          string
+
+	// loading is true while the index DB is being rebuilt in the background.
+	loading atomic.Bool
+
+	// indexDB is the SQLite index database. Nil if not configured.
+	indexDB *indexdb.DB
+
+	// Build bundle state (protected by mu).
+	building      bool
+	buildErr      string
+	buildDuration time.Duration
 
 	// views maps instance_id -> view state
 	views map[string]*viewState
@@ -78,13 +93,26 @@ type App struct {
 	// PickDirectory opens a native directory picker dialog.
 	// Set by the Wails runner; nil in server mode.
 	PickDirectory func() (string, error)
+
+	// CleanGenerated deletes stale generated Go files and creates a minimal
+	// bundle so codeparse can succeed. Set by editor.Setup.
+	CleanGenerated func(bundlePkgPath string) error
+
+	// GenerateGoBundle generates the full Go bundle from a scan.
+	// Set by editor.Setup.
+	GenerateGoBundle func(bundlePkgPath string, scan *codeparse.Scan) error
+
+	// NotifyUpdated publishes an EventUpdated through the message broker
+	// so SSE streams get notified. Set by editor.Setup after server creation.
+	NotifyUpdated func()
 }
 
-func NewApp(dir, bundlePkgPath string, env []string) *App {
+func NewApp(dir, bundlePkgPath string, env []string, db *indexdb.DB) *App {
 	return &App{
 		dir:              dir,
 		bundlePkgPath:    bundlePkgPath,
 		env:              env,
+		indexDB:          db,
 		hasher:           xxhash.New(),
 		icuTokenizer:     new(icumsg.Tokenizer),
 		tikParser:        tik.NewParser(tik.DefaultConfig),
@@ -92,6 +120,16 @@ func NewApp(dir, bundlePkgPath string, env []string) *App {
 		views:            make(map[string]*viewState),
 		streamInst:       make(map[uint64]string),
 	}
+}
+
+// IsLoading returns true while the index DB is being rebuilt.
+func (a *App) IsLoading() bool {
+	return a.loading.Load()
+}
+
+// SetLoading sets the loading state.
+func (a *App) SetLoading(v bool) {
+	a.loading.Store(v)
 }
 
 func (a *App) Dir() string {
@@ -115,6 +153,7 @@ func (a *App) TryInit() error {
 func (a *App) tryInitLocked() error {
 	a.initErr = ""
 	a.changed = nil
+	a.numCorrupt = 0
 	a.tiks = nil
 	a.catalogs = nil
 	a.localeTags = nil
@@ -138,19 +177,31 @@ func (a *App) tryInitLocked() error {
 		return errors.New(a.initErr)
 	}
 
-	prevDir, err := os.Getwd()
-	if err != nil {
-		a.initErr = fmt.Sprintf("Getting working directory: %v", err)
-		return errors.New(a.initErr)
+	// Check if we can use the index DB (fast path).
+	if a.indexDB != nil {
+		bundleDir := filepath.Join(a.dir, a.bundlePkgPath)
+		currentChecksum, err := indexdb.ComputeARBChecksum(bundleDir)
+		if err == nil && currentChecksum != "" {
+			storedChecksum, dbErr := a.indexDB.GetChecksum()
+			schemaOK := a.indexDB.GetSchemaVersion() == indexdb.SchemaVersion
+			if dbErr == nil && schemaOK && currentChecksum == storedChecksum {
+				// Fast path: checksums and schema version match, load from DB.
+				if err := a.loadFromDBLocked(); err == nil {
+					return nil
+				}
+				// Fall through to full rebuild if DB load fails.
+			}
+		}
 	}
-	if err := os.Chdir(a.dir); err != nil {
-		a.initErr = fmt.Sprintf("Changing to directory %q: %v", a.dir, err)
-		return errors.New(a.initErr)
-	}
-	defer func() { _ = os.Chdir(prevDir) }()
 
-	parser := codeparse.NewParser(a.hasher, a.tikParser, a.tikICUTranslator)
-	scan, err := parser.Parse(a.env, "./...", a.bundlePkgPath, false)
+	// Slow path: full source code parse + rebuild.
+	return a.fullRebuildLocked()
+}
+
+// fullRebuildLocked runs full codeparse and rebuilds the index DB.
+func (a *App) fullRebuildLocked() error {
+	parser := codeparse.NewParser(a.hasher, a.tikParser, a.tikICUTranslator, true)
+	scan, err := parser.Parse(a.env, a.dir, "./...", a.bundlePkgPath, false)
 	if err != nil {
 		a.initErr = fmt.Sprintf("Analyzing source: %v", err)
 		return errors.New(a.initErr)
@@ -161,6 +212,24 @@ func (a *App) tryInitLocked() error {
 	}
 
 	a.scan = scan
+	a.buildTemplateDataFromScanLocked()
+	a.numCorrupt = a.nativeCatalogCorruptCount()
+
+	// Populate the index DB from the scan results.
+	if a.indexDB != nil {
+		if err := a.populateDBFromScanLocked(); err != nil {
+			a.initErr = fmt.Sprintf("Populating index DB: %v", err)
+			return errors.New(a.initErr)
+		}
+	}
+
+	return nil
+}
+
+// buildTemplateDataFromScanLocked builds template data structures from a.scan.
+func (a *App) buildTemplateDataFromScanLocked() {
+	scan := a.scan
+
 	a.localeTags = make([]language.Tag, 0, scan.Catalogs.Len())
 	a.catalogs = make([]*template.Catalog, 0, scan.Catalogs.Len())
 	a.tiks = make([]*template.TIK, 0, scan.TextIndexByID.Len())
@@ -228,14 +297,201 @@ func (a *App) tryInitLocked() error {
 	sort.Slice(a.tiks, func(i, j int) bool {
 		return a.tiks[i].ID < a.tiks[j].ID
 	})
+}
 
+// populateDBFromScanLocked saves the current scan data into the index DB.
+func (a *App) populateDBFromScanLocked() error {
+	db := a.indexDB
+
+	if err := db.BeginTx(); err != nil {
+		return err
+	}
+	defer func() { _ = db.Rollback() }()
+
+	if err := db.Clear(); err != nil {
+		return err
+	}
+
+	// Save catalogs.
+	for i, c := range a.catalogs {
+		var messagesCorrupt int
+		if a.scan != nil {
+			for sc := range a.scan.Catalogs.SeqRead() {
+				if sc.ARB.Locale == a.localeTags[i] {
+					messagesCorrupt = int(sc.MessagesCorrupt.Load())
+					break
+				}
+			}
+		}
+		if err := db.InsertCatalog(indexdb.Catalog{
+			Locale:          c.Locale,
+			Name:            c.Name,
+			IsDefault:       c.Default,
+			MessagesCorrupt: messagesCorrupt,
+		}); err != nil {
+			return fmt.Errorf("inserting catalog %s: %w", c.Locale, err)
+		}
+	}
+
+	// Save TIKs and messages.
+	for _, tk := range a.tiks {
+		if err := db.InsertTIK(indexdb.TIK{
+			ID:          tk.ID,
+			Raw:         tk.TIK,
+			Description: tk.Description,
+		}); err != nil {
+			return fmt.Errorf("inserting TIK %s: %w", tk.ID, err)
+		}
+		for _, msg := range tk.ICU {
+			if err := db.InsertMessage(indexdb.Message{
+				TIKID:              tk.ID,
+				Locale:             msg.Catalog.Locale,
+				ICUMessage:         msg.Message,
+				OriginalICUMessage: msg.Message,
+				IsReadOnly:         msg.IsReadOnly,
+			}); err != nil {
+				return fmt.Errorf("inserting message %s/%s: %w",
+					tk.ID, msg.Catalog.Locale, err)
+			}
+		}
+	}
+
+	// Store checksum.
+	bundleDir := filepath.Join(a.dir, a.bundlePkgPath)
+	checksum, err := indexdb.ComputeARBChecksum(bundleDir)
+	if err != nil {
+		return fmt.Errorf("computing checksum: %w", err)
+	}
+	if err := db.SetChecksum(checksum); err != nil {
+		return err
+	}
+	if err := db.SetSchemaVersion(indexdb.SchemaVersion); err != nil {
+		return err
+	}
+
+	return db.Commit()
+}
+
+// loadFromDBLocked loads catalogs, TIKs and messages from the index DB
+// into in-memory template structures. This is the fast path that avoids
+// the expensive codeparse step.
+func (a *App) loadFromDBLocked() error {
+	db := a.indexDB
+
+	dbCatalogs, err := db.LoadCatalogs()
+	if err != nil {
+		return err
+	}
+	if len(dbCatalogs) == 0 {
+		return errors.New("no catalogs in index DB")
+	}
+
+	dbTIKs, err := db.LoadTIKs()
+	if err != nil {
+		return err
+	}
+
+	dbMessages, err := db.LoadMessages()
+	if err != nil {
+		return err
+	}
+
+	// Build catalog map for quick lookup.
+	a.catalogs = make([]*template.Catalog, 0, len(dbCatalogs))
+	a.localeTags = make([]language.Tag, 0, len(dbCatalogs))
+	catalogMap := make(map[string]*template.Catalog, len(dbCatalogs))
+	for _, dc := range dbCatalogs {
+		tag := language.MustParse(dc.Locale)
+		c := &template.Catalog{
+			Locale:  dc.Locale,
+			Name:    dc.Name,
+			Default: dc.IsDefault,
+		}
+		if dc.IsDefault {
+			a.numCorrupt = dc.MessagesCorrupt
+		}
+		a.catalogs = append(a.catalogs, c)
+		a.localeTags = append(a.localeTags, tag)
+		catalogMap[dc.Locale] = c
+	}
+
+	// Group messages by TIK ID.
+	msgsByTIK := make(map[string][]indexdb.Message, len(dbTIKs))
+	for _, m := range dbMessages {
+		msgsByTIK[m.TIKID] = append(msgsByTIK[m.TIKID], m)
+	}
+
+	// Build TIKs.
+	a.tiks = make([]*template.TIK, 0, len(dbTIKs))
+	for _, dt := range dbTIKs {
+		tmplTIK := &template.TIK{
+			ID:          dt.ID,
+			TIK:         dt.Raw,
+			Description: dt.Description,
+			ICU:         make([]*template.ICUMessage, 0, len(a.catalogs)),
+		}
+		for _, dm := range msgsByTIK[dt.ID] {
+			cat := catalogMap[dm.Locale]
+			if cat == nil {
+				continue
+			}
+			changed := dm.ICUMessage != dm.OriginalICUMessage
+			tmplMsg := &template.ICUMessage{
+				ID:         dt.ID,
+				Catalog:    cat,
+				Message:    dm.ICUMessage,
+				IsReadOnly: dm.IsReadOnly,
+				Changed:    changed,
+			}
+			if changed {
+				tmplMsg.MessageOriginal = dm.OriginalICUMessage
+				a.changed = append(a.changed, tmplMsg)
+			}
+			// Validate ICU message on load.
+			if tmplMsg.Message != "" {
+				loc := language.MustParse(dm.Locale)
+				a.icuTokBuffer = a.icuTokBuffer[:0]
+				var icuErr error
+				a.icuTokBuffer, icuErr = a.icuTokenizer.Tokenize(
+					loc, a.icuTokBuffer, tmplMsg.Message,
+				)
+				if icuErr != nil {
+					tmplMsg.Error = fmt.Sprintf("at index %d: %v",
+						a.icuTokenizer.Pos(), icuErr)
+				} else {
+					tmplMsg.IncompleteReports = icu.AnalysisReport(
+						loc, tmplMsg.Message, a.icuTokBuffer,
+						codeparse.ICUSelectOptions,
+					)
+				}
+			}
+			tmplTIK.ICU = append(tmplTIK.ICU, tmplMsg)
+		}
+		a.tiks = append(a.tiks, tmplTIK)
+	}
+
+	// TIKs are already sorted by ID from the DB query.
 	return nil
 }
 
 func (a *App) SetDir(dir string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+
+	// Close the old DB and open a new one for the new directory.
+	if a.indexDB != nil {
+		_ = a.indexDB.Close()
+		a.indexDB = nil
+	}
 	a.dir = dir
+	if dir != "" {
+		dbPath := filepath.Join(dir, ".toki", "index.db")
+		db, err := indexdb.Open(dbPath)
+		if err == nil {
+			a.indexDB = db
+		}
+	}
+
 	return a.tryInitLocked()
 }
 
@@ -361,6 +617,11 @@ func (a *App) POSTSet(
 			icuMsg.Message = newMessage
 			a.changed = append(a.changed, icuMsg)
 		}
+
+		// Persist to index DB.
+		if a.indexDB != nil {
+			_ = a.indexDB.UpdateMessage(id, locale, newMessage)
+		}
 	}
 
 	return dispatch(EventUpdated{})
@@ -417,6 +678,10 @@ func (a *App) POSTReset(
 		a.changed = slices.DeleteFunc(a.changed, func(m *template.ICUMessage) bool {
 			return m == icuMsg
 		})
+		// Persist reset to index DB (restore original message).
+		if a.indexDB != nil {
+			_ = a.indexDB.UpdateMessage(id, locale, icuMsg.Message)
+		}
 	}
 
 	return dispatch(
@@ -442,50 +707,24 @@ func (a *App) POSTApplyChanges(
 	if !a.canApplyChangesLocked() {
 		return httperr.BadRequest
 	}
-	type ARBFile struct {
-		*arb.File
-		AbsolutePath string
-		Changed      bool
-	}
 
-	arbFiles := make(map[string]ARBFile, a.scan.Catalogs.Len())
-	for c := range a.scan.Catalogs.Seq() {
-		arbFiles[c.ARB.Locale.String()] = ARBFile{
-			File:         c.ARB,
-			AbsolutePath: c.ARBFilePath,
-		}
-	}
+	changed := make([]*template.ICUMessage, len(a.changed))
+	copy(changed, a.changed)
 
-	for _, c := range a.changed {
-		arbFile := arbFiles[c.Catalog.Locale]
-		arbFile.Changed = true
-		m := arbFile.Messages
-		arbMsg := m[c.ID]
-		arbMsg.ICUMessage = c.Message
-		m[c.ID] = arbMsg
-		arbFiles[c.Catalog.Locale] = arbFile
-	}
-
-	for _, arbFile := range arbFiles {
-		if !arbFile.Changed {
-			continue
-		}
-		f, err := os.OpenFile(arbFile.AbsolutePath, os.O_WRONLY|os.O_TRUNC, 0o644)
-		if err != nil {
-			return fmt.Errorf("opening arb file: %w", err)
-		}
-		err = arb.Encode(f, arbFile.File, "\t")
-		_ = f.Close()
-		if err != nil {
-			return fmt.Errorf("encoding arb file: %w", err)
-		}
-	}
-
-	if err := a.tryInitLocked(); err != nil {
+	if err := a.doBuildBundleLocked(changed); err != nil {
 		return err
 	}
 
 	return dispatch(EventUpdated{})
+}
+
+// clearBuildResultLocked clears stale build results so the build-bundle
+// page doesn't show an old result when revisited later.
+func (a *App) clearBuildResultLocked() {
+	if !a.building {
+		a.buildDuration = 0
+		a.buildErr = ""
+	}
 }
 
 // PageIndex is /
@@ -498,10 +737,20 @@ func (p PageIndex) GET(
 	redirect string,
 	err error,
 ) {
+	if p.App.IsLoading() {
+		return template.PageLoading(), "", nil
+	}
+
 	p.App.mu.Lock()
 	defer p.App.mu.Unlock()
 
-	if p.App.dir == "" || p.App.initErr != "" {
+	if p.App.building {
+		return nil, href.PageBuildBundle(), nil
+	}
+
+	p.App.clearBuildResultLocked()
+
+	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
 		return nil, href.PageProjectDir(), nil
 	}
 
@@ -603,6 +852,20 @@ func (a *App) buildDashboardStats() template.DashboardStats {
 	return s
 }
 
+// nativeCatalogCorruptCount returns the MessagesCorrupt count from the scan's
+// native catalog. Returns 0 if scan is nil or no native catalog exists.
+func (a *App) nativeCatalogCorruptCount() int {
+	if a.scan == nil {
+		return 0
+	}
+	for c := range a.scan.Catalogs.SeqRead() {
+		if c.ARB.Locale == a.scan.DefaultLocale {
+			return int(c.MessagesCorrupt.Load())
+		}
+	}
+	return 0
+}
+
 // PageTIKs is /tiks
 type PageTIKs struct{ App *App }
 
@@ -622,10 +885,22 @@ func (p PageTIKs) GET(
 	enableBackgroundStreaming = true
 	disableRefreshAfterHidden = true
 
+	if p.App.IsLoading() {
+		body = template.PageLoading()
+		return
+	}
+
 	p.App.mu.Lock()
 	defer p.App.mu.Unlock()
 
-	if p.App.dir == "" || p.App.initErr != "" {
+	if p.App.building {
+		redirect = href.PageBuildBundle()
+		return
+	}
+
+	p.App.clearBuildResultLocked()
+
+	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
 		redirect = href.PageProjectDir()
 		return
 	}
@@ -670,7 +945,11 @@ func (p PageTIKs) OnUpdated(
 	p.App.mu.Lock()
 	defer p.App.mu.Unlock()
 
-	if p.App.dir == "" || p.App.initErr != "" {
+	if p.App.building {
+		return sse.ExecuteScript(navigate(href.PageBuildBundle()))
+	}
+
+	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
 		return nil
 	}
 
@@ -721,7 +1000,7 @@ func (p PageTIKs) POSTFilter(
 	p.App.mu.Lock()
 	defer p.App.mu.Unlock()
 
-	if p.App.dir == "" || p.App.initErr != "" {
+	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
 		return httperr.BadRequest
 	}
 
@@ -785,7 +1064,7 @@ func (p PageTIKs) handleScroll(
 	p.App.mu.Lock()
 	defer p.App.mu.Unlock()
 
-	if p.App.dir == "" || p.App.initErr != "" {
+	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
 		return httperr.BadRequest
 	}
 
@@ -840,6 +1119,7 @@ type PageProjectDir struct{ App *App }
 
 func (p PageProjectDir) GET(r *http.Request) (
 	body templ.Component,
+	redirect string,
 	enableBackgroundStreaming bool,
 	disableRefreshAfterHidden bool,
 	err error,
@@ -849,7 +1129,13 @@ func (p PageProjectDir) GET(r *http.Request) (
 
 	p.App.mu.Lock()
 	defer p.App.mu.Unlock()
-	body = template.PageProjectDir(p.App.dir, p.App.initErr, len(p.App.changed))
+
+	if p.App.building {
+		redirect = href.PageBuildBundle()
+		return
+	}
+
+	body = template.PageProjectDir(p.App.dir, p.App.initErr, len(p.App.changed), p.App.numCorrupt)
 	return
 }
 
@@ -901,10 +1187,22 @@ func (p PageTIK) GET(
 	enableBackgroundStreaming = true
 	disableRefreshAfterHidden = true
 
+	if p.App.IsLoading() {
+		body = template.PageLoading()
+		return
+	}
+
 	p.App.mu.Lock()
 	defer p.App.mu.Unlock()
 
-	if p.App.dir == "" || p.App.initErr != "" {
+	if p.App.building {
+		redirect = href.PageBuildBundle()
+		return
+	}
+
+	p.App.clearBuildResultLocked()
+
+	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
 		redirect = href.PageProjectDir()
 		return
 	}
@@ -954,6 +1252,10 @@ func (p PageTIK) OnUpdated(
 	p.App.mu.Lock()
 	defer p.App.mu.Unlock()
 
+	if p.App.building {
+		return sse.ExecuteScript(navigate(href.PageBuildBundle()))
+	}
+
 	instID := p.App.streamInst[streamID]
 	vs := p.App.views[instID]
 	if vs == nil || vs.tikID == "" {
@@ -998,10 +1300,228 @@ func (PageTIK) OnReset(
 // PageSettings is /settings
 type PageSettings struct{ App *App }
 
-func (PageSettings) GET(
+func (p PageSettings) GET(
 	r *http.Request,
-) (body templ.Component, err error) {
-	return template.PageSettings(), nil
+) (body templ.Component, redirect string, err error) {
+	p.App.mu.Lock()
+	building := p.App.building
+	p.App.mu.Unlock()
+	if building {
+		return nil, href.PageBuildBundle(), nil
+	}
+	return template.PageSettings(), "", nil
+}
+
+// PageBuildBundle is /build-bundle
+type PageBuildBundle struct{ App *App }
+
+func (p PageBuildBundle) GET(
+	r *http.Request,
+) (
+	body templ.Component,
+	redirect string,
+	enableBackgroundStreaming bool,
+	disableRefreshAfterHidden bool,
+	err error,
+) {
+	enableBackgroundStreaming = true
+	disableRefreshAfterHidden = true
+
+	if p.App.IsLoading() {
+		body = template.PageLoading()
+		return
+	}
+
+	p.App.mu.Lock()
+	defer p.App.mu.Unlock()
+
+	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
+		redirect = href.PageProjectDir()
+		return
+	}
+
+	state := p.App.buildBundleStateLocked()
+
+	// If not building and no result to show, redirect to dashboard.
+	if !state.Building && state.Duration == 0 && state.Err == "" {
+		if len(p.App.changed) == 0 || !p.App.canApplyChangesLocked() {
+			redirect = href.PageIndex()
+			return
+		}
+		// Show "Building..." — the actual build starts in StreamOpen
+		// once the SSE stream is connected, ensuring the user sees
+		// the loading state before the build begins.
+		state.Building = true
+	}
+
+	body = template.PageBuildBundle(state)
+	return
+}
+
+func (p PageBuildBundle) StreamOpen(
+	r *http.Request,
+	streamID uint64,
+	signals struct {
+		InstanceID string `json:"instance_id"`
+	},
+) error {
+	p.App.mu.Lock()
+	defer p.App.mu.Unlock()
+	p.App.registerStreamLocked(streamID, signals.InstanceID, viewState{})
+
+	// Start the build now that the SSE stream is connected.
+	// This guarantees the client sees the loading state before the build runs.
+	if !p.App.building && p.App.buildDuration == 0 && p.App.buildErr == "" &&
+		len(p.App.changed) > 0 && p.App.canApplyChangesLocked() {
+		p.App.startBuildBundleLocked()
+	}
+	return nil
+}
+
+func (p PageBuildBundle) StreamClose(r *http.Request, streamID uint64) error {
+	p.App.mu.Lock()
+	defer p.App.mu.Unlock()
+	p.App.unregisterStreamLocked(streamID)
+	return nil
+}
+
+func (p PageBuildBundle) OnUpdated(
+	event EventUpdated,
+	sse *datastar.ServerSentEventGenerator,
+	streamID uint64,
+) error {
+	p.App.mu.Lock()
+	defer p.App.mu.Unlock()
+
+	state := p.App.buildBundleStateLocked()
+	return sse.PatchElementTempl(template.PageBuildBundle(state))
+}
+
+func (a *App) buildBundleStateLocked() template.BuildBundleState {
+	return template.BuildBundleState{
+		Building:     a.building,
+		Err:          a.buildErr,
+		Duration:     a.buildDuration,
+		TotalChanges: len(a.changed),
+	}
+}
+
+// startBuildBundleLocked kicks off the bundle build in a background goroutine.
+// Must be called with mu held. The goroutine acquires mu itself for the heavy work.
+func (a *App) startBuildBundleLocked() {
+	a.building = true
+	a.buildErr = ""
+	a.buildDuration = 0
+
+	// Snapshot what we need before releasing the lock.
+	changed := make([]*template.ICUMessage, len(a.changed))
+	copy(changed, a.changed)
+
+	// Notify all SSE streams so clients on other pages redirect
+	// to the build-bundle page.
+	if a.NotifyUpdated != nil {
+		a.NotifyUpdated()
+	}
+
+	go a.runBuildBundle(changed)
+}
+
+func (a *App) runBuildBundle(changed []*template.ICUMessage) {
+	start := time.Now()
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	defer func() {
+		a.building = false
+		a.buildDuration = time.Since(start)
+		// Notify SSE streams so the build-bundle page updates.
+		if a.NotifyUpdated != nil {
+			a.NotifyUpdated()
+		}
+	}()
+
+	if err := a.doBuildBundleLocked(changed); err != nil {
+		a.buildErr = err.Error()
+	}
+}
+
+// doBuildBundleLocked performs the actual build. Caller holds mu.
+func (a *App) doBuildBundleLocked(changed []*template.ICUMessage) error {
+	absBundlePkg := filepath.Join(a.dir, a.bundlePkgPath)
+
+	// Step 1: Clean stale generated Go files so codeparse can succeed.
+	if a.CleanGenerated != nil {
+		if err := a.CleanGenerated(absBundlePkg); err != nil {
+			return fmt.Errorf("cleaning generated files: %w", err)
+		}
+	}
+
+	// Step 2: Run codeparse (reads current .arb files from disk).
+	parser := codeparse.NewParser(a.hasher, a.tikParser, a.tikICUTranslator, true)
+	scan, err := parser.Parse(a.env, a.dir, "./...", a.bundlePkgPath, false)
+	if err != nil {
+		return fmt.Errorf("analyzing source: %w", err)
+	}
+
+	// Step 3: Apply changed messages to the scan's ARB data.
+	type arbFileEntry struct {
+		*arb.File
+		AbsolutePath string
+		Changed      bool
+	}
+	arbFiles := make(map[string]arbFileEntry, scan.Catalogs.Len())
+	for c := range scan.Catalogs.Seq() {
+		arbFiles[c.ARB.Locale.String()] = arbFileEntry{
+			File:         c.ARB,
+			AbsolutePath: c.ARBFilePath,
+		}
+	}
+	for _, c := range changed {
+		af := arbFiles[c.Catalog.Locale]
+		af.Changed = true
+		msg := af.Messages[c.ID]
+		msg.ICUMessage = c.Message
+		af.Messages[c.ID] = msg
+		arbFiles[c.Catalog.Locale] = af
+	}
+
+	// Step 4: Write updated .arb files.
+	for _, af := range arbFiles {
+		if !af.Changed {
+			continue
+		}
+		f, err := os.OpenFile(af.AbsolutePath, os.O_WRONLY|os.O_TRUNC, 0o644)
+		if err != nil {
+			return fmt.Errorf("opening arb file: %w", err)
+		}
+		err = arb.Encode(f, af.File, "\t")
+		_ = f.Close()
+		if err != nil {
+			return fmt.Errorf("encoding arb file: %w", err)
+		}
+	}
+
+	// Step 5: Generate Go code from the scan (which has the updated messages).
+	if a.GenerateGoBundle != nil {
+		if err := a.GenerateGoBundle(absBundlePkg, scan); err != nil {
+			return fmt.Errorf("generating Go bundle: %w", err)
+		}
+	}
+
+	// Step 6: Rebuild in-memory state from the scan.
+	a.initErr = ""
+	a.changed = nil
+	a.scan = scan
+	a.buildTemplateDataFromScanLocked()
+	a.numCorrupt = a.nativeCatalogCorruptCount()
+
+	if a.indexDB != nil {
+		if err := a.populateDBFromScanLocked(); err != nil {
+			return fmt.Errorf("populating index DB: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // Helper methods on App (must be called with mu held).
@@ -1056,6 +1576,112 @@ func normalizeFilterType(filterType string) string {
 		return "all"
 	}
 	return filterType
+}
+
+// RepairCorrupt repairs corrupt native locale messages by populating them
+// from the TIK, writing the repaired ARB, and regenerating Go code.
+// Existing unsaved user changes on other messages are preserved.
+func (a *App) RepairCorrupt() error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if a.numCorrupt == 0 {
+		return nil
+	}
+
+	// Snapshot existing user changes before repair rebuilds state.
+	type savedChange struct {
+		tikID, locale, message string
+	}
+	var userChanges []savedChange
+	for _, c := range a.changed {
+		userChanges = append(userChanges, savedChange{
+			tikID:   c.ID,
+			locale:  c.Catalog.Locale,
+			message: c.Message,
+		})
+	}
+
+	// Parse source to get a scan (needed for repair).
+	parser := codeparse.NewParser(a.hasher, a.tikParser, a.tikICUTranslator, true)
+	scan, err := parser.Parse(a.env, a.dir, "./...", a.bundlePkgPath, false)
+	if err != nil {
+		return fmt.Errorf("parsing source: %w", err)
+	}
+
+	// Fix corrupt messages in memory.
+	repaired := bundlerepair.Repair(scan, a.tikICUTranslator, a.icuTokenizer)
+	if len(repaired) == 0 {
+		return nil
+	}
+
+	// Write the repaired native ARB to disk.
+	for c := range scan.Catalogs.SeqRead() {
+		if c.ARB.Locale != scan.DefaultLocale {
+			continue
+		}
+		f, err := os.OpenFile(c.ARBFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+		if err != nil {
+			return fmt.Errorf("writing ARB: %w", err)
+		}
+		err = arb.Encode(f, c.ARB, "\t")
+		_ = f.Close()
+		if err != nil {
+			return fmt.Errorf("encoding ARB: %w", err)
+		}
+		break
+	}
+
+	// Regenerate Go code from the repaired scan.
+	if a.GenerateGoBundle != nil {
+		absBundlePkg := filepath.Join(a.dir, a.bundlePkgPath)
+		if err := a.GenerateGoBundle(absBundlePkg, scan); err != nil {
+			return fmt.Errorf("generating Go bundle: %w", err)
+		}
+	}
+
+	// Re-parse to get a clean scan (with correct checksums, tokens, etc.).
+	scan, err = parser.Parse(a.env, a.dir, "./...", a.bundlePkgPath, false)
+	if err != nil {
+		return fmt.Errorf("re-parsing after repair: %w", err)
+	}
+
+	// Rebuild in-memory state from the repaired scan.
+	a.scan = scan
+	a.changed = nil
+	a.buildTemplateDataFromScanLocked()
+	a.numCorrupt = a.nativeCatalogCorruptCount()
+
+	if a.indexDB != nil {
+		if err := a.populateDBFromScanLocked(); err != nil {
+			return fmt.Errorf("populating index DB: %w", err)
+		}
+	}
+
+	// Restore user changes that were not part of the repair.
+	for _, sc := range userChanges {
+		for _, tk := range a.tiks {
+			if tk.ID != sc.tikID {
+				continue
+			}
+			for _, msg := range tk.ICU {
+				if msg.Catalog.Locale != sc.locale {
+					continue
+				}
+				msg.Changed = true
+				msg.MessageOriginal = msg.Message
+				msg.Message = sc.message
+				a.changed = append(a.changed, msg)
+				if a.indexDB != nil {
+					_ = a.indexDB.UpdateMessage(sc.tikID, sc.locale, sc.message)
+				}
+				break
+			}
+			break
+		}
+	}
+
+	return nil
 }
 
 func (a *App) canApplyChangesLocked() bool {

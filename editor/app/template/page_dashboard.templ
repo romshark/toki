@@ -199,6 +199,40 @@ templ PageDashboard(stats DashboardStats) {
 							</section>
 						</a>
 					</div>
+					if stats.TotalChanges > 0 {
+						<div class="card build-bundle-card">
+							<header>
+								<h3>
+									@iconSave()
+									Build Bundle
+								</h3>
+							</header>
+							<section>
+								<p>
+									You have { strfmt.Int(stats.TotalChanges) } unsaved
+									{ strfmt.ChangeWord(stats.TotalChanges) }.
+									Build the bundle to update .arb files and regenerate Go code.
+								</p>
+								<button
+									class="btn-primary"
+									if !stats.CanApplyChanges {
+										disabled
+									}
+									onclick="window.location='/build-bundle/'"
+								>
+									@iconSave()
+									Build Bundle
+								</button>
+								if !stats.CanApplyChanges {
+									<div class="alert alert-destructive">
+										<section>
+											Fix all invalid ICU messages before building.
+										</section>
+									</div>
+								}
+							</section>
+						</div>
+					}
 					<h2 id="locales">@iconLanguages() Locales</h2>
 					<div class="dashboard-grid">
 						for _, ls := range stats.Locales {

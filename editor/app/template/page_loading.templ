@@ -1,0 +1,25 @@
+package template
+
+templ PageLoading() {
+	<div id="page-loading" class="page-center">
+		<meta http-equiv="refresh" content="1"/>
+		<div class="card">
+			<header>
+				<h1>Toki Editor</h1>
+			</header>
+			<section>
+				<div class="loading-screen">
+					<div class="loading-dots">
+						<span></span>
+						<span></span>
+						<span></span>
+					</div>
+					<p>Rebuilding index database&hellip;</p>
+					<p class="loading-hint">
+						This may take a moment for large codebases.
+					</p>
+				</div>
+			</section>
+		</div>
+	</div>
+}

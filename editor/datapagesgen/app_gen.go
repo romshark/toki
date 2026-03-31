@@ -504,6 +504,12 @@ func MessageBrokerStreamSubjects() []string {
 	}
 }
 
+func evSubjPageBuildBundle() []string {
+	return []string{
+		EvSubjUpdated,
+	}
+}
+
 func evSubjPageTIK() []string {
 	return []string{
 		EvSubjUpdated,
@@ -520,6 +526,12 @@ func evSubjPageTIKs() []string {
 
 func setupHandlers(s *Server) {
 	// Pages
+	s.mux.HandleFunc(
+		"GET /build-bundle/{$}",
+		s.handlePageBuildBundleGET)
+	s.mux.HandleFunc(
+		"GET /build-bundle/_$/{$}",
+		s.handlePageBuildBundleGETStream)
 	s.mux.HandleFunc(
 		"GET /",
 		s.handlePageIndexGET)
@@ -702,6 +714,92 @@ func (s *Server) handlePOSTApplyChanges(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+func (s *Server) handlePageBuildBundleGET(w http.ResponseWriter, r *http.Request) {
+	p := app.PageBuildBundle{
+		App: s.app,
+	}
+	body, redirect, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(r)
+	if err != nil {
+		s.httpErrIntern(w, r, nil, "handling PageBuildBundle.GET", err)
+		return
+	}
+	if httpRedirect(w, r, redirect, 0) {
+		return
+	}
+	genericHead := s.app.Head(r)
+
+	bodyAttrs := func(w http.ResponseWriter) {
+		if !disableRefreshAfterHidden {
+			writeBodyAttrOnVisibilityChange(w)
+		}
+	}
+
+	bodySuffix := func(w http.ResponseWriter) {
+
+		_, _ = io.WriteString(w, `data-init="@get('/build-bundle/_$/'`)
+		if enableBackgroundStreaming {
+			_, _ = io.WriteString(w, `,{openWhenHidden:true})"`)
+		} else {
+			_, _ = io.WriteString(w, `)"`)
+		}
+	}
+
+	if err := s.writeHTML(
+		w, r, genericHead, nil, body, bodyAttrs, bodySuffix,
+	); err != nil {
+		s.logErr("rendering PageBuildBundle", err)
+		return
+	}
+}
+
+func (s *Server) handlePageBuildBundleGETStream(w http.ResponseWriter, r *http.Request) {
+	if !s.checkIsDSReq(w, r) {
+		return
+	}
+
+	var signals struct {
+		InstanceID string `json:"instance_id"`
+	}
+	if err := datastar.ReadSignals(r, &signals); err != nil {
+		s.httpErrBad(w, "reading signals", err)
+		return
+	}
+
+	p := app.PageBuildBundle{
+		App: s.app,
+	}
+	s.handleStreamRequest(w, r, evSubjPageBuildBundle(),
+		func(
+			streamID uint64,
+			sse *datastar.ServerSentEventGenerator,
+		) error {
+			return p.StreamOpen(r, streamID, signals)
+		},
+		func(streamID uint64) {
+			if err := p.StreamClose(r, streamID); err != nil {
+				s.logErr("handling PageBuildBundle.StreamClose", err)
+			}
+		},
+		func(
+			streamID uint64,
+			sse *datastar.ServerSentEventGenerator, ch <-chan msgbroker.Message,
+		) {
+			for msg := range ch {
+				switch msg.Subject {
+				case EvSubjUpdated:
+					var e app.EventUpdated
+					if err := json.Unmarshal(msg.Data, &e); err != nil {
+						s.logErr("unmarshaling EventUpdated JSON", err)
+						continue
+					}
+					if err := p.OnUpdated(e, sse, streamID); err != nil {
+						s.logErr("handling PageBuildBundle.OnUpdated", err)
+					}
+				}
+			}
+		})
+}
+
 func (s *Server) handlePageIndexGET(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
@@ -737,9 +835,12 @@ func (s *Server) handlePageProjectDirGET(w http.ResponseWriter, r *http.Request)
 	p := app.PageProjectDir{
 		App: s.app,
 	}
-	body, _, disableRefreshAfterHidden, err := p.GET(r)
+	body, redirect, _, disableRefreshAfterHidden, err := p.GET(r)
 	if err != nil {
 		s.httpErrIntern(w, r, nil, "handling PageProjectDir.GET", err)
+		return
+	}
+	if httpRedirect(w, r, redirect, 0) {
 		return
 	}
 	genericHead := s.app.Head(r)
@@ -787,9 +888,12 @@ func (s *Server) handlePageSettingsGET(w http.ResponseWriter, r *http.Request) {
 	p := app.PageSettings{
 		App: s.app,
 	}
-	body, err := p.GET(r)
+	body, redirect, err := p.GET(r)
 	if err != nil {
 		s.httpErrIntern(w, r, nil, "handling PageSettings.GET", err)
+		return
+	}
+	if httpRedirect(w, r, redirect, 0) {
 		return
 	}
 	genericHead := s.app.Head(r)

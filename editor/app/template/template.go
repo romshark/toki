@@ -1,5 +1,10 @@
 package template
 
+import (
+	"fmt"
+	"time"
+)
+
 // DashboardStats holds statistics for the dashboard page.
 type DashboardStats struct {
 	Dir             string
@@ -85,4 +90,20 @@ type Catalog struct {
 	Locale  string
 	Name    string // e.g. "German", "English"
 	Default bool
+}
+
+// BuildBundleState holds the current state for the build-bundle page.
+type BuildBundleState struct {
+	Building     bool
+	Err          string
+	Duration     time.Duration
+	TotalChanges int
+}
+
+// FmtDuration formats a duration for display.
+func FmtDuration(d time.Duration) string {
+	if d < time.Second {
+		return fmt.Sprintf("%dms", d.Milliseconds())
+	}
+	return fmt.Sprintf("%.1fs", d.Seconds())
 }

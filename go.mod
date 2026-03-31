@@ -6,6 +6,7 @@ require (
 	github.com/a-h/templ v0.3.1001
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/cli/browser v1.3.0
+	github.com/cvilsmeier/sqinn-go/v2 v2.1.3
 	github.com/fatih/color v1.19.0
 	github.com/romshark/datapages v0.8.2
 	github.com/romshark/icumsg v0.3.2
