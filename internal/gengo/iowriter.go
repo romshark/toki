@@ -22,6 +22,9 @@ func (w *Writer) writeFunc(id, icuMsg string, tokens []icumsg.Token) {
 	endIndex := len(w.t)
 	if s := w.literalConcat(endIndex); s != "" {
 		w.printf("return wrs(w, %q)\n", unescapeICULiteral(s))
+	} else if endIndex == 0 {
+		// No tokens but non-empty message. Write raw ICU as literal.
+		w.printf("return wrs(w, %q)\n", icuMsg)
 	} else {
 		w.println("var n int;")
 		w.writeExpr(endIndex)

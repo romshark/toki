@@ -177,11 +177,11 @@ func (g *Generate) Run(
 		scan.Catalogs.Append(nativeCatalog)
 	}
 
-	// Check for new messages.
+	// Check for new messages and repair corrupt native messages.
 	for id, index := range scan.TextIndexByID.SeqRead() {
+		text := scan.Texts.At(index)
 		if _, ok := nativeARB.Messages[id]; !ok {
-			// Text not in native catalog.
-			text := scan.Texts.At(index)
+			// Text not in native catalog. Add it.
 			result.NewTexts = append(result.NewTexts, text)
 			newMsg, err := g.newARBMsg(scan.DefaultLocale, text)
 			if err != nil {
@@ -197,39 +197,34 @@ func (g *Generate) Run(
 			); incomplete {
 				nativeCatalog.MessagesIncomplete.Add(1)
 			}
-			continue
-		}
-		// Repair corrupt native locale messages:
-		//  1. Empty — always repopulate from TIK.
-		//  2. Locked mismatch — ProducesCompleteICU is true but ICU differs.
-		text := scan.Texts.At(index)
-		msg := nativeARB.Messages[id]
-		expectedICU := g.tikICUTranslator.TIK2ICU(text.TIK)
-		needsRepair := msg.ICUMessage == "" ||
-			(tikutil.ProducesCompleteICU(scan.DefaultLocale, text.TIK) &&
-				msg.ICUMessage != expectedICU)
-		if needsRepair {
-			newMsg, err := g.newARBMsg(scan.DefaultLocale, text)
-			if err != nil {
-				result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
-				return result
+		} else {
+			// Repair corrupt native locale messages:
+			//  1. Empty - always repopulate from TIK.
+			//  2. Locked mismatch - ProducesCompleteICU is true but ICU differs.
+			msg := nativeARB.Messages[id]
+			expectedICU := g.tikICUTranslator.TIK2ICU(text.TIK)
+			needsRepair := msg.ICUMessage == "" ||
+				(tikutil.ProducesCompleteICU(scan.DefaultLocale, text.TIK) &&
+					msg.ICUMessage != expectedICU)
+			if needsRepair {
+				newMsg, err := g.newARBMsg(scan.DefaultLocale, text)
+				if err != nil {
+					result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
+					return result
+				}
+				nativeARB.Messages[id] = newMsg
 			}
-			nativeARB.Messages[id] = newMsg
 		}
+
+		// Ensure the message exists in all non-native catalogs.
 		for catalog := range scan.Catalogs.SeqRead() {
-			// Check in all other catalogs.
 			if catalog.ARB.Locale == scan.DefaultLocale {
-				// Skip native catalog. It was already handled above.
 				continue
 			}
 			if _, ok := catalog.ARB.Messages[id]; ok {
 				continue
 			}
-			log.Warn("message missing in catalog",
-				slog.String("catalog", catalog.ARB.Locale.String()),
-				slog.String("id", id))
 			// Message missing in this catalog.
-			text := scan.Texts.At(index)
 			newMsg, err := g.newARBMsg(scan.DefaultLocale, text)
 			if err != nil {
 				result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
