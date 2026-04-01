@@ -74,6 +74,7 @@ type App struct {
 	localeTags       []language.Tag
 	changed          []*template.ICUMessage
 	numCorrupt       int // corrupt native locale messages (from scan or DB)
+	repairErr        string
 	initErr          string
 
 	// loading is true while the index DB is being rebuilt in the background.
@@ -104,7 +105,7 @@ type App struct {
 
 	// CleanGenerated deletes stale generated Go files and creates a minimal
 	// bundle so codeparse can succeed. Set by editor.Setup.
-	CleanGenerated func(bundlePkgPath string) error
+	CleanGenerated func(bundlePkgPath string, defaultLocale language.Tag) error
 
 	// GenerateGoBundle generates the full Go bundle from a scan.
 	// Set by editor.Setup.
@@ -1199,7 +1200,7 @@ func (p PageProjectDir) GET(r *http.Request) (
 		return
 	}
 
-	body = template.PageProjectDir(p.App.dir, p.App.initErr, len(p.App.changed), p.App.numCorrupt)
+	body = template.PageProjectDir(p.App.dir, p.App.initErr, p.App.repairErr, len(p.App.changed), p.App.numCorrupt)
 	return
 }
 
@@ -1515,7 +1516,7 @@ func (a *App) doBuildBundleLocked(changed []*template.ICUMessage) error {
 
 	// Step 1: Clean stale generated Go files so codeparse can succeed.
 	if a.CleanGenerated != nil {
-		if err := a.CleanGenerated(absBundlePkg); err != nil {
+		if err := a.CleanGenerated(absBundlePkg, a.scan.DefaultLocale); err != nil {
 			return fmt.Errorf("cleaning generated files: %w", err)
 		}
 	}
@@ -1645,14 +1646,23 @@ func normalizeFilterType(filterType string) string {
 // RepairCorrupt repairs corrupt native locale messages by populating them
 // from the TIK, writing the repaired ARB, and regenerating Go code.
 // Existing unsaved user changes on other messages are preserved.
-func (a *App) RepairCorrupt() error {
+// On failure, the error is stored in repairErr for display on the project-dir page.
+func (a *App) RepairCorrupt() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
+	a.repairErr = ""
+
 	if a.numCorrupt == 0 {
-		return nil
+		return
 	}
 
+	if err := a.repairCorruptLocked(); err != nil {
+		a.repairErr = err.Error()
+	}
+}
+
+func (a *App) repairCorruptLocked() error {
 	// Snapshot existing user changes before repair rebuilds state.
 	type savedChange struct {
 		tikID, locale, message string
@@ -1664,6 +1674,14 @@ func (a *App) RepairCorrupt() error {
 			locale:  c.Catalog.Locale,
 			message: c.Message,
 		})
+	}
+
+	// Clean stale generated Go files so codeparse can succeed.
+	absBundlePkg := filepath.Join(a.dir, a.bundlePkgPath)
+	if a.CleanGenerated != nil {
+		if err := a.CleanGenerated(absBundlePkg, a.scan.DefaultLocale); err != nil {
+			return fmt.Errorf("cleaning generated files: %w", err)
+		}
 	}
 
 	// Parse source to get a scan (needed for repair).
@@ -1699,7 +1717,6 @@ func (a *App) RepairCorrupt() error {
 
 	// Regenerate Go code from the repaired scan.
 	if a.GenerateGoBundle != nil {
-		absBundlePkg := filepath.Join(a.dir, a.bundlePkgPath)
 		if err := a.GenerateGoBundle(absBundlePkg, scan); err != nil {
 			return fmt.Errorf("generating Go bundle: %w", err)
 		}

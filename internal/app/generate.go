@@ -3,7 +3,6 @@ package app
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"go/format"
@@ -471,14 +470,12 @@ func prepareBundlePackageDir(bundlePkgPath string) error {
 // CleanGenerated deletes stale generated Go files and creates a minimal
 // empty bundle so the package compiles for codeparse. This handles the case
 // where existing generated code has compile errors.
-func CleanGenerated(bundlePkgPath string) error {
+//
+// defaultLocale must be the actual default locale of the bundle
+// (not guessed from ARB file order).
+func CleanGenerated(bundlePkgPath string, defaultLocale language.Tag) error {
 	if err := deleteAllTokiGeneratedFiles(bundlePkgPath); err != nil {
 		return fmt.Errorf("deleting stale generated files: %w", err)
-	}
-
-	defaultLocale, err := readDefaultLocaleFromARB(bundlePkgPath)
-	if err != nil {
-		return fmt.Errorf("reading default locale: %w", err)
 	}
 
 	emptyScan := codeparse.NewScan(defaultLocale, Version)
@@ -486,34 +483,6 @@ func CleanGenerated(bundlePkgPath string) error {
 		return fmt.Errorf("generating empty bundle: %w", err)
 	}
 	return nil
-}
-
-// readDefaultLocaleFromARB reads @@locale from the first .arb file found.
-func readDefaultLocaleFromARB(bundlePkgPath string) (language.Tag, error) {
-	entries, err := os.ReadDir(bundlePkgPath)
-	if err != nil {
-		return language.Und, err
-	}
-	for _, e := range entries {
-		if e.IsDir() || filepath.Ext(e.Name()) != ".arb" {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(bundlePkgPath, e.Name()))
-		if err != nil {
-			continue
-		}
-		var raw map[string]json.RawMessage
-		if err := json.Unmarshal(data, &raw); err != nil {
-			continue
-		}
-		if locRaw, ok := raw["@@locale"]; ok {
-			var loc string
-			if err := json.Unmarshal(locRaw, &loc); err == nil && loc != "" {
-				return language.MustParse(loc), nil
-			}
-		}
-	}
-	return language.Und, fmt.Errorf("no .arb file with @@locale found in %s", bundlePkgPath)
 }
 
 // GenerateBundle generates Go code from the scan data.

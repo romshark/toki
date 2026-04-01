@@ -7,7 +7,7 @@ import (
 	"github.com/romshark/toki/editor/datapagesgen/action"
 )
 
-templ PageProjectDir(dir string, errMsg string, numChanges int, numCorrupt int) {
+templ PageProjectDir(dir string, errMsg string, repairErr string, numChanges int, numCorrupt int) {
 	<div
 		id="page-project-dir"
 		class="page-center"
@@ -52,6 +52,9 @@ templ PageProjectDir(dir string, errMsg string, numChanges int, numCorrupt int) 
 									}
 									match what should have been generated from source code.
 								</p>
+								if repairErr != "" {
+									<p><strong>Repair failed:</strong> { repairErr }</p>
+								}
 								<a href="/repair/" class="btn-destructive">
 									Repair Bundle
 								</a>

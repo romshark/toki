@@ -17,6 +17,7 @@ import (
 	tokisqinn "github.com/romshark/toki/editor/sqinn"
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/log"
+	"golang.org/x/text/language"
 )
 
 type noopMetrics struct{}
@@ -25,7 +26,7 @@ func (noopMetrics) OnPublish(string)   {}
 func (noopMetrics) OnDeliveryDropped() {}
 
 // CleanGeneratedFunc deletes stale generated Go files and creates a minimal bundle.
-type CleanGeneratedFunc func(bundlePkgPath string) error
+type CleanGeneratedFunc func(bundlePkgPath string, defaultLocale language.Tag) error
 
 // GenerateBundleFunc generates Go code from a scan.
 type GenerateBundleFunc func(bundlePkgPath string, scan *codeparse.Scan) error
@@ -90,10 +91,7 @@ func Setup(
 	// Repairs are applied as changes (preserving existing unsaved edits)
 	// and redirect back to the dashboard.
 	s.Mux().HandleFunc("GET /repair/{$}", func(w http.ResponseWriter, r *http.Request) {
-		if err := a.RepairCorrupt(); err != nil {
-			http.Error(w, "Repair failed: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
+		a.RepairCorrupt()
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	})
 
