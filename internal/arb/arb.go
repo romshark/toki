@@ -126,7 +126,6 @@ var (
 	ErrMissingRequiredLocale = errors.New("missing required @@locale")
 	ErrInvalid               = errors.New("invalid")
 	ErrMalformedJSON         = errors.New("malformed JSON")
-	ErrUndefinedPlaceholder  = errors.New("undefined placeholder")
 )
 
 type Decoder struct {

@@ -15,6 +15,7 @@ templ PageProjectDir(dir string, errMsg string, numChanges int, numCorrupt int) 
 		data-signals:origfolder={ fmt.Sprintf("'%s'", dir) }
 		data-signals:haserror={ strfmt.Bool(errMsg != "") }
 		data-signals:confirmdiscard="false"
+		data-signals:opening="false"
 	>
 		<div class="card">
 			<header>
@@ -69,14 +70,18 @@ templ PageProjectDir(dir string, errMsg string, numChanges int, numCorrupt int) 
 					<button
 						class="btn-primary"
 						data-show="$folder!==$origfolder || $origfolder==='' || $haserror"
-						data-attr:disabled="$folder===''"
+						data-attr:disabled="$folder==='' || $opening"
+						data-class:btn-loading="$opening"
 						if numChanges > 0 {
 							data-on:click="$confirmdiscard=true"
 						} else {
-							data-on:click={ action.POSTPageProjectDirOpen() }
+							data-on:click={ action.POSTPageProjectDirOpen(
+								action.WithBefore("$opening=true"),
+							) }
 						}
 					>
-						Open Project
+						<span data-show="!$opening">Open Project</span>
+						<span class="btn-loading-label" style="display:none" data-show="$opening">@iconLoader() Opening&hellip;</span>
 					</button>
 				</div>
 			</section>
@@ -107,11 +112,14 @@ templ PageProjectDir(dir string, errMsg string, numChanges int, numCorrupt int) 
 						</button>
 						<button
 							class="btn-destructive"
+							data-attr:disabled="$opening"
+							data-class:btn-loading="$opening"
 							data-on:click={ action.POSTPageProjectDirOpen(
-								action.WithBefore("$confirmdiscard=false"),
+								action.WithBefore("$confirmdiscard=false;$opening=true"),
 							) }
 						>
-							Discard Changes
+							<span data-show="!$opening">Discard Changes</span>
+							<span class="btn-loading-label" style="display:none" data-show="$opening">@iconLoader() Opening&hellip;</span>
 						</button>
 					</footer>
 				</div>

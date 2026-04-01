@@ -1021,9 +1021,11 @@ func (s *Server) handlePageTIKsGET(w http.ResponseWriter, r *http.Request) {
 	var query struct {
 		Filter  string `query:"f" reflectsignal:"filtertype"`
 		Locales string `query:"l" reflectsignal:"shownlocales"`
+		Search  string `query:"q" reflectsignal:"searchquery"`
 	}
 	query.Filter = q.Get("f")
 	query.Locales = q.Get("l")
+	query.Search = q.Get("q")
 
 	p := app.PageTIKs{
 		App: s.app,
@@ -1050,6 +1052,10 @@ func (s *Server) handlePageTIKsGET(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, `data-signals:shownlocales="'`)
 		_, _ = io.WriteString(w, query.Locales)
 		_, _ = io.WriteString(w, `'"`)
+
+		_, _ = io.WriteString(w, `data-signals:searchquery="'`)
+		_, _ = io.WriteString(w, query.Search)
+		_, _ = io.WriteString(w, `'"`)
 	}
 
 	bodySuffix := func(w http.ResponseWriter) {
@@ -1064,6 +1070,7 @@ func (s *Server) handlePageTIKsGET(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, `data-effect="const params = new URLSearchParams();
 			if ($filtertype) params.set('f', $filtertype);
 			if ($shownlocales) params.set('l', $shownlocales);
+			if ($searchquery) params.set('q', $searchquery);
 			const query = params.toString();
 			window.history.replaceState(null, '', query ? '/tiks?' + query : '/tiks');
 		"`)
@@ -1085,6 +1092,7 @@ func (s *Server) handlePageTIKsGETStream(w http.ResponseWriter, r *http.Request)
 	var signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		SearchQuery string          `json:"searchquery"`
 		InstanceID  string          `json:"instance_id"`
 	}
 	if err := datastar.ReadSignals(r, &signals); err != nil {
@@ -1145,6 +1153,7 @@ func (s *Server) handlePageTIKsPOSTFilter(
 	var signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		SearchQuery string          `json:"searchquery"`
 		InstanceID  string          `json:"instance_id"`
 	}
 	if err := datastar.ReadSignals(r, &signals); err != nil {
@@ -1172,6 +1181,7 @@ func (s *Server) handlePageTIKsPOSTScrollDown(
 	var signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		SearchQuery string          `json:"searchquery"`
 		WindowStart int             `json:"windowstart"`
 		InstanceID  string          `json:"instance_id"`
 	}
@@ -1200,6 +1210,7 @@ func (s *Server) handlePageTIKsPOSTScrollUp(
 	var signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		SearchQuery string          `json:"searchquery"`
 		WindowStart int             `json:"windowstart"`
 		InstanceID  string          `json:"instance_id"`
 	}

@@ -1,6 +1,8 @@
 package template
 
 import (
+	"fmt"
+
 	"github.com/romshark/toki/editor/app/template/strfmt"
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
@@ -18,6 +20,7 @@ templ PageTIKs(data DataIndex) {
 		data-signals:resetdonelocale="''"
 		data-signals:instance_id="getOrCreateInstanceID('toki-editor-instance-id')"
 		data-signals:showlocales={ initShowLocalesSignal(data) }
+		data-signals:searchquery={ fmt.Sprintf("'%s'", data.SearchQuery) }
 		data-signals:windowstart={ strfmt.Int(data.WindowStart) }
 	>
 		<aside
@@ -29,7 +32,7 @@ templ PageTIKs(data DataIndex) {
 			@sidebarContent(data)
 		</aside>
 		<div id="main-area" class="main-area">
-			@navbar([]Breadcrumb{
+			@navbarSearch([]Breadcrumb{
 				{Label: "Dashboard", Href: href.PageIndex()},
 				{Label: "Messages"},
 			}, data.TotalChanges, data.CanApplyChanges)

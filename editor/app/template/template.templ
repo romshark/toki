@@ -74,6 +74,60 @@ templ navbar(breadcrumbs []Breadcrumb, totalChanges int, canApplyChanges bool) {
 	</nav>
 }
 
+templ navbarSearch(breadcrumbs []Breadcrumb, totalChanges int, canApplyChanges bool) {
+	<nav class="navbar">
+		<div class="navbar-left">
+			<button
+				class="btn-secondary btn-icon"
+				type="button"
+				onclick="toggleSidebar()"
+				aria-label="Toggle sidebar"
+			>
+				@iconMenu()
+			</button>
+			<ol class="breadcrumb" aria-label="Breadcrumb">
+				for _, bc := range breadcrumbs {
+					<li>
+						if bc.Href != "" {
+							//datapages:nolint // breadcrumb hrefs come from the href pkg
+							<a href={ templ.SafeURL(bc.Href) }>{ bc.Label }</a>
+						} else {
+							<span aria-current="page">{ bc.Label }</span>
+						}
+					</li>
+				}
+			</ol>
+		</div>
+		<div class="navbar-right">
+			<div class="navbar-search">
+				@iconSearch()
+				<input
+					type="search"
+					class="input"
+					placeholder="Search..."
+					data-bind:searchquery
+					data-on:input__debounce_300ms={ action.POSTPageTIKsFilter() }
+				/>
+			</div>
+			if totalChanges > 0 {
+				<button
+					class="btn-primary"
+					if !canApplyChanges {
+						disabled
+					}
+					onclick="window.location='/build-bundle/'"
+				>
+					@iconSave()
+					Build Bundle
+					<span class="badge badge-changed">
+						{ strfmt.Int(totalChanges) }
+					</span>
+				</button>
+			}
+		</div>
+	</nav>
+}
+
 templ sidebarHeader() {
 	<header>
 		<div class="sidebar-title">
@@ -182,7 +236,7 @@ templ sidebarContent(data DataIndex) {
 templ IndexContent(data DataIndex) {
 	@sidebarContent(data)
 	<div id="main-area" class="main-area">
-		@navbar([]Breadcrumb{
+		@navbarSearch([]Breadcrumb{
 			{Label: "Dashboard", Href: href.PageIndex()},
 			{Label: "Messages"},
 		}, data.TotalChanges, data.CanApplyChanges)

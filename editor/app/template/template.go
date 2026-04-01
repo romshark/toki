@@ -58,6 +58,7 @@ type DataIndex struct {
 	NumInvalid      int
 	TotalChanges    int
 	CanApplyChanges bool
+	SearchQuery     string
 }
 
 const DefaultWindowSize = 30

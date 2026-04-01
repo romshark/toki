@@ -75,7 +75,7 @@ func PageProjectDir(dir string, errMsg string, numChanges int, numCorrupt int) t
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" data-signals:confirmdiscard=\"false\"><div class=\"card\"><header><h1>Toki Project Directory</h1></header><section><div class=\"folder-picker\"><label><span>Project Folder</span> <input class=\"input\" type=\"text\" data-bind:folder placeholder=\"/path/to/your/project\"></label> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" data-signals:confirmdiscard=\"false\" data-signals:opening=\"false\"><div class=\"card\"><header><h1>Toki Project Directory</h1></header><section><div class=\"folder-picker\"><label><span>Project Folder</span> <input class=\"input\" type=\"text\" data-bind:folder placeholder=\"/path/to/your/project\"></label> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -95,7 +95,7 @@ func PageProjectDir(dir string, errMsg string, numChanges int, numCorrupt int) t
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(errMsg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 37, Col: 24}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 38, Col: 24}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -122,7 +122,7 @@ func PageProjectDir(dir string, errMsg string, numChanges int, numCorrupt int) t
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(strfmt.Int(numCorrupt))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 46, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 47, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -154,7 +154,7 @@ func PageProjectDir(dir string, errMsg string, numChanges int, numCorrupt int) t
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<button class=\"btn-primary\" data-show=\"$folder!==$origfolder || $origfolder==='' || $haserror\" data-attr:disabled=\"$folder===''\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<button class=\"btn-primary\" data-show=\"$folder!==$origfolder || $origfolder==='' || $haserror\" data-attr:disabled=\"$folder==='' || $opening\" data-class:btn-loading=\"$opening\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -169,9 +169,11 @@ func PageProjectDir(dir string, errMsg string, numChanges int, numCorrupt int) t
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var7 string
-			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(action.POSTPageProjectDirOpen())
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(action.POSTPageProjectDirOpen(
+				action.WithBefore("$opening=true"),
+			))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 76, Col: 54}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 80, Col: 8}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -182,58 +184,74 @@ func PageProjectDir(dir string, errMsg string, numChanges int, numCorrupt int) t
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, ">Open Project</button></div></section></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "><span data-show=\"!$opening\">Open Project</span> <span class=\"btn-loading-label\" style=\"display:none\" data-show=\"$opening\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = iconLoader().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "Opening&hellip;</span></button></div></section></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if numChanges > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<div class=\"modal-overlay\" style=\"display:none\" data-show=\"$confirmdiscard==='true'\"><div class=\"modal-card card\"><header><h3>Unsaved Changes</h3></header><section><p>You have ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"modal-overlay\" style=\"display:none\" data-show=\"$confirmdiscard==='true'\"><div class=\"modal-card card\"><header><h3>Unsaved Changes</h3></header><section><p>You have ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(strfmt.Int(numChanges))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 96, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 101, Col: 40}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, " unsaved ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, " unsaved ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(strfmt.ChangeWord(numChanges))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 97, Col: 38}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 102, Col: 38}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, ". Opening a new project will irreversibly discard them.</p></section><footer class=\"modal-actions\"><button class=\"btn-ghost\" data-on:click=\"$confirmdiscard=false\">Cancel</button> <button class=\"btn-destructive\" data-on:click=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, ". Opening a new project will irreversibly discard them.</p></section><footer class=\"modal-actions\"><button class=\"btn-ghost\" data-on:click=\"$confirmdiscard=false\">Cancel</button> <button class=\"btn-destructive\" data-attr:disabled=\"$opening\" data-class:btn-loading=\"$opening\" data-on:click=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(action.POSTPageProjectDirOpen(
-				action.WithBefore("$confirmdiscard=false"),
+				action.WithBefore("$confirmdiscard=false;$opening=true"),
 			))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 112, Col: 8}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 119, Col: 8}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\">Discard Changes</button></footer></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\"><span data-show=\"!$opening\">Discard Changes</span> <span class=\"btn-loading-label\" style=\"display:none\" data-show=\"$opening\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = iconLoader().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "Opening&hellip;</span></button></footer></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

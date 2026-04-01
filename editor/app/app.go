@@ -53,6 +53,7 @@ type viewState struct {
 	showLocales map[string]bool
 	tikID       string // only used by PageTIK streams
 	windowStart int
+	searchQuery string
 	refCount    int
 }
 
@@ -68,6 +69,7 @@ type App struct {
 	tikICUTranslator *tik.ICUTranslator
 	scan             *codeparse.Scan
 	tiks             []*template.TIK
+	tiksByID         map[string]*template.TIK
 	catalogs         []*template.Catalog
 	localeTags       []language.Tag
 	changed          []*template.ICUMessage
@@ -96,6 +98,9 @@ type App struct {
 
 	// Version is the Toki version string. Set by editor.Setup.
 	Version string
+
+	// SqinnPath is the path to the sqinn binary (with FTS5). Set by editor.Setup.
+	SqinnPath string
 
 	// CleanGenerated deletes stale generated Go files and creates a minimal
 	// bundle so codeparse can succeed. Set by editor.Setup.
@@ -187,7 +192,9 @@ func (a *App) tryInitLocked() error {
 		if err == nil && currentChecksum != "" {
 			storedChecksum, dbErr := a.indexDB.GetChecksum()
 			schemaOK := a.indexDB.GetSchemaVersion() == indexdb.SchemaVersion
-			if dbErr == nil && schemaOK && currentChecksum == storedChecksum {
+			storedVersion := a.indexDB.GetTokiVersion()
+			versionOK := storedVersion == a.Version && storedVersion != "dev"
+			if dbErr == nil && schemaOK && versionOK && currentChecksum == storedChecksum {
 				// Fast path: checksums and schema version match, load from DB.
 				if err := a.loadFromDBLocked(); err == nil {
 					return nil
@@ -301,6 +308,10 @@ func (a *App) buildTemplateDataFromScanLocked() {
 	sort.Slice(a.tiks, func(i, j int) bool {
 		return a.tiks[i].ID < a.tiks[j].ID
 	})
+	a.tiksByID = make(map[string]*template.TIK, len(a.tiks))
+	for _, tk := range a.tiks {
+		a.tiksByID[tk.ID] = tk
+	}
 }
 
 // populateDBFromScanLocked saves the current scan data into the index DB.
@@ -360,6 +371,21 @@ func (a *App) populateDBFromScanLocked() error {
 		}
 	}
 
+	// Populate FTS search index.
+	for _, tk := range a.tiks {
+		var sb strings.Builder
+		sb.WriteString(tk.ID)
+		sb.WriteByte(' ')
+		sb.WriteString(tk.TIK)
+		sb.WriteByte(' ')
+		sb.WriteString(tk.Description)
+		for _, msg := range tk.ICU {
+			sb.WriteByte(' ')
+			sb.WriteString(msg.Message)
+		}
+		_ = db.InsertSearchEntry(tk.ID, sb.String()) // best-effort
+	}
+
 	// Store checksum.
 	bundleDir := filepath.Join(a.dir, a.bundlePkgPath)
 	checksum, err := indexdb.ComputeARBChecksum(bundleDir)
@@ -370,6 +396,9 @@ func (a *App) populateDBFromScanLocked() error {
 		return err
 	}
 	if err := db.SetSchemaVersion(indexdb.SchemaVersion); err != nil {
+		return err
+	}
+	if err := db.SetTokiVersion(a.Version); err != nil {
 		return err
 	}
 
@@ -475,6 +504,10 @@ func (a *App) loadFromDBLocked() error {
 	}
 
 	// TIKs are already sorted by ID from the DB query.
+	a.tiksByID = make(map[string]*template.TIK, len(a.tiks))
+	for _, tk := range a.tiks {
+		a.tiksByID[tk.ID] = tk
+	}
 	return nil
 }
 
@@ -490,7 +523,7 @@ func (a *App) SetDir(dir string) error {
 	a.dir = dir
 	if dir != "" {
 		dbPath := filepath.Join(dir, ".toki", "index.db")
-		db, err := indexdb.Open(dbPath)
+		db, err := indexdb.Open(dbPath, a.SqinnPath)
 		if err == nil {
 			a.indexDB = db
 		}
@@ -899,6 +932,7 @@ func (p PageTIKs) GET(
 	query struct {
 		Filter  string `query:"f" reflectsignal:"filtertype"`
 		Locales string `query:"l" reflectsignal:"shownlocales"`
+		Search  string `query:"q" reflectsignal:"searchquery"`
 	},
 ) (
 	body templ.Component,
@@ -931,7 +965,7 @@ func (p PageTIKs) GET(
 	}
 
 	showLocales := parseLocalesParam(query.Locales)
-	data := p.App.buildFilteredDataIndex(query.Filter, showLocales, 0)
+	data := p.App.buildFilteredDataIndex(query.Filter, showLocales, 0, query.Search)
 	body = template.PageTIKs(data)
 	return
 }
@@ -942,6 +976,7 @@ func (p PageTIKs) StreamOpen(
 	signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		SearchQuery string          `json:"searchquery"`
 		InstanceID  string          `json:"instance_id"`
 	},
 ) error {
@@ -950,6 +985,7 @@ func (p PageTIKs) StreamOpen(
 	p.App.registerStreamLocked(streamID, signals.InstanceID, viewState{
 		filterType:  normalizeFilterType(signals.FilterType),
 		showLocales: signals.ShowLocales,
+		searchQuery: signals.SearchQuery,
 	})
 	return nil
 }
@@ -984,7 +1020,7 @@ func (p PageTIKs) OnUpdated(
 		return nil
 	}
 
-	data := p.App.buildFilteredDataIndex(vs.filterType, vs.showLocales, vs.windowStart)
+	data := p.App.buildFilteredDataIndex(vs.filterType, vs.showLocales, vs.windowStart, vs.searchQuery)
 	if err := sse.PatchElementTempl(template.IndexContent(data)); err != nil {
 		return err
 	}
@@ -1019,6 +1055,7 @@ func (p PageTIKs) POSTFilter(
 	signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		SearchQuery string          `json:"searchquery"`
 		InstanceID  string          `json:"instance_id"`
 	},
 ) error {
@@ -1033,17 +1070,17 @@ func (p PageTIKs) POSTFilter(
 	windowStart := 0
 	vs := p.App.views[signals.InstanceID]
 	if vs != nil {
-		// Reset window to 0 only when filter type changes.
-		// Locale toggles preserve the scroll position.
-		if vs.filterType != ft {
+		// Reset window to 0 when filter type or search query changes.
+		if vs.filterType != ft || vs.searchQuery != signals.SearchQuery {
 			vs.windowStart = 0
 		}
 		windowStart = vs.windowStart
 		vs.filterType = ft
 		vs.showLocales = signals.ShowLocales
+		vs.searchQuery = signals.SearchQuery
 	}
 
-	data := p.App.buildFilteredDataIndex(ft, signals.ShowLocales, windowStart)
+	data := p.App.buildFilteredDataIndex(ft, signals.ShowLocales, windowStart, signals.SearchQuery)
 	if err := sse.PatchElementTempl(template.IndexContent(data)); err != nil {
 		return err
 	}
@@ -1057,12 +1094,13 @@ func (p PageTIKs) POSTScrollDown(
 	signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		SearchQuery string          `json:"searchquery"`
 		WindowStart int             `json:"windowstart"`
 		InstanceID  string          `json:"instance_id"`
 	},
 ) error {
 	return p.handleScroll(sse, signals.FilterType, signals.ShowLocales,
-		signals.WindowStart, signals.InstanceID, false)
+		signals.SearchQuery, signals.WindowStart, signals.InstanceID, false)
 }
 
 // POSTScrollUp is /tiks/scroll-up/{$}
@@ -1072,18 +1110,19 @@ func (p PageTIKs) POSTScrollUp(
 	signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		SearchQuery string          `json:"searchquery"`
 		WindowStart int             `json:"windowstart"`
 		InstanceID  string          `json:"instance_id"`
 	},
 ) error {
 	return p.handleScroll(sse, signals.FilterType, signals.ShowLocales,
-		signals.WindowStart, signals.InstanceID, true)
+		signals.SearchQuery, signals.WindowStart, signals.InstanceID, true)
 }
 
 func (p PageTIKs) handleScroll(
 	sse *datastar.ServerSentEventGenerator,
 	filterType string, showLocales map[string]bool,
-	windowStart int, instanceID string,
+	searchQuery string, windowStart int, instanceID string,
 	scrollUp bool,
 ) error {
 	p.App.mu.Lock()
@@ -1098,7 +1137,7 @@ func (p PageTIKs) handleScroll(
 		vs.windowStart = windowStart
 	}
 
-	data := p.App.buildFilteredDataIndex(ft, showLocales, windowStart)
+	data := p.App.buildFilteredDataIndex(ft, showLocales, windowStart, searchQuery)
 
 	if scrollUp {
 		// Before morph: find the first visible card and record its viewport
@@ -1719,66 +1758,43 @@ func (a *App) canApplyChangesLocked() bool {
 	return true
 }
 
-// buildTIKForDisplay builds a full TIK with ICU messages for display,
-// filtering by shown locales and running ICU validation.
+// buildTIKForDisplay builds a TIK for display, filtering by shown locales.
+// Reads cached validation results from the ICUMessage (set at load/edit time).
 func (a *App) buildTIKForDisplay(
 	tk *template.TIK, showLocales map[string]bool,
 ) template.TIK {
-	isLocaleShown := func(locale string) bool {
-		if showLocales == nil {
-			return true
-		}
-		shown, ok := showLocales[locale]
-		return ok && shown
-	}
-
 	tmplTIK := template.TIK{
 		ID:          tk.ID,
 		TIK:         tk.TIK,
 		Description: tk.Description,
 		ICU:         make([]*template.ICUMessage, 0, len(a.catalogs)),
 	}
-	for catIndex, c := range a.catalogs {
-		if !isLocaleShown(c.Locale) {
-			continue
-		}
-		src := func() *template.ICUMessage {
-			for _, msg := range tk.ICU {
-				if msg.Catalog == c {
-					return msg
-				}
+	for _, c := range a.catalogs {
+		if showLocales != nil {
+			if shown, ok := showLocales[c.Locale]; !ok || !shown {
+				continue
 			}
-			return nil
-		}()
-
-		// Copy the message so display-time validation doesn't mutate
-		// the shared state used by canApplyChangesLocked/POSTSet.
-		m := *src
-		var icuErr error
-		a.icuTokBuffer = a.icuTokBuffer[:0]
-		a.icuTokBuffer, icuErr = a.icuTokenizer.Tokenize(
-			a.localeTags[catIndex], a.icuTokBuffer, m.Message,
-		)
-		if icuErr != nil {
-			tmplTIK.IsInvalid = true
-			m.Error = fmt.Sprintf("at index %d: %v", a.icuTokenizer.Pos(), icuErr)
 		}
-		m.IncompleteReports = icu.AnalysisReport(
-			a.localeTags[catIndex], m.Message, a.icuTokBuffer,
-			codeparse.ICUSelectOptions,
-		)
-		if len(m.IncompleteReports) != 0 {
-			tmplTIK.IsIncomplete = true
-			tmplTIK.IsInvalid = true
+		for _, msg := range tk.ICU {
+			if msg.Catalog != c {
+				continue
+			}
+			if msg.Error != "" || len(msg.IncompleteReports) > 0 {
+				tmplTIK.IsInvalid = true
+			}
+			if len(msg.IncompleteReports) > 0 {
+				tmplTIK.IsIncomplete = true
+			}
+			if msg.Message == "" {
+				tmplTIK.IsEmpty = true
+				tmplTIK.IsIncomplete = true
+			}
+			if msg.Changed {
+				tmplTIK.IsChanged = true
+			}
+			tmplTIK.ICU = append(tmplTIK.ICU, msg)
+			break
 		}
-		if m.Message == "" {
-			tmplTIK.IsEmpty = true
-			tmplTIK.IsIncomplete = true
-		}
-		if m.Changed {
-			tmplTIK.IsChanged = true
-		}
-		tmplTIK.ICU = append(tmplTIK.ICU, &m)
 	}
 	tmplTIK.IsComplete = !tmplTIK.IsIncomplete
 	return tmplTIK
@@ -1787,8 +1803,11 @@ func (a *App) buildTIKForDisplay(
 // buildFilteredDataIndex builds a DataIndex with server-side filtering
 // and virtual scroll windowing. Only TIKs within the window get full
 // ICU validation; the rest are just counted for filter stats.
+//
+// When searchQuery is non-empty, filter stats are skipped and results
+// are fetched directly from the FTS5 index with LIMIT/OFFSET.
 func (a *App) buildFilteredDataIndex(
-	filterType string, showLocales map[string]bool, windowStart int,
+	filterType string, showLocales map[string]bool, windowStart int, searchQuery string,
 ) template.DataIndex {
 	data := template.DataIndex{
 		Dir:             a.dir,
@@ -1797,6 +1816,7 @@ func (a *App) buildFilteredDataIndex(
 		CanApplyChanges: a.canApplyChangesLocked(),
 		TotalChanges:    len(a.changed),
 		WindowSize:      template.DefaultWindowSize,
+		SearchQuery:     searchQuery,
 	}
 
 	// Move default catalog to first position in a copy,
@@ -1811,7 +1831,48 @@ func (a *App) buildFilteredDataIndex(
 	}
 	data.Catalogs = cats
 
-	// First pass: count stats and collect indices of filtered TIKs.
+	if searchQuery != "" && a.indexDB != nil {
+		return a.buildSearchDataIndex(data, showLocales, windowStart, searchQuery)
+	}
+	return a.buildFilterDataIndex(data, showLocales, windowStart, filterType)
+}
+
+// buildSearchDataIndex handles the FTS search path — paginated DB query,
+// no full iteration over a.tiks, no filter stats.
+func (a *App) buildSearchDataIndex(
+	data template.DataIndex, showLocales map[string]bool,
+	windowStart int, searchQuery string,
+) template.DataIndex {
+	if windowStart < 0 {
+		windowStart = 0
+	}
+
+	result, err := a.indexDB.SearchTIKs(searchQuery, windowStart, data.WindowSize)
+	if err != nil {
+		return data
+	}
+
+	data.TotalFiltered = result.Total
+	if windowStart >= result.Total {
+		windowStart = max(0, result.Total-data.WindowSize)
+	}
+	data.WindowStart = windowStart
+
+	for _, id := range result.TIKIDs {
+		if tk := a.tiksByID[id]; tk != nil {
+			data.TIKs = append(data.TIKs, a.buildTIKForDisplay(tk, showLocales))
+		}
+	}
+
+	return data
+}
+
+// buildFilterDataIndex handles the non-search path — full iteration
+// over a.tiks with filter stats and virtual scroll windowing.
+func (a *App) buildFilterDataIndex(
+	data template.DataIndex, showLocales map[string]bool,
+	windowStart int, filterType string,
+) template.DataIndex {
 	filtered := make([]int, 0, len(a.tiks))
 	for i, tk := range a.tiks {
 		hasChanged, hasEmpty, hasIncomplete, hasInvalid := a.tikStatusFlags(tk, showLocales)
@@ -1875,7 +1936,7 @@ func (a *App) buildFilteredDataIndex(
 		end = len(filtered)
 	}
 
-	// Second pass: build full TIKs only for the window.
+	// Build full TIKs only for the window.
 	for _, idx := range filtered[windowStart:end] {
 		tk := a.buildTIKForDisplay(a.tiks[idx], showLocales)
 		data.TIKs = append(data.TIKs, tk)

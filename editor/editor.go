@@ -14,6 +14,7 @@ import (
 	"github.com/romshark/toki/editor/app"
 	"github.com/romshark/toki/editor/datapagesgen"
 	"github.com/romshark/toki/editor/indexdb"
+	tokisqinn "github.com/romshark/toki/editor/sqinn"
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/log"
 )
@@ -35,12 +36,18 @@ func Setup(
 	cleanGenerated CleanGeneratedFunc,
 	generateBundle GenerateBundleFunc,
 ) (*app.App, *datapagesgen.Server) {
+	// Extract the custom sqinn binary (built with FTS5 support).
+	sqinnPath, err := tokisqinn.Path()
+	if err != nil {
+		log.Warn("custom sqinn not available, using default", err)
+	}
+
 	// Open or create the index database.
 	var db *indexdb.DB
 	if dir != "" {
 		dbPath := filepath.Join(dir, ".toki", "index.db")
 		var err error
-		db, err = indexdb.Open(dbPath)
+		db, err = indexdb.Open(dbPath, sqinnPath)
 		if err != nil {
 			log.Error("opening index database", err)
 		}
@@ -48,6 +55,7 @@ func Setup(
 
 	a := app.NewApp(dir, bundlePkgPath, env, db)
 	a.Version = version
+	a.SqinnPath = sqinnPath
 	a.CleanGenerated = cleanGenerated
 	a.GenerateGoBundle = generateBundle
 
@@ -76,6 +84,7 @@ func Setup(
 	s := datapagesgen.NewServer(a, msgBroker,
 		datapagesgen.WithAssets(app.StaticFS),
 	)
+	s.UseContextCanceledFilter()
 
 	// Register the repair handler for fixing corrupt native locale messages.
 	// Repairs are applied as changes (preserving existing unsaved edits)

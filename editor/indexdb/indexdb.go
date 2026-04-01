@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	sqinn "github.com/cvilsmeier/sqinn-go/v2"
 )
@@ -46,12 +47,18 @@ type Message struct {
 }
 
 // Open opens (or creates) the index database at the given path.
-func Open(dbPath string) (*DB, error) {
+// If sqinnPath is non-empty, it's used as the path to the sqinn binary;
+// otherwise the default prebuilt binary is used.
+func Open(dbPath, sqinnPath string) (*DB, error) {
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
 		return nil, fmt.Errorf("creating index db directory: %w", err)
 	}
 
-	sq, err := sqinn.Launch(sqinn.Options{Db: dbPath})
+	opts := sqinn.Options{Db: dbPath}
+	if sqinnPath != "" {
+		opts.Sqinn = sqinnPath
+	}
+	sq, err := sqinn.Launch(opts)
 	if err != nil {
 		return nil, fmt.Errorf("launching sqinn: %w", err)
 	}
@@ -95,6 +102,13 @@ func createSchema(sq *sqinn.Sqinn) error {
 			return fmt.Errorf("creating schema: %w", err)
 		}
 	}
+	// FTS5 search index.
+	if err := sq.ExecSql(
+		`CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(tik_id UNINDEXED, content)`,
+	); err != nil {
+		return fmt.Errorf("creating FTS5 index: %w", err)
+	}
+
 	// Migrations for existing databases.
 	migrations := []string{
 		`ALTER TABLE catalog ADD COLUMN messages_corrupt INTEGER NOT NULL DEFAULT 0`,
@@ -107,7 +121,7 @@ func createSchema(sq *sqinn.Sqinn) error {
 
 // SchemaVersion is incremented when the index DB schema or detection logic
 // changes in a way that requires a full rebuild of the cached data.
-const SchemaVersion = "2"
+const SchemaVersion = "3"
 
 // GetSchemaVersion returns the stored schema version, or "" if none.
 func (db *DB) GetSchemaVersion() string {
@@ -129,6 +143,31 @@ func (db *DB) SetSchemaVersion(version string) error {
 		1, 2,
 		[]sqinn.Value{
 			sqinn.StringValue("schema_version"),
+			sqinn.StringValue(version),
+		},
+	)
+}
+
+// GetTokiVersion returns the stored toki version, or "" if none.
+func (db *DB) GetTokiVersion() string {
+	rows, err := db.sq.QueryRows(
+		"SELECT value FROM meta WHERE key = ?",
+		[]sqinn.Value{sqinn.StringValue("toki_version")},
+		[]byte{sqinn.ValString},
+	)
+	if err != nil || len(rows) == 0 {
+		return ""
+	}
+	return rows[0][0].String
+}
+
+// SetTokiVersion stores the toki version.
+func (db *DB) SetTokiVersion(version string) error {
+	return db.sq.ExecParams(
+		"INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+		1, 2,
+		[]sqinn.Value{
+			sqinn.StringValue("toki_version"),
 			sqinn.StringValue(version),
 		},
 	)
@@ -167,15 +206,88 @@ func (db *DB) SetChecksum(checksum string) error {
 	)
 }
 
-// Clear removes all data from the database (catalogs, TIKs, messages)
+// Clear removes all data from the database (catalogs, TIKs, messages, search index)
 // but preserves the meta table.
 func (db *DB) Clear() error {
-	for _, table := range []string{"message", "tik", "catalog"} {
+	for _, table := range []string{"search_index", "message", "tik", "catalog"} {
 		if err := db.sq.ExecSql("DELETE FROM " + table); err != nil {
 			return fmt.Errorf("clearing %s: %w", table, err)
 		}
 	}
 	return nil
+}
+
+// InsertSearchEntry adds a TIK's searchable content to the FTS5 index.
+// The content should be a concatenation of all searchable text
+// (TIK raw, description, ICU messages).
+func (db *DB) InsertSearchEntry(tikID, content string) error {
+	return db.sq.ExecParams(
+		"INSERT INTO search_index (tik_id, content) VALUES (?, ?)",
+		1, 2,
+		[]sqinn.Value{
+			sqinn.StringValue(tikID),
+			sqinn.StringValue(content),
+		},
+	)
+}
+
+// SearchResult holds the result of a paginated FTS search.
+type SearchResult struct {
+	TIKIDs []string // TIK IDs for the requested window
+	Total  int      // total number of matches
+}
+
+// SearchTIKs performs a paginated full-text search.
+func (db *DB) SearchTIKs(query string, offset, limit int) (SearchResult, error) {
+	fq := ftsQuery(query)
+
+	// Count total matches.
+	countRows, err := db.sq.QueryRows(
+		"SELECT count(*) FROM search_index WHERE search_index MATCH ?",
+		[]sqinn.Value{sqinn.StringValue(fq)},
+		[]byte{sqinn.ValInt32},
+	)
+	if err != nil {
+		return SearchResult{}, err
+	}
+	total := 0
+	if len(countRows) > 0 {
+		total = countRows[0][0].Int32
+	}
+
+	// Fetch the window.
+	rows, err := db.sq.QueryRows(
+		"SELECT tik_id FROM search_index WHERE search_index MATCH ? ORDER BY rank LIMIT ? OFFSET ?",
+		[]sqinn.Value{
+			sqinn.StringValue(fq),
+			sqinn.Int32Value(limit),
+			sqinn.Int32Value(offset),
+		},
+		[]byte{sqinn.ValString},
+	)
+	if err != nil {
+		return SearchResult{}, err
+	}
+	ids := make([]string, len(rows))
+	for i, row := range rows {
+		ids[i] = row[0].String
+	}
+	return SearchResult{TIKIDs: ids, Total: total}, nil
+}
+
+// ftsQuery converts a user search string into an FTS5 query.
+// Each word gets a * suffix for prefix matching, joined with AND.
+func ftsQuery(q string) string {
+	words := strings.Fields(q)
+	if len(words) == 0 {
+		return q
+	}
+	for i, w := range words {
+		// Escape double quotes to prevent FTS5 syntax injection.
+		w = strings.ReplaceAll(w, `"`, `""`)
+		words[i] = `"` + w + `"*`
+	}
+	return strings.Join(words, " ")
 }
 
 // InsertCatalog inserts a catalog into the database.

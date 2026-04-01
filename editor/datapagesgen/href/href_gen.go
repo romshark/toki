@@ -73,7 +73,8 @@ func PageTIK(id string) string {
 // PageTIKs references /tiks/{$}
 func PageTIKs(query QueryPageTIKs) string {
 	anyQuery := query.Filter != "" ||
-		query.Locales != ""
+		query.Locales != "" ||
+		query.Search != ""
 
 	var b strings.Builder
 	l := len("/tiks/")
@@ -98,6 +99,13 @@ func PageTIKs(query QueryPageTIKs) string {
 		n++
 		l += len("l=") + len(query.Locales)
 	}
+	if query.Search != "" {
+		if n > 0 {
+			l += len("&")
+		}
+		n++
+		l += len("q=") + len(query.Search)
+	}
 	_ = n
 
 	b.Grow(l)
@@ -121,8 +129,16 @@ func PageTIKs(query QueryPageTIKs) string {
 		if n > 0 {
 			b.WriteString("&")
 		}
+		n++
 		b.WriteString("l=")
 		b.WriteString(query.Locales)
+	}
+	if query.Search != "" {
+		if n > 0 {
+			b.WriteString("&")
+		}
+		b.WriteString("q=")
+		b.WriteString(query.Search)
 	}
 
 	return b.String()
@@ -132,4 +148,5 @@ func PageTIKs(query QueryPageTIKs) string {
 type QueryPageTIKs struct {
 	Filter  string `query:"f"`
 	Locales string `query:"l"`
+	Search  string `query:"q"`
 }
