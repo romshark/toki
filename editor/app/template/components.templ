@@ -1,0 +1,441 @@
+package template
+
+import (
+	"fmt"
+
+	"github.com/romshark/toki/editor/app/template/strfmt"
+	"github.com/romshark/toki/editor/datapagesgen/action"
+	"github.com/romshark/toki/editor/datapagesgen/href"
+)
+
+// --- Navbar ---
+templ componentNavbarBuildBtn(totalChanges int, canApplyChanges bool) {
+	if totalChanges > 0 {
+		<button
+			class="btn-primary"
+			if !canApplyChanges {
+				disabled
+			}
+			data-on:click="window.location='/build-bundle/'"
+		>
+			@iconSave()
+			<span class="navbar-desktop-only">Build Bundle</span>
+			<span class="badge badge-changed">
+				{ strfmt.Int(totalChanges) }
+			</span>
+		</button>
+	}
+}
+
+templ componentNavbarCore(breadcrumbs []Breadcrumb) {
+	<!-- Desktop: burger + history nav + breadcrumbs -->
+	<div class="navbar-left navbar-desktop-only">
+		<button
+			class="btn-secondary btn-icon"
+			type="button"
+			data-on:click="toggleSidebar()"
+			aria-label="Toggle sidebar"
+		>
+			@iconMenu()
+		</button>
+		<div role="group" class="button-group">
+			<button
+				class="btn-secondary btn-icon nav-back"
+				data-on:click="history.back()"
+				aria-label="Go back"
+			>
+				@iconArrowLeft()
+			</button>
+			<button
+				class="btn-secondary btn-icon nav-forward"
+				data-on:click="history.forward()"
+				aria-label="Go forward"
+			>
+				@iconArrowRight()
+			</button>
+		</div>
+		<ol class="breadcrumb" aria-label="Breadcrumb">
+			for _, bc := range breadcrumbs {
+				<li>
+					if bc.Href != "" {
+						<a href={ bc.Href }>{ bc.Label }</a>
+					} else {
+						<span aria-current="page">{ bc.Label }</span>
+					}
+				</li>
+			}
+		</ol>
+	</div>
+	<!-- Mobile: burger + page name dropdown -->
+	<div class="navbar-left navbar-mobile-only">
+		<button
+			class="btn-secondary btn-icon"
+			type="button"
+			data-on:click="toggleSidebar()"
+			aria-label="Toggle sidebar"
+		>
+			@iconMenu()
+		</button>
+		<div class="dropdown-menu">
+			<button
+				type="button"
+				class="btn-ghost navbar-page-btn"
+				aria-haspopup="menu"
+				aria-expanded="false"
+			>
+				if len(breadcrumbs) > 0 {
+					{ breadcrumbs[len(breadcrumbs)-1].Label }
+				}
+				@iconChevronDown()
+			</button>
+			<div data-popover aria-hidden="true">
+				<div role="menu">
+					for _, bc := range breadcrumbs {
+						if bc.Href != "" {
+							<a role="menuitem" href={ bc.Href }>
+								{ bc.Label }
+							</a>
+						} else {
+							<div role="menuitem" aria-current="page">{ bc.Label }</div>
+						}
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+templ componentNavbar(breadcrumbs []Breadcrumb, totalChanges int, canApplyChanges bool) {
+	<nav class="navbar">
+		@componentNavbarCore(breadcrumbs)
+		<div class="navbar-right">
+			@componentNavbarBuildBtn(totalChanges, canApplyChanges)
+		</div>
+	</nav>
+}
+
+templ componentNavbarSearch(
+	breadcrumbs []Breadcrumb, totalChanges int, canApplyChanges bool,
+) {
+	<nav
+		class="navbar"
+		data-signals:_navsearch="false"
+	>
+		<!-- Normal mode -->
+		<div class="navbar-normal" data-show="!$_navsearch">
+			@componentNavbarCore(breadcrumbs)
+			<div class="navbar-right">
+				<!-- Desktop search (always visible) -->
+				<div class="navbar-search navbar-desktop-only">
+					@iconSearch()
+					<input
+						type="search"
+						class="input"
+						placeholder="Search..."
+						data-bind:searchquery
+						data-on:input__debounce.300ms={ action.POSTPageTIKsFilter(
+							action.WithBefore("console.log('SEARCH')")) }
+					/>
+				</div>
+				<!-- Mobile search button -->
+				<button
+					class="btn-secondary btn-icon navbar-mobile-only"
+					data-on:click="$_navsearch=true"
+					aria-label="Search"
+				>
+					@iconSearch()
+				</button>
+				@componentNavbarBuildBtn(totalChanges, canApplyChanges)
+			</div>
+		</div>
+		<!-- Mobile search mode (replaces navbar content) -->
+		<div class="navbar-search-mode" data-show="$_navsearch">
+			<button
+				class="btn-secondary btn-icon"
+				data-on:click="$_navsearch=false"
+				aria-label="Close search"
+			>
+				@iconX()
+			</button>
+			<div class="navbar-search" style="flex:1">
+				@iconSearch()
+				<input
+					type="search"
+					class="input"
+					placeholder="Search..."
+					data-bind:searchquery
+					data-on:input__debounce.300ms={ action.POSTPageTIKsFilter(
+						action.WithBefore("console.log('SEARCH')")) }
+				/>
+			</div>
+		</div>
+	</nav>
+}
+
+// --- Sidebar ---
+templ componentSidebarHeader() {
+	<header>
+		<div class="sidebar-title">
+			<a
+				href={ href.PageIndex() }
+				class="sidebar-app-name"
+			>Toki Editor</a>
+			<a
+				href={ href.PageSettings() }
+				class="btn-secondary btn-icon"
+				aria-label="Settings"
+			>
+				@iconSettings()
+			</a>
+		</div>
+	</header>
+}
+
+templ componentFilterRadio(value, label string, count int, selected bool) {
+	<li data-keep-mobile-sidebar-open>
+		<label data-class:selected={ fmt.Sprintf("$filtertype==='%s'", value) }>
+			<input
+				type="radio"
+				name="t"
+				value={ value }
+				if selected {
+					checked
+				}
+				data-bind:filtertype
+				data-on:change={ action.POSTPageTIKsFilter() }
+			/>
+			<span>
+				{ label } <span class="badge-outline">{ strfmt.Int(count) }</span>
+			</span>
+		</label>
+	</li>
+}
+
+// --- ICU message ---
+templ componentICUMessageBadges(msg *ICUMessage) {
+	if msg.Catalog.Default {
+		<span class="badge-secondary" title="Default locale">
+			@iconCode()
+		</span>
+	}
+	if msg.IsReadOnly {
+		<span
+			class="badge-secondary"
+			title="Read only — literal translation with no parameters. Edit the TIK in source code to change it."
+		>
+			@iconLock()
+		</span>
+	}
+	if msg.Changed {
+		<span class="badge badge-changed" title="Unsaved change">
+			@iconPencil()
+		</span>
+	}
+	if msg.Message == "" {
+		<span class="badge-secondary" title="Missing Translation">
+			@iconCircleMinus()
+		</span>
+	}
+	if msg.Error != "" || len(msg.IncompleteReports) > 0 {
+		<span class="badge-destructive" title="Invalid ICU message">
+			@iconAlertTriangle()
+		</span>
+	}
+}
+
+templ componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) {
+	<div class="icu-form">
+		if showLabel {
+			<span class="icu-form-label">
+				<strong class="locale-code">{ msg.Catalog.Locale }</strong> — ICU Message
+				@componentICUMessageBadges(msg)
+			</span>
+		} else {
+			<span class="icu-form-label">ICU Message</span>
+		}
+		<toki-editor
+			id={ fmt.Sprintf("editor-%s-%s", tikID, msg.Catalog.Locale) }
+			value={ msg.Message }
+			data-tikid={ tikID }
+			data-locale={ msg.Catalog.Locale }
+			if msg.IsReadOnly {
+				readonly
+			}
+			if !msg.IsReadOnly {
+				data-ignore-morph
+			}
+		></toki-editor>
+		if msg.Changed {
+			<div class="icu-original">
+				<span class="icu-original-label">Original</span>
+				<toki-editor
+					value={ msg.MessageOriginal }
+					readonly
+				></toki-editor>
+				<button
+					class="btn-destructive"
+					style="align-self:start"
+					data-on:click={ fmt.Sprintf(
+						"$resettikid='%s';$resetlocale='%s';$resetdonetikid='';"+
+						"$resetdonelocale='';$resetmodalopen=true",
+						tikID, msg.Catalog.Locale,
+					) }
+				>
+					Reset
+				</button>
+			</div>
+		}
+		if msg.Error != "" {
+			<div class="alert alert-destructive">
+				<section>{ msg.Error }</section>
+			</div>
+		}
+		if len(msg.IncompleteReports) > 0 {
+			for _, r := range msg.IncompleteReports {
+				<div class="alert alert-destructive">
+					<section>{ r }</section>
+				</div>
+			}
+		}
+	</div>
+}
+
+// --- Modals ---
+templ componentEditorModals() {
+	<button
+		id="autosave-trigger"
+		class="sr-only"
+		data-on:click={ action.POSTAppSet(
+			action.WithBefore("$settikid=window._autosave.tikid;$setlocale=window._autosave.locale;$icumsg=window._autosave.value"),
+		) }
+	></button>
+	@componentResetModal()
+}
+
+templ componentResetModal() {
+	<div
+		id="reset-modal"
+		class="modal-overlay"
+		style="display:none"
+		data-show="
+			$resetmodalopen && (
+				$resettikid !== $resetdonetikid || $resetlocale !== $resetdonelocale)"
+	>
+		<div class="modal-card card">
+			<header>
+				<h3>Reset to original?</h3>
+			</header>
+			<section>
+				<p>
+					This will discard your changes and restore the original ICU message.
+				</p>
+			</section>
+			<footer class="modal-actions">
+				<button
+					class="btn-ghost"
+					data-on:click="$resetmodalopen=false"
+				>Cancel</button>
+				<button
+					class="btn-destructive"
+					data-on:click={ action.POSTAppReset(
+						action.WithBefore("$resetmodalopen=false"),
+					) }
+				>
+					Delete Change
+				</button>
+			</footer>
+		</div>
+	</div>
+}
+
+// --- Generic ---
+
+// componentList renders children inside a scrollable container with
+// scroll-position-aware edge fades (top/bottom shadows that hide
+// when there is nothing more to scroll in that direction).
+templ componentList() {
+	<div class="scroll-fade-list">
+		{ children... }
+	</div>
+}
+
+// componentCopy renders a copy-to-clipboard button.
+// Uses a data-copied attribute (not Datastar signals) so each
+// instance is independently scoped.
+templ componentCopy(text string) {
+	<button
+		class="btn-secondary btn-icon copy-btn"
+		data-val-txt={ text }
+		data-on:click="
+			const b = evt.target.closest('[data-val-txt]');
+			navigator.clipboard.writeText(b.dataset.valTxt);
+			b.setAttribute('data-copied','');
+			setTimeout(()=>b.removeAttribute('data-copied'),1200)
+		"
+	>
+		<span class="copy-btn-idle">
+			@iconCopy()
+		</span>
+		<span class="copy-btn-done">
+			@iconClipboardCheck()
+		</span>
+	</button>
+}
+
+templ componentLoadingDots() {
+	<div class="loading-dots">
+		<span></span>
+		<span></span>
+		<span></span>
+	</div>
+}
+
+// --- Settings page ---
+templ componentFontOption(fontKey string, f FontOption) {
+	<button
+		class="font-option font-card"
+		data-on:click={ "setFont('" + fontKey + "','" + f.Value + "')" }
+		data-font-key={ fontKey }
+		data-font-value={ f.Value }
+	>
+		<span
+			class="font-option-preview"
+			if f.Family != "" {
+				style={ "font-family:" + f.Family }
+			}
+		>{ f.Preview }</span>
+		<span class="font-option-name">{ f.Label }</span>
+	</button>
+}
+
+templ componentFontSizeBtn(key, value, size, fontFamily, label string) {
+	<button
+		class="btn-secondary btn-sm font-size-card"
+		data-on:click={ "setFontSize('" + key + "','" + value + "')" }
+		data-size-key={ key }
+		data-size-value={ value }
+	>
+		<span
+			class="font-size-aa"
+			if fontFamily != "" {
+				style={ "font-size:" + size + ";font-family:" + fontFamily }
+			} else {
+				style={ "font-size:" + size }
+			}
+		>Aa</span>
+		<span class="font-size-label">{ label }</span>
+	</button>
+}
+
+// --- Dashboard ---
+templ componentDashboardCard(title, value, description string) {
+	<div class="card">
+		<header>
+			<span class="dashboard-stat-value">{ value }</span>
+			<span class="dashboard-stat-label">{ title }</span>
+		</header>
+		<section>
+			<p class="dashboard-stat-desc">{ description }</p>
+		</section>
+	</div>
+}

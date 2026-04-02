@@ -32,7 +32,7 @@ templ PageTIKs(data DataIndex) {
 			@sidebarContent(data)
 		</aside>
 		<div id="main-area" class="main-area">
-			@navbarSearch([]Breadcrumb{
+			@componentNavbarSearch([]Breadcrumb{
 				{Label: "Dashboard", Href: href.PageIndex()},
 				{Label: "Messages"},
 			}, data.TotalChanges, data.CanApplyChanges)
@@ -40,6 +40,6 @@ templ PageTIKs(data DataIndex) {
 				@TiksContentList(data)
 			</main>
 		</div>
-		@editorModals()
+		@componentEditorModals()
 	</div>
 }

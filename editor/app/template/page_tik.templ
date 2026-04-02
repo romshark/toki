@@ -28,7 +28,7 @@ templ PageTIK(tk *TIK) {
 			@tikSidebarNav(tk)
 		</aside>
 		@tikMainArea(tk)
-		@editorModals()
+		@componentEditorModals()
 	</div>
 }
 
@@ -41,7 +41,7 @@ templ TIKContent(tk *TIK) {
 
 templ tikSidebarNav(tk *TIK) {
 	<nav id="tik-sidebar-content" aria-label="TIK navigation">
-		@sidebarHeader()
+		@componentSidebarHeader()
 		<section>
 			<ul>
 				<li>
@@ -110,7 +110,7 @@ templ tikSidebarNav(tk *TIK) {
 
 templ tikMainArea(tk *TIK) {
 	<div id="tik-main-area" class="main-area">
-		@navbar([]Breadcrumb{
+		@componentNavbar([]Breadcrumb{
 			{Label: "Dashboard", Href: href.PageIndex()},
 			{Label: "Messages", Href: href.PageTIKs(href.QueryPageTIKs{})},
 			{Label: tk.ID},
@@ -149,11 +149,11 @@ templ tikMainArea(tk *TIK) {
 						<header>
 							<span class="icu-form-label">
 								<strong class="locale-code">{ msg.Catalog.Locale }</strong> — ICU Message
-								@icuMessageBadges(msg)
+								@componentICUMessageBadges(msg)
 							</span>
 						</header>
 						<section>
-							@icuMessageForm(tk.ID, msg, false)
+							@componentICUMessageForm(tk.ID, msg, false)
 						</section>
 					</div>
 				}

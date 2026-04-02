@@ -16,7 +16,7 @@ templ PageDashboard(stats DashboardStats) {
 			data-initial-open="true"
 		>
 			<nav aria-label="Dashboard navigation">
-				@sidebarHeader()
+				@componentSidebarHeader()
 				<section>
 					<div role="group">
 						<h3>Navigation</h3>
@@ -49,7 +49,7 @@ templ PageDashboard(stats DashboardStats) {
 			</nav>
 		</aside>
 		<div class="main-area">
-			@navbar([]Breadcrumb{
+			@componentNavbar([]Breadcrumb{
 				{Label: "Dashboard"},
 			}, stats.TotalChanges, stats.CanApplyChanges)
 			<main>
@@ -221,7 +221,7 @@ templ PageDashboard(stats DashboardStats) {
 									if !stats.CanApplyChanges {
 										disabled
 									}
-									onclick="window.location='/build-bundle/'"
+									data-on:click="window.location='/build-bundle/'"
 								>
 									@iconSave()
 									Build Bundle
@@ -304,17 +304,5 @@ templ PageDashboard(stats DashboardStats) {
 				</div>
 			</main>
 		</div>
-	</div>
-}
-
-templ dashboardCard(title, value, description string) {
-	<div class="card">
-		<header>
-			<span class="dashboard-stat-value">{ value }</span>
-			<span class="dashboard-stat-label">{ title }</span>
-		</header>
-		<section>
-			<p class="dashboard-stat-desc">{ description }</p>
-		</section>
 	</div>
 }

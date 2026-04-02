@@ -44,7 +44,7 @@ func PageNotFound(path string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" readonly></toki-editor><div role=\"group\" class=\"button-group not-found-actions\"><button class=\"btn-secondary\" onclick=\"history.back()\">Previous Page</button> <a class=\"btn-primary\" href=\"/\">Dashboard</a></div></main></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" readonly></toki-editor><div role=\"group\" class=\"button-group not-found-actions\"><button class=\"btn-secondary\" data-on:click=\"history.back()\">Previous Page</button> <a class=\"btn-primary\" href=\"/\">Dashboard</a></div></main></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

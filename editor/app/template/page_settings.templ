@@ -32,7 +32,7 @@ templ PageSettings(version string, data DataSettingsPreview) {
 			data-initial-open="true"
 		>
 			<nav aria-label="Settings navigation">
-				@sidebarHeader()
+				@componentSidebarHeader()
 				<section>
 					<div role="group" aria-labelledby="settings-nav-label">
 						<h3 id="settings-nav-label">Settings</h3>
@@ -66,7 +66,7 @@ templ PageSettings(version string, data DataSettingsPreview) {
 			</nav>
 		</aside>
 		<div class="main-area">
-			@navbar([]Breadcrumb{
+			@componentNavbar([]Breadcrumb{
 				{Label: "Dashboard", Href: href.PageIndex()},
 				{Label: "Settings"},
 			}, 0, false)
@@ -76,7 +76,7 @@ templ PageSettings(version string, data DataSettingsPreview) {
 					<div class="theme-picker">
 						<button
 							class="theme-card"
-							onclick="setTheme('light')"
+							data-on:click="setTheme('light')"
 							data-theme="light"
 						>
 							<div class="theme-preview theme-preview-light">
@@ -94,7 +94,7 @@ templ PageSettings(version string, data DataSettingsPreview) {
 						</button>
 						<button
 							class="theme-card"
-							onclick="setTheme('dark')"
+							data-on:click="setTheme('dark')"
 							data-theme="dark"
 						>
 							<div class="theme-preview theme-preview-dark">
@@ -112,7 +112,7 @@ templ PageSettings(version string, data DataSettingsPreview) {
 						</button>
 						<button
 							class="theme-card"
-							onclick="setTheme('system')"
+							data-on:click="setTheme('system')"
 							data-theme="system"
 						>
 							<div class="theme-preview theme-preview-system">
@@ -147,19 +147,19 @@ templ PageSettings(version string, data DataSettingsPreview) {
 						<div class="font-section-controls">
 							@componentList() {
 								for _, f := range data.UIFonts {
-									@fontOption("toki-ui-font", f)
+									@componentFontOption("toki-ui-font", f)
 								}
 							}
 							<div role="group" class="button-group font-size-group">
-								@fontSizeBtn("toki-ui-font-size",
+								@componentFontSizeBtn("toki-ui-font-size",
 									"very-small", "0.8rem", "", "Very Small")
-								@fontSizeBtn("toki-ui-font-size",
+								@componentFontSizeBtn("toki-ui-font-size",
 									"small", "0.9rem", "", "Small")
-								@fontSizeBtn("toki-ui-font-size",
+								@componentFontSizeBtn("toki-ui-font-size",
 									"default", "1rem", "", "Default")
-								@fontSizeBtn("toki-ui-font-size",
+								@componentFontSizeBtn("toki-ui-font-size",
 									"big", "1.1rem", "", "Big")
-								@fontSizeBtn("toki-ui-font-size",
+								@componentFontSizeBtn("toki-ui-font-size",
 									"bigger", "1.25rem", "", "Bigger")
 							</div>
 						</div>
@@ -233,23 +233,23 @@ templ PageSettings(version string, data DataSettingsPreview) {
 						<div class="font-section-controls">
 							@componentList() {
 								for _, f := range data.EditorFonts {
-									@fontOption("toki-editor-font", f)
+									@componentFontOption("toki-editor-font", f)
 								}
 							}
 							<div role="group" class="button-group font-size-group">
-								@fontSizeBtn("toki-editor-font-size",
+								@componentFontSizeBtn("toki-editor-font-size",
 									"very-small",
 									"0.8rem", "ui-monospace,monospace", "Very Small")
-								@fontSizeBtn("toki-editor-font-size",
+								@componentFontSizeBtn("toki-editor-font-size",
 									"small",
 									"0.9rem", "ui-monospace,monospace", "Small")
-								@fontSizeBtn("toki-editor-font-size",
+								@componentFontSizeBtn("toki-editor-font-size",
 									"default",
 									"1rem", "ui-monospace,monospace", "Default")
-								@fontSizeBtn("toki-editor-font-size",
+								@componentFontSizeBtn("toki-editor-font-size",
 									"big",
 									"1.1rem", "ui-monospace,monospace", "Big")
-								@fontSizeBtn("toki-editor-font-size",
+								@componentFontSizeBtn("toki-editor-font-size",
 									"bigger",
 									"1.25rem", "ui-monospace,monospace", "Bigger")
 							</div>
@@ -309,38 +309,3 @@ templ PageSettings(version string, data DataSettingsPreview) {
 	</div>
 }
 
-templ fontOption(fontKey string, f FontOption) {
-	<button
-		class="font-option font-card"
-		onclick={ templ.ComponentScript{Call: "setFont('" + fontKey + "','" + f.Value + "')"} }
-		data-font-key={ fontKey }
-		data-font-value={ f.Value }
-	>
-		<span
-			class="font-option-preview"
-			if f.Family != "" {
-				style={ "font-family:" + f.Family }
-			}
-		>{ f.Preview }</span>
-		<span class="font-option-name">{ f.Label }</span>
-	</button>
-}
-
-templ fontSizeBtn(key, value, size, fontFamily, label string) {
-	<button
-		class="btn-secondary btn-sm font-size-card"
-		onclick={ templ.ComponentScript{Call: "setFontSize('" + key + "','" + value + "')"} }
-		data-size-key={ key }
-		data-size-value={ value }
-	>
-		<span
-			class="font-size-aa"
-			if fontFamily != "" {
-				style={ "font-size:" + size + ";font-family:" + fontFamily }
-			} else {
-				style={ "font-size:" + size }
-			}
-		>Aa</span>
-		<span class="font-size-label">{ label }</span>
-	</button>
-}

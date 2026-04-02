@@ -15,7 +15,7 @@ templ PageNotFound(path string) {
 			<div role="group" class="button-group not-found-actions">
 				<button
 					class="btn-secondary"
-					onclick="history.back()"
+					data-on:click="history.back()"
 				>Previous Page</button>
 				<a
 					class="btn-primary"

@@ -51,7 +51,7 @@ func PageTIK(tk *TIK) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = editorModals().Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = componentEditorModals().Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -123,7 +123,7 @@ func tikSidebarNav(tk *TIK) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = sidebarHeader().Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = componentSidebarHeader().Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -287,7 +287,7 @@ func tikMainArea(tk *TIK) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = navbar([]Breadcrumb{
+		templ_7745c5c3_Err = componentNavbar([]Breadcrumb{
 			{Label: "Dashboard", Href: href.PageIndex()},
 			{Label: "Messages", Href: href.PageTIKs(href.QueryPageTIKs{})},
 			{Label: tk.ID},
@@ -387,7 +387,7 @@ func tikMainArea(tk *TIK) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = icuMessageBadges(msg).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = componentICUMessageBadges(msg).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -395,7 +395,7 @@ func tikMainArea(tk *TIK) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = icuMessageForm(tk.ID, msg, false).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = componentICUMessageForm(tk.ID, msg, false).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

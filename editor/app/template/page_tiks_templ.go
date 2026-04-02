@@ -87,7 +87,7 @@ func PageTIKs(data DataIndex) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = navbarSearch([]Breadcrumb{
+		templ_7745c5c3_Err = componentNavbarSearch([]Breadcrumb{
 			{Label: "Dashboard", Href: href.PageIndex()},
 			{Label: "Messages"},
 		}, data.TotalChanges, data.CanApplyChanges).Render(ctx, templ_7745c5c3_Buffer)
@@ -106,7 +106,7 @@ func PageTIKs(data DataIndex) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = editorModals().Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = componentEditorModals().Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
