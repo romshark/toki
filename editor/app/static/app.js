@@ -43,7 +43,6 @@ function applyTheme(theme) {
 			root.classList.remove("dark");
 		}
 	}
-	updateCodeMirrorThemes();
 }
 
 function setTheme(theme) {
@@ -78,13 +77,16 @@ var fontFamilies = {
 	"georgia": "Georgia, 'Times New Roman', serif",
 	"helvetica": "'Helvetica Neue', Helvetica, Arial, sans-serif",
 	// Editor fonts
-	"mono-system": "",
-	"mono-menlo": "Menlo, Monaco, 'Cascadia Code', monospace",
+	"mono-system": "ui-monospace, 'SF Mono', 'Cascadia Code', 'Segoe UI Mono', monospace",
+	"mono-firacode": "'Fira Code', monospace",
+	"mono-monaco": "Monaco, 'Consolas', monospace",
 	"mono-courier": "'Courier New', Courier, monospace",
 };
 
 function getStoredFont(key) {
-	return localStorage.getItem(key) || fontDefaults[key];
+	var v = localStorage.getItem(key) || fontDefaults[key];
+	if (!(v in fontFamilies)) v = fontDefaults[key];
+	return v;
 }
 
 function setFont(key, value) {
@@ -178,123 +180,54 @@ prefersDark.addEventListener("change", () => {
 	applyTheme(getStoredTheme());
 });
 
-// --- CodeMirror ---
+// --- History navigation buttons ---
 
-function getCodeMirrorTheme() {
-	return document.documentElement.classList.contains("dark")
-		? "base16-dark"
-		: "base16-light";
-}
-
-function updateCodeMirrorThemes() {
-	var theme = getCodeMirrorTheme();
-	document.querySelectorAll(".CodeMirror").forEach(cmEl => {
-		var cm = cmEl.CodeMirror;
-		if (cm) cm.setOption("theme", theme);
-	});
-}
-
-function getServerTextareaValue(el) {
-	var serverValue = el.defaultValue;
-	if ((serverValue == null || serverValue === "") && el.textContent != null) {
-		serverValue = el.textContent;
-	}
-	if (serverValue == null) {
-		serverValue = "";
-	}
-	return serverValue;
-}
-
-function initEditors() {
-	var theme = getCodeMirrorTheme();
-
-	document.querySelectorAll("textarea.editor").forEach(el => {
-		var serverValue = getServerTextareaValue(el);
-		if (el.value !== serverValue) {
-			el.value = serverValue;
-		}
-
-		if (el.dataset.initialized) {
-			var existingCMEl = el.nextElementSibling;
-			var existingCM = existingCMEl && existingCMEl.CodeMirror;
-			if (existingCM) {
-				existingCM.setOption("theme", theme);
-				// Skip value sync for focused editors to avoid resetting
-				// content while the user is actively typing.
-				// Always sync if the window isn't active (user is in another tab).
-				if (!existingCM.hasFocus() || !document.hasFocus()) {
-					var sv = window._serverValues && window._serverValues[el.id];
-					if (sv !== undefined && existingCM.getValue() !== sv) {
-						existingCM.state.tokiSyncing = true;
-						existingCM.setValue(sv);
-						existingCM.state.tokiSyncing = false;
-					}
-				}
-			}
-			return;
-		}
-
-		var mode = el.dataset.mode;
-		var readOnly = el.hasAttribute("readonly");
-
-		var cm = CodeMirror.fromTextArea(el, {
-			mode,
-			readOnly,
-			theme,
-			lineNumbers: true,
-			inputStyle: "textarea",
-			scrollbarStyle: "null",
-			specialChars: /[ \u00a0]/g,
-			specialCharPlaceholder: function(ch) {
-				var span = document.createElement("span");
-				if (ch === "\u00a0") {
-					span.className = "cm-whitespace cm-nbsp";
-					span.textContent = "\u00a0";
-				} else {
-					span.className = "cm-whitespace cm-space";
-					span.textContent = ch;
-				}
-				return span;
-			},
+if (window.navigation) {
+	function updateNavButtons() {
+		document.querySelectorAll(".nav-back").forEach(function(b) {
+			b.disabled = !navigation.canGoBack;
 		});
-
-		// Auto-save: debounced POST on change for editable editors.
-		if (!readOnly && el.dataset.autosave) {
-			var tikid = el.dataset.tikid;
-			var locale = el.dataset.locale;
-			var saveTimeout;
-			cm.on("change", function(instance, change) {
-				if (instance.state.tokiSyncing || (change && change.origin === "setValue")) {
-					return;
-				}
-				clearTimeout(saveTimeout);
-				saveTimeout = setTimeout(function() {
-					instance.save();
-					triggerAutoSave(tikid, locale, instance.getValue());
-				}, 200);
-			});
-		}
-
-		el.dataset.initialized = "true";
-	});
+		document.querySelectorAll(".nav-forward").forEach(function(b) {
+			b.disabled = !navigation.canGoForward;
+		});
+	}
+	navigation.addEventListener("navigatesuccess", updateNavButtons);
+	navigation.addEventListener("currententrychange", updateNavButtons);
+	updateNavButtons();
 }
 
-// triggerAutoSave stores values in a global and clicks the hidden autosave button.
-// The button's WithBefore expression reads from window._autosave.
-function triggerAutoSave(tikid, locale, value) {
-	window._autosave = { tikid: tikid, locale: locale, value: value };
-	var btn = document.getElementById("autosave-trigger");
-	if (btn) btn.click();
+// --- <toki-editor> integration ---
+
+// Autosave: listen for toki-change events from <toki-editor> components.
+document.addEventListener("toki-change", function(e) {
+	var d = e.detail;
+	if (d.tikid && d.locale) {
+		window._autosave = { tikid: d.tikid, locale: d.locale, value: d.value };
+		var btn = document.getElementById("autosave-trigger");
+		if (btn) btn.click();
+	}
+});
+
+// syncEditorValues sets server-side values on <toki-editor> elements.
+// Called after morphdom patches to keep editors with data-ignore-morph in sync.
+function syncEditorValues(values) {
+	for (var id in values) {
+		var el = document.getElementById(id);
+		if (el && el.value !== undefined) {
+			el.value = values[id];
+		}
+	}
+}
+
+// resetEditorValue forces a single editor to a specific value (used after reset).
+function resetEditorValue(editorId, value) {
+	var el = document.getElementById(editorId);
+	if (el && el.value !== undefined) el.value = value;
 }
 
 function getEditorValue(id) {
-	var ta = document.getElementById(id);
-	if (!ta) return '';
-	var cmEl = ta.nextElementSibling;
-	if (cmEl && cmEl.CodeMirror) {
-		cmEl.CodeMirror.save();
-	}
-	return ta.value;
+	var el = document.getElementById(id);
+	return el ? el.value : '';
 }
 
 function getOrCreateInstanceID(storageKey) {
@@ -320,16 +253,4 @@ function syncShownLocales() {
 		}
 	});
 	return shown.length > 0 ? shown.join(',') : '-';
-}
-
-// Force-update a CodeMirror editor's content (used after reset).
-function resetEditorValue(editorId, value) {
-	var ta = document.getElementById(editorId);
-	if (!ta) return;
-	var cmEl = ta.nextElementSibling;
-	if (cmEl && cmEl.CodeMirror) {
-		cmEl.CodeMirror.state.tokiSyncing = true;
-		cmEl.CodeMirror.setValue(value);
-		cmEl.CodeMirror.state.tokiSyncing = false;
-	}
 }

@@ -35,7 +35,15 @@ import (
 const MainBundleFileGo = "bundle_gen.go"
 
 // EventUpdated is "editor.updated"
-type EventUpdated struct{}
+type EventUpdated struct {
+	// SourceInstanceID is the tab instance that triggered the change.
+	// Empty for non-editor events (e.g. file watcher, build).
+	SourceInstanceID string `json:"source_instance_id"`
+	// ChangedEditor is the editor ID (e.g. "editor-tikid-locale") that
+	// was just changed. Excluded from syncEditorValues for the source
+	// tab to avoid overwriting in-progress typing.
+	ChangedEditor string `json:"changed_editor"`
+}
 
 // EventReset is "editor.reset"
 type EventReset struct {
@@ -257,6 +265,22 @@ func (a *App) buildTemplateDataFromScanLocked() {
 		a.localeTags = append(a.localeTags, tag)
 	}
 
+	// Collect all source occurrences per TIK ID.
+	dirPrefix := a.dir + string(filepath.Separator)
+	occurrences := make(map[string][]template.SourceOccurrence)
+	for t := range scan.Texts.SeqRead() {
+		displayFile := t.Position.Filename
+		if rel, ok := strings.CutPrefix(displayFile, dirPrefix); ok {
+			displayFile = rel
+		}
+		occurrences[t.IDHash] = append(occurrences[t.IDHash], template.SourceOccurrence{
+			File:        t.Position.Filename,
+			DisplayFile: displayFile,
+			Line:        t.Position.Line,
+			Column:      t.Position.Column,
+		})
+	}
+
 	for _, i := range scan.TextIndexByID.SeqRead() {
 		t := scan.Texts.At(i)
 		tmplTIK := &template.TIK{
@@ -264,6 +288,7 @@ func (a *App) buildTemplateDataFromScanLocked() {
 			TIK:         t.TIK.Raw,
 			Description: strings.Join(t.Comments, " "),
 			ICU:         make([]*template.ICUMessage, 0, len(a.catalogs)),
+			Occurrences: occurrences[t.IDHash],
 		}
 		for c := range scan.Catalogs.SeqRead() {
 			m := c.ARB.Messages[t.IDHash]
@@ -562,20 +587,24 @@ func (a *App) unregisterStreamLocked(streamID uint64) {
 	}
 }
 
-// initEditorsScript builds a JS expression that sets server-side editor values
-// as a global and then calls initEditors(). This is needed because
-// data-ignore-morph prevents the morph from updating textarea content,
-// so initEditors() can't read the current server value from defaultValue.
-func initEditorsScript(tiks []template.TIK) string {
+// syncEditorsScript builds a JS call to syncEditorValues with current
+// server-side values. This syncs editors that have data-ignore-morph
+// (editable editors) after a morphdom patch.
+// excludeEditor is omitted from the map so the source tab's in-progress
+// typing is never overwritten by a stale echo.
+func syncEditorsScript(tiks []template.TIK, excludeEditor string) string {
 	values := make(map[string]string, len(tiks)*2)
 	for i := range tiks {
 		for _, msg := range tiks[i].ICU {
 			key := fmt.Sprintf("editor-%s-%s", tiks[i].ID, msg.Catalog.Locale)
+			if key == excludeEditor {
+				continue
+			}
 			values[key] = msg.Message
 		}
 	}
 	j, _ := json.Marshal(values)
-	return fmt.Sprintf("window._serverValues=%s;initEditors()", j)
+	return fmt.Sprintf("syncEditorValues(%s)", j)
 }
 
 func (*App) Head(_ *http.Request) templ.Component { return template.Head() }
@@ -585,9 +614,10 @@ func (a *App) POSTSet(
 	r *http.Request,
 	dispatch func(EventUpdated) error,
 	signals struct {
-		TIKID  string `json:"settikid"`
-		Locale string `json:"setlocale"`
-		ICUMsg string `json:"icumsg"`
+		TIKID      string `json:"settikid"`
+		Locale     string `json:"setlocale"`
+		ICUMsg     string `json:"icumsg"`
+		InstanceID string `json:"instance_id"`
 	},
 ) error {
 	a.mu.Lock()
@@ -662,7 +692,10 @@ func (a *App) POSTSet(
 		}
 	}
 
-	return dispatch(EventUpdated{})
+	return dispatch(EventUpdated{
+		SourceInstanceID: signals.InstanceID,
+		ChangedEditor:    fmt.Sprintf("editor-%s-%s", id, locale),
+	})
 }
 
 // POSTReset is /reset/{$}
@@ -1003,7 +1036,6 @@ func (p PageTIKs) OnUpdated(
 	sse *datastar.ServerSentEventGenerator,
 	streamID uint64,
 ) error {
-	_ = event
 	p.App.mu.Lock()
 	defer p.App.mu.Unlock()
 
@@ -1021,11 +1053,19 @@ func (p PageTIKs) OnUpdated(
 		return nil
 	}
 
+	// If this SSE connection belongs to the tab that triggered the
+	// change, exclude the changed editor from the sync so that in-
+	// progress typing is never overwritten by its own stale echo.
+	var exclude string
+	if event.SourceInstanceID != "" && event.SourceInstanceID == instID {
+		exclude = event.ChangedEditor
+	}
+
 	data := p.App.buildFilteredDataIndex(vs.filterType, vs.showLocales, vs.windowStart, vs.searchQuery)
 	if err := sse.PatchElementTempl(template.IndexContent(data)); err != nil {
 		return err
 	}
-	return sse.ExecuteScript(initEditorsScript(data.TIKs))
+	return sse.ExecuteScript(syncEditorsScript(data.TIKs, exclude))
 }
 
 func (PageTIKs) OnReset(
@@ -1085,7 +1125,7 @@ func (p PageTIKs) POSTFilter(
 	if err := sse.PatchElementTempl(template.IndexContent(data)); err != nil {
 		return err
 	}
-	return sse.ExecuteScript(initEditorsScript(data.TIKs))
+	return sse.ExecuteScript(syncEditorsScript(data.TIKs, ""))
 }
 
 // POSTScrollDown is /tiks/scroll-down/{$}
@@ -1313,7 +1353,6 @@ func (p PageTIK) OnUpdated(
 	sse *datastar.ServerSentEventGenerator,
 	streamID uint64,
 ) error {
-	_ = event
 	p.App.mu.Lock()
 	defer p.App.mu.Unlock()
 
@@ -1334,11 +1373,16 @@ func (p PageTIK) OnUpdated(
 		return nil
 	}
 
+	var exclude string
+	if event.SourceInstanceID != "" && event.SourceInstanceID == instID {
+		exclude = event.ChangedEditor
+	}
+
 	tk := p.App.orderTIK(p.App.tiks[iTIK])
 	if err := sse.PatchElementTempl(template.TIKContent(tk)); err != nil {
 		return err
 	}
-	return sse.ExecuteScript(initEditorsScript([]template.TIK{*tk}))
+	return sse.ExecuteScript(syncEditorsScript([]template.TIK{*tk}, exclude))
 }
 
 func (PageTIK) OnReset(
@@ -1374,7 +1418,37 @@ func (p PageSettings) GET(
 	if building {
 		return nil, href.PageBuildBundle(), nil
 	}
-	return template.PageSettings(p.App.Version), "", nil
+
+	preview := "The quick brown fox jumps over the lazy dog"
+	icuPreview := "{ plural, one {# item} other {# items} }"
+	data := template.DataSettingsPreview{
+		UIFonts: []template.FontOption{
+			{Value: "system", Family: "", Label: "System Default", Preview: preview},
+			{Value: "georgia", Family: "Georgia, 'Times New Roman', serif", Label: "Georgia", Preview: preview},
+			{Value: "helvetica", Family: "'Helvetica Neue', Helvetica, Arial, sans-serif", Label: "Helvetica", Preview: preview},
+		},
+		EditorFonts: []template.FontOption{
+			{Value: "mono-system", Family: "ui-monospace, 'SF Mono', 'Cascadia Code', monospace", Label: "System Mono", Preview: icuPreview},
+			{Value: "mono-firacode", Family: "'Fira Code', monospace", Label: "Fira Code", Preview: icuPreview},
+			{Value: "mono-monaco", Family: "Monaco, Consolas, monospace", Label: "Monaco", Preview: icuPreview},
+			{Value: "mono-courier", Family: "'Courier New', Courier, monospace", Label: "Courier New", Preview: icuPreview},
+		},
+		UIPreviewTIK:   "{name, select, other {Welcome, {name}!}}",
+		UIPreviewICUEN: "{name, select, other {Welcome back, {name}!}}",
+		UIPreviewICUDE: "{name, select, other {Willkommen, {name}!}}",
+		UIPreviewEditorText: "{count, plural,\n" +
+			"  one {You have # new message}\n" +
+			"  other {You have # new messages}\n}",
+	}
+	body = template.PageSettings(p.App.Version, data)
+	return
+}
+
+// PageError404 is /error404/
+type PageError404 struct{ App *App }
+
+func (PageError404) GET(r *http.Request) (body templ.Component, err error) {
+	return template.PageNotFound(r.URL.Path), nil
 }
 
 // PageBuildBundle is /build-bundle
@@ -1610,6 +1684,7 @@ func (a *App) orderTIK(tk *template.TIK) *template.TIK {
 		TIK:         tk.TIK,
 		Description: tk.Description,
 		ICU:         ordered,
+		Occurrences: tk.Occurrences,
 		IsChanged:   tk.IsChanged,
 		IsInvalid:   tk.IsInvalid,
 	}

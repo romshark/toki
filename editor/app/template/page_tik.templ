@@ -18,7 +18,6 @@ templ PageTIK(tk *TIK) {
 		data-signals:resetdonetikid="''"
 		data-signals:resetdonelocale="''"
 		data-signals:instance_id="getOrCreateInstanceID('toki-editor-instance-id')"
-		data-init="initEditors()"
 	>
 		<aside
 			class="sidebar"
@@ -44,6 +43,14 @@ templ tikSidebarNav(tk *TIK) {
 	<nav id="tik-sidebar-content" aria-label="TIK navigation">
 		@sidebarHeader()
 		<section>
+			<ul>
+				<li>
+					//datapages:nolint
+					<a href="#tik-card" data-ignore-current>
+						TIK
+					</a>
+				</li>
+			</ul>
 			<div role="group" aria-labelledby="tik-nav-label">
 				<h3 id="tik-nav-label">ICU Messages</h3>
 				<ul>
@@ -87,6 +94,16 @@ templ tikSidebarNav(tk *TIK) {
 					}
 				</ul>
 			</div>
+			if len(tk.Occurrences) > 0 {
+				<ul>
+					<li>
+						//datapages:nolint
+						<a href="#source-occurrences" data-ignore-current>
+							Source Occurrences
+						</a>
+					</li>
+				</ul>
+			}
 		</section>
 	</nav>
 }
@@ -100,18 +117,17 @@ templ tikMainArea(tk *TIK) {
 		}, tikChangedCount(tk), true)
 		<main>
 			<div class="contents">
-				<div class="card tik-card">
+				<div class="card tik-card" id="tik-card">
 					<header>
 						<label class="tik-label">
 							<span>
 								TIK
 								<span class="msg-id">{ tk.ID }</span>
 							</span>
-							<textarea
-								class="editor"
-								data-mode="icu"
-								readonly="true"
-							>{ tk.TIK }</textarea>
+							<toki-editor
+								value={ tk.TIK }
+								readonly
+							></toki-editor>
 						</label>
 						if tk.Description != "" {
 							<label>
@@ -121,7 +137,10 @@ templ tikMainArea(tk *TIK) {
 						}
 					</header>
 				</div>
-				<h2 id="icu-messages">@iconLanguages() ICU Messages</h2>
+				<h2 id="icu-messages">
+					@iconLanguages()
+					ICU Messages
+				</h2>
 				for _, msg := range tk.ICU {
 					<div
 						class="card"
@@ -135,6 +154,35 @@ templ tikMainArea(tk *TIK) {
 						</header>
 						<section>
 							@icuMessageForm(tk.ID, msg, false)
+						</section>
+					</div>
+				}
+				if len(tk.Occurrences) > 0 {
+					<h2 id="source-occurrences">
+						@iconCode()
+						Source Occurrences
+					</h2>
+					<div class="card">
+						<section>
+							<ul class="occurrence-list">
+								for _, occ := range tk.Occurrences {
+									<li
+										class="occurrence-item"
+										title={ fmt.Sprintf("%s:%d:%d",
+											occ.File, occ.Line, occ.Column) }
+									>
+										<code class="occurrence-file">
+											{ occ.DisplayFile }
+											<span class="occurrence-pos">
+												{ occ.Pos() }
+											</span>
+										</code>
+										@componentCopy(fmt.Sprintf(
+											"%s:%d:%d", occ.File, occ.Line, occ.Column,
+										))
+									</li>
+								}
+							</ul>
 						</section>
 					</div>
 				}

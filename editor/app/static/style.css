@@ -1,7 +1,16 @@
+/* Bundled web font — Fira Code variable (all weights, single file) */
+@font-face {
+	font-family: 'Fira Code';
+	src: url('FiraCode-VF.woff2') format('woff2-variations');
+	font-weight: 300 700;
+	font-style: normal;
+	font-display: swap;
+}
+
 /* Lock page to viewport — only <main> scrolls */
 html {
 	height: 100dvh;
-	overflow: hidden;
+	overflow: clip;
 	overscroll-behavior: none;
 	font-size: var(--font-size-ui);
 }
@@ -9,7 +18,7 @@ html {
 body {
 	height: 100dvh;
 	margin: 0;
-	overflow: hidden;
+	overflow: clip;
 	font-family: var(--font-ui);
 }
 
@@ -81,6 +90,15 @@ body {
 	flex-shrink: 0;
 }
 
+.navbar-normal {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	flex: 1;
+	min-inline-size: 0;
+}
+
 .navbar-left,
 .navbar-right {
 	display: flex;
@@ -110,6 +128,30 @@ body {
 	inline-size: 100%;
 	padding-block: 0.25rem;
 	padding-inline-start: 2rem;
+}
+
+/* Mobile search mode */
+.navbar-search-mode {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex: 1;
+}
+
+.navbar-page-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	font-weight: 600;
+	font-size: 0.9rem;
+}
+
+/* Responsive: desktop vs mobile navbar parts */
+.navbar-mobile-only { display: none; }
+
+@media (max-width: 48rem) {
+	.navbar-desktop-only { display: none !important; }
+	.navbar-mobile-only { display: flex; }
 }
 
 .btn-icon {
@@ -236,6 +278,47 @@ body {
 	cursor: pointer;
 }
 
+#page-not-found {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 2rem;
+	padding: 2rem;
+
+	& header > code {
+		font-size: 5rem;
+	}
+
+	& main {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		max-inline-size: 40%;
+	}
+
+	& .not-found-actions {
+		align-self: start;
+	}
+
+	@media (max-width: 48rem) {
+		flex-direction: column;
+		text-align: center;
+
+		& header > code {
+			font-size: 3.5rem;
+		}
+
+		& main {
+			max-inline-size: 100%;
+			align-items: center;
+		}
+
+		& .not-found-actions {
+			align-self: center;
+		}
+	}
+}
+
 /* --- Dashboard layout --- */
 
 #page-dashboard,
@@ -251,7 +334,7 @@ body {
 	flex-direction: column;
 	flex-grow: 1;
 	block-size: 100%;
-	overflow: hidden;
+	overflow: clip;
 }
 
 /* Scroll container — only <main> scrolls */
@@ -522,71 +605,17 @@ main {
 		}
 	}
 
-	& textarea,
-	& .CodeMirror {
+	& toki-editor {
 		inline-size: 100%;
 		max-block-size: 90dvh;
 	}
 }
 
-/* Hide raw textareas; CodeMirror replaces them.
-   Show a skeleton placeholder until CodeMirror initializes. */
-textarea.editor {
-	display: none;
-}
-[id^="cm-"]:not(:has(.CodeMirror))::after,
-.tik-label:not(:has(.CodeMirror))::after {
-	content: "";
-	display: block;
-	block-size: 2.5rem;
-	border-radius: 0.375rem;
-	background: var(--border, oklch(0 0 0 / 0.1));
-	animation: skeleton-pulse 1.5s ease-in-out infinite;
-}
-
-.CodeMirror {
-	block-size: auto;
-	font-family: var(--font-editor);
-	font-size: var(--font-size-editor);
-}
-
-/* Whitespace visibility in CodeMirror */
-.cm-whitespace {
-	position: relative;
-}
-
-.cm-space::before {
-	content: "·";
-	position: absolute;
-	inset: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--border, oklch(0 0 0 / 0.2));
-	pointer-events: none;
-}
-
-.cm-tab {
-	position: relative;
-
-	&::before {
-		content: "→";
-		position: absolute;
-		inset-inline-start: 0;
-		color: var(--border, oklch(0 0 0 / 0.2));
-		pointer-events: none;
-	}
-}
-
-.cm-nbsp::before {
-	content: "␣";
-	position: absolute;
-	inset: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--border, oklch(0 0 0 / 0.2));
-	pointer-events: none;
+/* <toki-editor> web component — CM6 lives inside shadow DOM,
+   so only host-level sizing rules are needed here. */
+toki-editor {
+	inline-size: 100%;
+	max-block-size: 90dvh;
 }
 
 /* Prevent CodeMirror from overflowing cards */
@@ -742,6 +771,69 @@ textarea.editor {
 	padding: 1rem;
 }
 
+/* --- Source occurrences --- */
+
+.occurrence-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.occurrence-item {
+	display: flex;
+	flex-direction: row;
+	gap: 1rem;
+	align-items: center;
+	
+	& .occurrence-file {
+		word-break: break-all;
+		/* Flex collapses whitespace-only text nodes from templ formatting */
+		display: inline-flex;
+		flex-wrap: wrap;
+	}
+
+	& .occurrence-pos {
+		opacity: 0.5;
+		font-variant-numeric: tabular-nums;
+		/* Flex also collapses inner whitespace text nodes */
+		display: inline-flex;
+	}
+}
+
+/* Copy button — icon swap via data attribute (per-element scoped) */
+.copy-btn {
+	& .copy-btn-done { display: none; }
+
+	&[data-copied] {
+		background: var(--primary);
+		color: var(--primary-foreground);
+		border-color: var(--primary);
+
+		& .copy-btn-idle { display: none; }
+		& .copy-btn-done { display: inline-flex; }
+	}
+}
+
+
+/* Easter egg */
+@keyframes egg-reveal {
+	from { opacity: 0; transform: translateY(0.5rem); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+.egg-line {
+	opacity: 0;
+	animation: egg-reveal 0.3s ease-out both;
+}
+
+.egg-danger {
+	color: oklch(0.55 0.2 25);
+	font-weight: 700;
+}
+
 .no-translation {
 	font-style: italic;
 	opacity: 0.5;
@@ -879,25 +971,52 @@ textarea.editor {
 	}
 }
 
-/* Font picker */
+/* --- Font section (two-column: controls | preview) --- */
 
-.font-picker {
+.font-section {
 	display: flex;
 	gap: 1rem;
-	flex-wrap: wrap;
+	min-block-size: 16rem;
 }
 
-.font-card {
+.font-section-controls {
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	inline-size: 22rem;
+	min-inline-size: 0;
+}
+
+.scroll-fade-list {
+	flex: 1 1 0;
+	min-block-size: 0;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	padding-block: 0.25rem;
+	/* Scroll-position-aware edge fades (no JS needed).
+	   "cover" layers use background-attachment:local so they scroll
+	   with content, hiding the fixed shadows at the extremes. */
+	--_bg: var(--background, #fff);
+	background:
+		linear-gradient(var(--_bg) 33%, transparent) center top / 100% 1.5rem no-repeat local,
+		linear-gradient(transparent, var(--_bg) 67%) center bottom / 100% 1.5rem no-repeat local,
+		linear-gradient(to bottom, oklch(0 0 0 / 0.12), transparent) center top / 100% 0.75rem no-repeat scroll,
+		linear-gradient(to top, oklch(0 0 0 / 0.12), transparent) center bottom / 100% 0.75rem no-repeat scroll;
+}
+
+.font-option {
 	all: unset;
 	cursor: pointer;
 	display: flex;
 	flex-direction: column;
-	gap: 0.5rem;
-	padding: 0.75rem 1rem;
-	border-radius: 0.5rem;
+	gap: 0.25rem;
+	padding: 0.5rem 0.75rem;
+	border-radius: 0.375rem;
 	border: 2px solid var(--border, oklch(0 0 0 / 0.15));
-	transition: border-color 0.15s;
-	min-inline-size: 10rem;
+	transition: border-color 0.15s, background 0.15s;
 
 	&:hover {
 		border-color: var(--primary, oklch(0.55 0.15 250));
@@ -909,76 +1028,70 @@ textarea.editor {
 	}
 }
 
-.font-preview {
-	font-size: 1.1rem;
+.font-option-preview {
+	font-size: var(--font-size-ui, 1rem);
 	line-height: 1.4;
 	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
-.font-card-label {
-	font-weight: 600;
+.font-option-name {
 	font-size: 0.8rem;
-	opacity: 0.6;
+	font-family: var(--font-ui);
+	font-weight: 600;
+	opacity: 0.5;
 }
 
-.font-size-picker {
+.font-size-group {
+	flex-shrink: 0;
 	display: flex;
-	gap: 0.5rem;
-	flex-wrap: wrap;
-	align-items: stretch;
-}
+	inline-size: 100%;
 
-.font-size-card {
-	all: unset;
-	cursor: pointer;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: end;
-	gap: 0.25rem;
-	padding: 0.5rem 1rem;
-	border-radius: 0.5rem;
-	border: 2px solid var(--border, oklch(0 0 0 / 0.15));
-	transition: border-color 0.15s;
-
-	&:hover {
-		border-color: var(--primary, oklch(0.55 0.15 250));
-	}
-
-	&[aria-pressed="true"] {
-		border-color: var(--primary, oklch(0.55 0.15 250));
-		background: var(--accent, oklch(0 0 0 / 0.04));
+	& > button {
+		flex: 1;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.15rem;
+		padding: 0.5rem 0.25rem;
+		min-block-size: 3.5rem;
 	}
 }
 
-.font-size-preview {
+.font-size-card[aria-pressed="true"] {
+	background: var(--primary, oklch(0.55 0.15 250));
+	color: var(--primary-foreground, white);
+	border-color: var(--primary, oklch(0.55 0.15 250));
+}
+
+.font-size-aa {
 	font-weight: 600;
 	line-height: 1;
 }
 
-.font-size-label {
-	font-size: 0.7rem;
+.font-size-card .font-size-label {
+	font-size: 0.6rem;
 	opacity: 0.6;
 }
 
-.editor-font-settings {
-	display: flex;
-	flex-direction: column;
-	gap: 1rem;
+.font-size-card[aria-pressed="true"] .font-size-label {
+	opacity: 0.85;
 }
 
-.editor-font-controls {
+.font-section-preview {
+	flex: 1 1 0;
+	min-inline-size: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 0.75rem;
 }
 
-.editor-font-preview {
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
-
-	& .CodeMirror {
-		min-block-size: 6rem;
-	}
+.font-preview-label {
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	opacity: 0.4;
+	margin-block-end: 0.25rem;
 }
+
+

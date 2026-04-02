@@ -533,6 +533,9 @@ func setupHandlers(s *Server) {
 		"GET /build-bundle/_$/{$}",
 		s.handlePageBuildBundleGETStream)
 	s.mux.HandleFunc(
+		"GET /error404/{$}",
+		s.handlePageError404GET)
+	s.mux.HandleFunc(
 		"GET /",
 		s.handlePageIndexGET)
 	s.mux.HandleFunc(
@@ -593,6 +596,29 @@ func (s *Server) httpErrIntern(
 	}
 }
 
+func (s *Server) render404(w http.ResponseWriter, r *http.Request) {
+	p := app.PageError404{
+		App: s.app,
+	}
+
+	body, err := p.GET(r)
+	if err != nil {
+		s.httpErrIntern(w, r, nil, "handling PageError404.GET", err)
+		return
+	}
+	genericHead := s.app.Head(r)
+
+	bodyAttrs := func(w http.ResponseWriter) {
+		writeBodyAttrOnVisibilityChange(w)
+	}
+	if err := s.writeHTML(
+		w, r, genericHead, nil, body, bodyAttrs, nil,
+	); err != nil {
+		s.logErr("rendering PageError404", err)
+		return
+	}
+}
+
 func (s *Server) handlePOSTSet(w http.ResponseWriter, r *http.Request) {
 	if !s.checkIsDSReq(w, r) {
 		return
@@ -600,9 +626,10 @@ func (s *Server) handlePOSTSet(w http.ResponseWriter, r *http.Request) {
 
 	r.Body = http.MaxBytesReader(w, r.Body, DefaultBodySizeLimit)
 	var signals struct {
-		TIKID  string `json:"settikid"`
-		Locale string `json:"setlocale"`
-		ICUMsg string `json:"icumsg"`
+		TIKID      string `json:"settikid"`
+		Locale     string `json:"setlocale"`
+		ICUMsg     string `json:"icumsg"`
+		InstanceID string `json:"instance_id"`
 	}
 	if err := datastar.ReadSignals(r, &signals); err != nil {
 		s.httpErrBad(w, "reading signals", err)
@@ -800,9 +827,32 @@ func (s *Server) handlePageBuildBundleGETStream(w http.ResponseWriter, r *http.R
 		})
 }
 
+func (s *Server) handlePageError404GET(w http.ResponseWriter, r *http.Request) {
+	p := app.PageError404{
+		App: s.app,
+	}
+	body, err := p.GET(r)
+	if err != nil {
+		s.httpErrIntern(w, r, nil, "handling PageError404.GET", err)
+		return
+	}
+	genericHead := s.app.Head(r)
+
+	bodyAttrs := func(w http.ResponseWriter) {
+		writeBodyAttrOnVisibilityChange(w)
+	}
+
+	if err := s.writeHTML(
+		w, r, genericHead, nil, body, bodyAttrs, nil,
+	); err != nil {
+		s.logErr("rendering PageError404", err)
+		return
+	}
+}
+
 func (s *Server) handlePageIndexGET(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
-		http.NotFound(w, r)
+		s.render404(w, r)
 		return
 	}
 

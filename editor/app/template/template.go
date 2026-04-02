@@ -74,11 +74,25 @@ type ICUMessage struct {
 	IsReadOnly        bool
 }
 
+// SourceOccurrence is a location where a TIK appears in the source code.
+type SourceOccurrence struct {
+	File        string // Absolute path.
+	DisplayFile string // Path relative to project dir (for display).
+	Line        int
+	Column      int
+}
+
+// Pos returns ":line:col" as a single string.
+func (o SourceOccurrence) Pos() string {
+	return fmt.Sprintf(":%d:%d", o.Line, o.Column)
+}
+
 type TIK struct {
 	ID          string
 	TIK         string
 	Description string
 	ICU         []*ICUMessage
+	Occurrences []SourceOccurrence
 	// Status flags for client-side filtering.
 	IsChanged    bool
 	IsEmpty      bool
