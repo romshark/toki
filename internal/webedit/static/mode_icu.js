@@ -100,7 +100,7 @@
             if (stream.match(selectorRE)) return "atom";
             // 5) style names (integer, currency,…)
             if (stream.match(styleRE)) return "keyword";
-            // 6) any other identifier followed by "{"  → an option name
+            // 6) any other identifier followed by "{" is an option name
             var id = stream.match(varRE, true);
             if (id) {
               var s = stream.string, p = stream.pos, i = p;

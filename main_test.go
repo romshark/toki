@@ -160,8 +160,8 @@ func TestGenerateAndRunFallback(t *testing.T) {
 			"@@last_modified": "2025-01-01T01:01:01Z",
 			"@@x-generator": "github.com/romshark/toki",
 			"@@x-generator-version": "0.8.2",
-			"msg1bf544c92a992298": "übersetzt",
-			"@msg1bf544c92a992298": {
+			"msg9d21e6c2519b8be9": "übersetzt",
+			"@msg9d21e6c2519b8be9": {
 					"description": "übersetzt",
 					"type": "text"
 			}
@@ -277,7 +277,19 @@ func TestGenerate(t *testing.T) {
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339), app.Version),
+					TimeNow.Format(time.RFC3339), app.Version,
+				),
+				".tokidomain.yml": "# The TIK domain for this directory tree.\n" +
+					"# The description provides context for translators working on this domain.\n" +
+					"# Also see: https://github.com/romshark/tik/blob/main/SPECIFICATION.md#domains\n" +
+					"\n" +
+					"# This defines the name of the domain.\n" +
+					"name: " + ModName + "\n" +
+					"\n" +
+					"# The description provides translators with additional context and instructions on\n" +
+					"# how to translate within a directory tree, such as the expected tone, style,\n" +
+					"# target audience, or terminology conventions.\n" +
+					"description: \"\"\n",
 			},
 		},
 		{
@@ -349,6 +361,46 @@ func TestGenerate(t *testing.T) {
 					TimeNow.Format(time.RFC3339), app.Version),
 			},
 		},
+		{
+			name: "same TIK at multiple call sites",
+			setup: Setup{
+				InitGoMod: true,
+				Files: map[string]string{
+					"main.go": `
+						package main
+						import "fmt"
+						import "tstmod/tokibundle"
+						import "golang.org/x/text/language"
+						func main() {
+							r, _ := tokibundle.Match(language.English)
+							fmt.Println(r.String("duplicated"))
+							fmt.Println(r.String("duplicated"))
+						}
+					`,
+				},
+			},
+			args: []string{"-l=en"},
+		},
+		{
+			name: "same TIK at multiple call sites with ignored spaces",
+			setup: Setup{
+				InitGoMod: true,
+				Files: map[string]string{
+					"main.go": `
+						package main
+						import "fmt"
+						import "tstmod/tokibundle"
+						import "golang.org/x/text/language"
+						func main() {
+							r, _ := tokibundle.Match(language.English)
+							fmt.Println(r.String(" duplicated "))
+							fmt.Println(r.String("duplicated"))
+						}
+					`,
+				},
+			},
+			args: []string{"-l=en"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -371,6 +423,72 @@ func TestGenerate(t *testing.T) {
 			// TODO: make sure the program is compilable.
 		})
 	}
+}
+
+// TestGenerateDomainFileNotOverwritten verifies that an existing .tokidomain.yml file
+// is preserved when running `toki generate` again.
+func TestGenerateDomainFileNotOverwritten(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, "tstmod")
+
+	customDomain := "name: custom\ndescription: my custom domain"
+	writeFiles(t, dir, map[string]string{
+		".tokidomain.yml": customDomain,
+	})
+
+	runInDir(t, dir, func() {
+		args := []string{"toki", "generate", "-l=en"}
+		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		require.NoError(t, result.Err)
+		require.Zero(t, exitCode)
+	})
+
+	// Verify .tokidomain.yml was not overwritten.
+	content, err := os.ReadFile(filepath.Join(dir, ".tokidomain.yml"))
+	require.NoError(t, err)
+	require.Equal(t, customDomain, string(content))
+}
+
+// TestGenerateSameTIKDifferentDomains verifies that the same TIK string used in
+// different domains (including parent vs. sub-domain) does not cause a collision.
+func TestGenerateSameTIKDifferentDomains(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, "tstmod")
+	writeFiles(t, dir, map[string]string{
+		".tokidomain.yml": "name: root\ndescription: \"\"",
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				fmt.Println(r.String("hello world"))
+			}
+		`,
+		"sub/.tokidomain.yml": "name: sub\ndescription: \"\"",
+		"sub/sub.go": `
+			package sub
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func Hello() string {
+				r, _ := tokibundle.Match(language.English)
+				return r.String("hello world")
+			}
+		`,
+	})
+
+	runInDir(t, dir, func() {
+		args := []string{"toki", "generate", "-l=en"}
+		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		require.NoError(t, result.Err)
+		require.Zero(t, exitCode)
+		// The same TIK in different domains must produce distinct message IDs.
+		require.Zero(t, result.Scan.SourceErrors.Len(),
+			"expected no source errors (no collision)")
+		require.Equal(t, 2, result.Scan.Texts.Len(),
+			"expected 2 distinct texts from 2 different domains")
+	})
 }
 
 type SourceError struct {
@@ -537,8 +655,8 @@ func TestGenerateErr(t *testing.T) {
 							"@@last_modified": "2025-06-06T01:29:56+02:00",
 							"@@x-generator": "github.com/romshark/toki",
 							"@@x-generator-version": %q,
-							"msg1bf544c92a992298": "übersetzt",
-							"@msg1bf544c92a992298": {
+							"msg9d21e6c2519b8be9": "übersetzt",
+							"@msg9d21e6c2519b8be9": {
 								"type": "text"
 							}
 						}
@@ -659,7 +777,7 @@ func TestGenerateErrSource(t *testing.T) {
 					errHasMsg("TIK: arg 0 must be time.Time but received: string"),
 				},
 				{"main.go:13:28", func(tt require.TestingT, err error, i ...any) {
-					require.ErrorAs(t, err, &tik.ErrParser{})
+					require.ErrorAs(t, err, &tik.ParseError{})
 					require.Equal(t, "TIK: at index 12: unknown placeholder", err.Error())
 				}},
 			},

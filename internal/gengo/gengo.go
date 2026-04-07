@@ -314,7 +314,7 @@ func unescapeICULiteral(raw string) string {
 	for i := 0; i < len(raw); {
 		switch raw[i] {
 		case '\'':
-			// doubled quote → single quote
+			// doubled quote to single quote
 			if i+1 < len(raw) && raw[i+1] == '\'' {
 				b.WriteByte('\'')
 				i += 2

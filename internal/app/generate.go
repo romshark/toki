@@ -25,6 +25,7 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/romshark/icumsg"
 	"github.com/romshark/tik/tik-go"
+	"golang.org/x/mod/modfile"
 	"golang.org/x/text/language"
 )
 
@@ -77,6 +78,13 @@ func (g *Generate) Run(
 	}
 
 	if !lintOnly {
+		// Generate a .tokidomain.yml file at the module root if one doesn't exist.
+		if err := generateTokiDomainFile(conf.ModPath); err != nil {
+			result.Err = fmt.Errorf("generating %s: %w",
+				codeparse.DomainFileName, err)
+			return result
+		}
+
 		mainBundleFile := filepath.Join(
 			conf.ModPath, conf.BundlePkgPath, MainBundleFileGo,
 		)
@@ -86,6 +94,7 @@ func (g *Generate) Run(
 				result.Err = ErrMissingLocaleParam
 				return result
 			}
+
 			scan := codeparse.NewScan(conf.Locale, Version)
 			// Need to generate an empty bundle package first.
 			// Otherwise if the bundle existed and was imported before, later got removed
@@ -439,6 +448,43 @@ func setARBMetadata(f *arb.File) {
 	f.CustomAttributes["@@x-generator-version"] = Version
 }
 
+// generateTokiDomainFile creates a .tokidomain.yml file at modPath if one does not
+// already exist. The domain name is derived from the Go module name.
+func generateTokiDomainFile(modPath string) error {
+	domainFilePath := filepath.Join(modPath, codeparse.DomainFileName)
+	if _, err := os.Stat(domainFilePath); err == nil {
+		return nil // Already exists, don't overwrite.
+	}
+
+	goModPath := filepath.Join(modPath, "go.mod")
+	goModData, err := os.ReadFile(goModPath)
+	if err != nil {
+		return fmt.Errorf("reading go.mod for domain name: %w", err)
+	}
+	mf, err := modfile.Parse(goModPath, goModData, nil)
+	if err != nil {
+		return fmt.Errorf("parsing go.mod for domain name: %w", err)
+	}
+	// Use the last path segment of the module path as the domain name.
+	name := filepath.Base(mf.Module.Mod.Path)
+
+	content := fmt.Sprintf(
+		"# The TIK domain for this directory tree.\n"+
+			"# The description provides context for translators working on this domain.\n"+
+			"# Also see: https://github.com/romshark/tik/blob/main/SPECIFICATION.md#domains\n"+
+			"\n"+
+			"# This defines the name of the domain.\n"+
+			"name: %s\n"+
+			"\n"+
+			"# The description provides translators with additional context and instructions on\n"+
+			"# how to translate within a directory tree, such as the expected tone, style,\n"+
+			"# target audience, or terminology conventions.\n"+
+			"description: \"\"\n",
+		name,
+	)
+	return os.WriteFile(domainFilePath, []byte(content), 0o644)
+}
+
 func prepareBundlePackageDir(bundlePkgPath string) error {
 	if _, err := os.Stat(bundlePkgPath); errors.Is(err, os.ErrNotExist) {
 		log.Verbose("create new bundle package", slog.String("path", bundlePkgPath))
@@ -549,7 +595,7 @@ func (g *Generate) newARBMsg(
 
 	description := strings.Join(text.Comments, " ")
 
-	msg.ID = codeparse.HashMessage(g.hasher, text.TIK.Raw)
+	msg.ID = codeparse.HashMessage(g.hasher, text.Domain, text.TIK.Raw)
 
 	placeholders := make(map[string]arb.Placeholder)
 	for i, placeholder := range text.TIK.Placeholders() {
