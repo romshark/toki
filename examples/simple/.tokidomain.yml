@@ -1,0 +1,13 @@
+# The TIK domain for this directory tree.
+# The description provides context for translators working on this domain.
+# Also see: https://github.com/romshark/tik/blob/main/SPECIFICATION.md#domains
+
+# This defines the name of the domain.
+name: tokiexample
+
+# The description provides translators with additional context and instructions on
+# how to translate within a directory tree, such as the expected tone, style,
+# target audience, or terminology conventions.
+description: >-
+  A simple example application demonstrating Toki's i18n features.
+  Use a friendly, casual tone. Prefer clear and concise phrasing; blablabla...

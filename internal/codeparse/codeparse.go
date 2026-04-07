@@ -36,6 +36,7 @@ const (
 var (
 	ErrUnsupportedSelectOption    = errors.New("unsupported select option")
 	ErrCantUnpackCompositeLiteral = errors.New("can't unpack composite literal")
+	ErrTIKCollision               = errors.New("TIK collision")
 )
 
 type Statistics struct {
@@ -83,6 +84,7 @@ type Text struct {
 	TIK      tik.TIK
 	IDHash   string
 	Comments []string
+	Domain   *Domain // The domain this text belongs to (nil if none).
 }
 
 func (t Text) Context() string {
@@ -138,6 +140,7 @@ type Scan struct {
 	TextIndexByID *sync.Map[string, int]
 	SourceErrors  *sync.Slice[SourceError]
 	Catalogs      *sync.Slice[*Catalog]
+	Domains       *DomainTree // Domain hierarchy discovered during scan.
 }
 
 // Parse parses Go source code and ARB files to produce a Scan.
@@ -199,6 +202,15 @@ func (p *Parser) Parse(
 
 		p.genderType = pkgBundle.PkgPath + ".Gender"
 		p.readerType = pkgBundle.PkgPath + ".Reader"
+	}
+
+	// Discover TIK domains from .tokidomain files.
+	if modDir := moduleDir(pkgs); modDir != "" {
+		domains, err := DiscoverDomains(modDir)
+		if err != nil {
+			return scan, fmt.Errorf("discovering domains: %w", err)
+		}
+		scan.Domains = domains
 	}
 
 	p.collectTexts(fset, pkgs, bundlePkg, pathPattern, trimpath, scan)
@@ -395,6 +407,10 @@ func (p *Parser) collectTexts(
 			seenFiles[filePath] = struct{}{}
 
 			scan.FilesTraversed.Add(1)
+			var fileDomain *Domain
+			if scan.Domains != nil {
+				fileDomain = scan.Domains.ForDir(filepath.Dir(filePath))
+			}
 			for _, decl := range file.Decls {
 				ast.Inspect(decl, func(node ast.Node) bool {
 					call, ok := node.(*ast.CallExpr)
@@ -452,15 +468,32 @@ func (p *Parser) collectTexts(
 
 					comments := findLeadingComments(fset, file, call)
 
-					id := HashMessage(p.hasher, tikVal.Raw)
+					id := HashMessage(p.hasher, fileDomain, tikVal.Raw)
 					log.Verbose(funcType,
 						slog.String("pos", log.FmtPos(posCall)))
 					_ = scan.TextIndexByID.Access(func(s map[string]int) error {
+						if existingIdx, ok := s[id]; ok {
+							existing := scan.Texts.At(existingIdx)
+							if existing.TIK.Raw != tikVal.Raw {
+								scan.SourceErrors.Append(SourceError{
+									Position: posCall,
+									Err: fmt.Errorf(
+										"%w: %q collides with %q (at %s)",
+										ErrTIKCollision,
+										tikVal.Raw,
+										existing.TIK.Raw,
+										existing.Position,
+									),
+								})
+							}
+							return nil
+						}
 						index := scan.Texts.Append(Text{
 							Position: posCall,
 							IDHash:   id,
 							TIK:      tikVal,
 							Comments: comments,
+							Domain:   fileDomain,
 						})
 						s[id] = index
 						return nil
@@ -655,10 +688,22 @@ func iterArgs(call *ast.CallExpr, argOffset int) (iter.Seq[ast.Expr], error) {
 	}, nil
 }
 
-func HashMessage(hash *xxhash.Digest, tik string) string {
+func HashMessage(hash *xxhash.Digest, domain *Domain, tik string) string {
 	hash.Reset()
+	if domain != nil {
+		hashDomainChain(hash, domain)
+	}
 	_, _ = hash.WriteString(tik)
 	return fmt.Sprintf("msg%x", hash.Sum64())
+}
+
+// hashDomainChain writes each domain name in root-to-leaf order separated by \x00.
+func hashDomainChain(hash *xxhash.Digest, d *Domain) {
+	if d.Parent != nil {
+		hashDomainChain(hash, d.Parent)
+	}
+	_, _ = hash.WriteString(d.Name)
+	_, _ = hash.WriteString("\x00")
 }
 
 func isString(pkg *packages.Package, expr ast.Expr) (actualTypeName string, ok bool) {
@@ -852,6 +897,17 @@ func (p *Parser) isCurrencyAmount(
 	}
 
 	return tv.Type.String(), hasValue && hasType
+}
+
+// moduleDir returns the module root directory from the first package that has
+// module information, or "" if none do.
+func moduleDir(pkgs []*packages.Package) string {
+	for _, pkg := range pkgs {
+		if pkg.Module != nil && pkg.Module.Dir != "" {
+			return pkg.Module.Dir
+		}
+	}
+	return ""
 }
 
 func isPkgBundle(bundlePkg string, pkg *packages.Package) bool {

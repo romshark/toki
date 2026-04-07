@@ -29,6 +29,7 @@ generated from [TIKs](https://github.com/romshark/tik) extracted from the source
   - [2. Prepare your Go project for internationalization.](#2-prepare-your-go-project-for-internationalization)
   - [3. Localize your application for other languages and regions.](#3-localize-your-application-for-other-languages-and-regions)
   - [4. Integrate Toki into your CI/CD pipeline.](#4-integrate-toki-into-your-cicd-pipeline)
+- [Domains](#domains)
 - [Bundle File Structure](#bundle-file-structure)
 
 ## Quick Start Guide
@@ -174,6 +175,53 @@ go run github.com/romshark/toki@latest lint -require-complete
 You may also use `toki generate -require-complete` and additionally git diff
 to ensure your generated Toki bundle package is up to date.
 
+## Domains
+
+Toki supports [TIK domains](https://github.com/romshark/tik/blob/main/SPECIFICATION.md#domains)
+via `.tokidomain.yml` files. A domain provides translators and LLMs with additional context
+and instructions on how to translate within a directory tree, such as the expected tone,
+style, target audience, or terminology conventions. Domains also scope TIK identity,
+so identical TIK strings in separate domains are treated as distinct messages.
+
+When you run `toki generate` for the first time, a `.tokidomain.yml` file is automatically
+created at your module root using the Go module name.
+
+A `.tokidomain.yml` file is a simple YAML file:
+
+```yaml
+# The TIK domain for this directory tree.
+# The description provides context for translators working on this domain.
+# Also see: https://github.com/romshark/tik/blob/main/SPECIFICATION.md#domains
+
+# This defines the name of the domain.
+name: myapp
+
+# The description provides translators with additional context and instructions on
+# how to translate within a directory tree, such as the expected tone, style,
+# target audience, or terminology conventions.
+description: ""
+```
+
+Domains can be nested. Place additional `.tokidomain.yml` files in subdirectories
+to create sub-domains:
+
+```yaml
+myapp/
+├─ .tokidomain.yml # myapp
+└─ internal/
+   ├─ storefront/
+   │  ├─ .tokidomain.yml # myapp.storefront
+   │  ├─ checkout/
+   │  │   └─ .tokidomain.yml # myapp.storefront.checkout
+   │  └── catalog/ # (inherits myapp.storefront)
+   └─ admin/
+      └─ .tokidomain.yml # myapp.admin
+```
+
+Directories without a `.tokidomain.yml` file inherit the nearest ancestor's domain.
+A sub-domain is a distinct domain from its parent, so the same TIK string
+in `myapp` and `myapp.storefront` will produce separate translations.
+
 ## Bundle File Structure
 
 - `bundle_gen.go` contains Toki's core source code and package API.
@@ -190,9 +238,6 @@ to ensure your generated Toki bundle package is up to date.
   - **Editable 📝**
   - If this file isn't found a new blank file is always automatically created.
     Use this file for any copyright notices and similar purposes.
-- `context.txt` is a text file defining the overall global context for translators.
-  - **Editable 📝**
-  - If this file isn't found a new blank file is always automatically created.
 
 All other files in the bundle package are ignored and preserved.
 `.go` files that don't have the following head comment are always preserved:

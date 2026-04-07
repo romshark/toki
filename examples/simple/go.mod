@@ -1,8 +1,8 @@
 module tokiexample
 
-go 1.24.6
+go 1.26.1
 
 require (
 	github.com/go-playground/locales v0.14.1
-	golang.org/x/text v0.28.0
+	golang.org/x/text v0.35.0
 )
