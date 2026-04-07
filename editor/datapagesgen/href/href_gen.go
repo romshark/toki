@@ -47,6 +47,9 @@ func Asset(p string) string {
 // PageBuildBundle references /build-bundle/{$}
 func PageBuildBundle() string { return "/build-bundle/" }
 
+// PageDomains references /domains/{$}
+func PageDomains() string { return "/domains/" }
+
 // PageError404 references /error404//{$}
 func PageError404() string { return "/error404/" }
 
@@ -77,6 +80,7 @@ func PageTIK(id string) string {
 func PageTIKs(query QueryPageTIKs) string {
 	anyQuery := query.Filter != "" ||
 		query.Locales != "" ||
+		query.Domains != "" ||
 		query.Search != ""
 
 	var b strings.Builder
@@ -101,6 +105,13 @@ func PageTIKs(query QueryPageTIKs) string {
 		}
 		n++
 		l += len("l=") + len(query.Locales)
+	}
+	if query.Domains != "" {
+		if n > 0 {
+			l += len("&")
+		}
+		n++
+		l += len("d=") + len(query.Domains)
 	}
 	if query.Search != "" {
 		if n > 0 {
@@ -136,6 +147,14 @@ func PageTIKs(query QueryPageTIKs) string {
 		b.WriteString("l=")
 		b.WriteString(query.Locales)
 	}
+	if query.Domains != "" {
+		if n > 0 {
+			b.WriteString("&")
+		}
+		n++
+		b.WriteString("d=")
+		b.WriteString(query.Domains)
+	}
 	if query.Search != "" {
 		if n > 0 {
 			b.WriteString("&")
@@ -151,5 +170,6 @@ func PageTIKs(query QueryPageTIKs) string {
 type QueryPageTIKs struct {
 	Filter  string `query:"f"`
 	Locales string `query:"l"`
+	Domains string `query:"d"`
 	Search  string `query:"q"`
 }

@@ -393,7 +393,7 @@ func componentNavbarSearch(
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</div></div><!-- Mobile search mode (replaces navbar content) --><div class=\"navbar-search-mode\" data-show=\"$_navsearch\"><button class=\"btn-secondary btn-icon\" data-on:click=\"$_navsearch=false\" aria-label=\"Close search\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</div></div><!-- Mobile search mode (replaces navbar content) --><div class=\"navbar-search-mode\" style=\"display:none\" data-show=\"$_navsearch\"><button class=\"btn-secondary btn-icon\" data-on:click=\"$_navsearch=false\" aria-label=\"Close search\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

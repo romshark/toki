@@ -254,3 +254,17 @@ function syncShownLocales() {
 	});
 	return shown.length > 0 ? shown.join(',') : '-';
 }
+
+// Sync the showdomains map signal into a comma-separated string for the URL query param.
+// Signal keys use underscores (showdomains.myapp_api) but the value uses dots (myapp.api).
+function syncShownDomains() {
+	var switches = document.querySelectorAll('[data-bind^="showdomains."]');
+	var shown = [];
+	switches.forEach(function(sw) {
+		if (sw.checked) {
+			var key = sw.getAttribute('data-bind').replace('showdomains.', '');
+			shown.push(key.replace(/_/g, '.'));
+		}
+	});
+	return shown.length > 0 ? shown.join(',') : '-';
+}

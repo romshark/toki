@@ -20,6 +20,7 @@ templ PageTIKs(data DataIndex) {
 		data-signals:resetdonelocale="''"
 		data-signals:instance_id="getOrCreateInstanceID('toki-editor-instance-id')"
 		data-signals:showlocales={ initShowLocalesSignal(data) }
+		data-signals:showdomains={ initShowDomainsSignal(data) }
 		data-signals:searchquery={ fmt.Sprintf("'%s'", data.SearchQuery) }
 		data-signals:windowstart={ strfmt.Int(data.WindowStart) }
 	>

@@ -25,89 +25,15 @@ var (
 type catalog_de struct{}
 
 var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
-	msg62489e1e07578e6e: func(w io.Writer, args ...any) (written int, err error) {
-		var n int
-		n, err = wrs(w, "Im Ordner ")
-		if err != nil {
-			return written, err
-		}
-		written += n
-		{
-			s, _ := sv(args[0])
-			n, err = wrs(w, s)
-		}
-		if err != nil {
-			return written, err
-		}
-		written += n
-		n, err = wrs(w, " wurde nichts gefunden")
-		if err != nil {
-			return written, err
-		}
-		written += n
-		return written, nil
-	},
-	msg6aa44c2f549ae5e8: func(w io.Writer, args ...any) (written int, err error) {
-		return wrs(w, "übersetzter Text")
-	},
-	msgd2497314df5ae7e6: nil,
-	msgdc0a1830b671625c: nil,
-	msgf5b4499f95971294: func(w io.Writer, args ...any) (written int, err error) {
-		var n int
-		switch pluralRuleCardinal(tr_de, args[0]) {
-		default:
-			n, err = fmt.Fprintf(w, "%v", args[0])
-			if err != nil {
-				return written, err
-			}
-			written += n
-			n, err = wrs(w, " Projekte wurden")
-			if err != nil {
-				return written, err
-			}
-			written += n
-		}
-		n, err = wrs(w, " von ")
-		if err != nil {
-			return written, err
-		}
-		written += n
-		{
-			s, _ := sv(args[3])
-			n, err = wrs(w, s)
-		}
-		if err != nil {
-			return written, err
-		}
-		written += n
-		n, err = wrs(w, " am ")
-		if err != nil {
-			return written, err
-		}
-		written += n
-		n, err = io.WriteString(w, tr_de.FmtDateFull(args[1].(time.Time)))
-		if err != nil {
-			return written, err
-		}
-		written += n
-		n, err = wrs(w, " um ")
-		if err != nil {
-			return written, err
-		}
-		written += n
-		n, err = io.WriteString(w, tr_de.FmtTimeFull(args[2].(time.Time)))
-		if err != nil {
-			return written, err
-		}
-		written += n
-		n, err = wrs(w, " fertiggestellt")
-		if err != nil {
-			return written, err
-		}
-		written += n
-		return written, nil
-	},
-	msgfb968a4dc3768ccd: nil,
+	msg40298b0dfa835a18: nil,
+	msg73df838e3688e65c: nil,
+	msg7b4460496c4dc063: nil,
+	msg7ba5e4f7ff9e557f: nil,
+	msga386be7d32b02521: nil,
+	msgba9076fe8292afb0: nil,
+	msgbcdb3dde88d7bbb2: nil,
+	msgca9572938a754c86: nil,
+	msgd402b253f75c3b74: nil,
 }
 
 func (catalog_de) Locale() language.Tag { return loc_de }

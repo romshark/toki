@@ -533,6 +533,9 @@ func setupHandlers(s *Server) {
 		"GET /build-bundle/_$/{$}",
 		s.handlePageBuildBundleGETStream)
 	s.mux.HandleFunc(
+		"GET /domains/{$}",
+		s.handlePageDomainsGET)
+	s.mux.HandleFunc(
 		"GET /error404/{$}",
 		s.handlePageError404GET)
 	s.mux.HandleFunc(
@@ -827,6 +830,32 @@ func (s *Server) handlePageBuildBundleGETStream(w http.ResponseWriter, r *http.R
 		})
 }
 
+func (s *Server) handlePageDomainsGET(w http.ResponseWriter, r *http.Request) {
+	p := app.PageDomains{
+		App: s.app,
+	}
+	body, redirect, err := p.GET(r)
+	if err != nil {
+		s.httpErrIntern(w, r, nil, "handling PageDomains.GET", err)
+		return
+	}
+	if httpRedirect(w, r, redirect, 0) {
+		return
+	}
+	genericHead := s.app.Head(r)
+
+	bodyAttrs := func(w http.ResponseWriter) {
+		writeBodyAttrOnVisibilityChange(w)
+	}
+
+	if err := s.writeHTML(
+		w, r, genericHead, nil, body, bodyAttrs, nil,
+	); err != nil {
+		s.logErr("rendering PageDomains", err)
+		return
+	}
+}
+
 func (s *Server) handlePageError404GET(w http.ResponseWriter, r *http.Request) {
 	p := app.PageError404{
 		App: s.app,
@@ -1071,10 +1100,12 @@ func (s *Server) handlePageTIKsGET(w http.ResponseWriter, r *http.Request) {
 	var query struct {
 		Filter  string `query:"f" reflectsignal:"filtertype"`
 		Locales string `query:"l" reflectsignal:"shownlocales"`
+		Domains string `query:"d" reflectsignal:"showndomains"`
 		Search  string `query:"q" reflectsignal:"searchquery"`
 	}
 	query.Filter = q.Get("f")
 	query.Locales = q.Get("l")
+	query.Domains = q.Get("d")
 	query.Search = q.Get("q")
 
 	p := app.PageTIKs{
@@ -1103,6 +1134,10 @@ func (s *Server) handlePageTIKsGET(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, query.Locales)
 		_, _ = io.WriteString(w, `'"`)
 
+		_, _ = io.WriteString(w, `data-signals:showndomains="'`)
+		_, _ = io.WriteString(w, query.Domains)
+		_, _ = io.WriteString(w, `'"`)
+
 		_, _ = io.WriteString(w, `data-signals:searchquery="'`)
 		_, _ = io.WriteString(w, query.Search)
 		_, _ = io.WriteString(w, `'"`)
@@ -1120,6 +1155,7 @@ func (s *Server) handlePageTIKsGET(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, `data-effect="const params = new URLSearchParams();
 			if ($filtertype) params.set('f', $filtertype);
 			if ($shownlocales) params.set('l', $shownlocales);
+			if ($showndomains) params.set('d', $showndomains);
 			if ($searchquery) params.set('q', $searchquery);
 			const query = params.toString();
 			window.history.replaceState(null, '', query ? '/tiks?' + query : '/tiks');
@@ -1142,6 +1178,7 @@ func (s *Server) handlePageTIKsGETStream(w http.ResponseWriter, r *http.Request)
 	var signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		ShowDomains map[string]bool `json:"showdomains"`
 		SearchQuery string          `json:"searchquery"`
 		InstanceID  string          `json:"instance_id"`
 	}
@@ -1203,6 +1240,7 @@ func (s *Server) handlePageTIKsPOSTFilter(
 	var signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		ShowDomains map[string]bool `json:"showdomains"`
 		SearchQuery string          `json:"searchquery"`
 		InstanceID  string          `json:"instance_id"`
 	}
@@ -1231,6 +1269,7 @@ func (s *Server) handlePageTIKsPOSTScrollDown(
 	var signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		ShowDomains map[string]bool `json:"showdomains"`
 		SearchQuery string          `json:"searchquery"`
 		WindowStart int             `json:"windowstart"`
 		InstanceID  string          `json:"instance_id"`
@@ -1260,6 +1299,7 @@ func (s *Server) handlePageTIKsPOSTScrollUp(
 	var signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		ShowDomains map[string]bool `json:"showdomains"`
 		SearchQuery string          `json:"searchquery"`
 		WindowStart int             `json:"windowstart"`
 		InstanceID  string          `json:"instance_id"`

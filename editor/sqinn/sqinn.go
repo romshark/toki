@@ -47,7 +47,7 @@ func Path() (string, error) {
 			initErr = err
 			return
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		if _, err := io.Copy(f, gr); err != nil {
 			initErr = err
 		}
@@ -58,6 +58,6 @@ func Path() (string, error) {
 // Cleanup removes the temp directory. Call on shutdown.
 func Cleanup() {
 	if tempDir != "" {
-		os.RemoveAll(tempDir)
+		_ = os.RemoveAll(tempDir)
 	}
 }

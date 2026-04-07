@@ -29,6 +29,51 @@ templ sidebarContent(data DataIndex) {
 	<nav id="sidebar-content" class="sidebar-index" aria-label="Editor navigation">
 		@componentSidebarHeader()
 		<section class="sidebar-filters">
+			if len(data.Domains) > 0 {
+				<div role="group" aria-labelledby="domains-label">
+					<h3 id="domains-label">Domains</h3>
+					<div role="group" class="button-group">
+						<button
+							class="btn-secondary btn-sm"
+							data-attr:disabled={ allDomainsExpr(data, false) }
+							data-on:click={ action.POSTPageTIKsFilter(
+								action.WithBefore(setAllDomains(data, false)),
+							) }
+						>Hide All</button>
+						<button
+							class="btn-secondary btn-sm"
+							data-attr:disabled={ allDomainsExpr(data, true) }
+							data-on:click={ action.POSTPageTIKsFilter(
+								action.WithBefore(setAllDomains(data, true)),
+							) }
+						>Show All</button>
+					</div>
+					<ul>
+						for _, domain := range data.Domains {
+							<li>
+								<label class="switch-label" data-keep-mobile-sidebar-open>
+									<input
+										type="checkbox"
+										role="switch"
+										class="input"
+										if data.ShownDomains == nil || data.ShownDomains[domain.FullName] {
+											checked
+										}
+										data-bind={ fmt.Sprintf("showdomains.%s", domain.SignalKey) }
+										data-on:change={ action.POSTPageTIKsFilter(
+											action.WithBefore("$showndomains=syncShownDomains()"),
+										) }
+									/>
+									<span>
+										<strong>{ domain.Name }</strong>
+									</span>
+								</label>
+							</li>
+						}
+					</ul>
+				</div>
+				<div role="separator"></div>
+			}
 			<div role="group" aria-labelledby="locales-label">
 				<h3 id="locales-label">Locales</h3>
 				<div role="group" class="button-group">
@@ -281,6 +326,70 @@ func allLocalesExpr(data DataIndex, enabled bool) string {
 		}
 		b = append(b, "$showlocales."...)
 		b = append(b, c.Locale...)
+	}
+	return string(b)
+}
+
+func initShowDomainsSignal(data DataIndex) string {
+	var b []byte
+	b = append(b, '{')
+	for i, d := range data.Domains {
+		if i > 0 {
+			b = append(b, ',')
+		}
+		b = append(b, d.SignalKey...)
+		b = append(b, ':')
+		if data.ShownDomains == nil {
+			b = append(b, "true"...)
+		} else if data.ShownDomains[d.FullName] {
+			b = append(b, "true"...)
+		} else {
+			b = append(b, "false"...)
+		}
+	}
+	b = append(b, '}')
+	return string(b)
+}
+
+func setAllDomains(data DataIndex, enabled bool) string {
+	val := "false"
+	if enabled {
+		val = "true"
+	}
+	var b []byte
+	for _, d := range data.Domains {
+		b = append(b, "$showdomains."...)
+		b = append(b, d.SignalKey...)
+		b = append(b, '=')
+		b = append(b, val...)
+		b = append(b, ';')
+	}
+	b = append(b, "$showndomains='"...)
+	if enabled {
+		for i, d := range data.Domains {
+			if i > 0 {
+				b = append(b, ',')
+			}
+			b = append(b, d.FullName...)
+		}
+	} else {
+		b = append(b, '-')
+	}
+	b = append(b, '\'')
+	return string(b)
+}
+
+func allDomainsExpr(data DataIndex, enabled bool) string {
+	var b []byte
+	for i, d := range data.Domains {
+		if i > 0 {
+			b = append(b, "&&"...)
+		}
+		if !enabled {
+			b = append(b, '!')
+		}
+		b = append(b, "$showdomains."...)
+		b = append(b, d.SignalKey...)
 	}
 	return string(b)
 }

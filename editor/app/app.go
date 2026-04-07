@@ -59,6 +59,7 @@ type EventReset struct {
 type viewState struct {
 	filterType  string
 	showLocales map[string]bool
+	showDomains map[string]bool
 	tikID       string // only used by PageTIK streams
 	windowStart int
 	searchQuery string
@@ -76,6 +77,7 @@ type App struct {
 	tikParser        *tik.Parser
 	tikICUTranslator *tik.ICUTranslator
 	scan             *codeparse.Scan
+	domains          *codeparse.DomainTree
 	tiks             []*template.TIK
 	tiksByID         map[string]*template.TIK
 	catalogs         []*template.Catalog
@@ -175,6 +177,7 @@ func (a *App) tryInitLocked() error {
 	a.catalogs = nil
 	a.localeTags = nil
 	a.scan = nil
+	a.domains = nil
 
 	if a.dir == "" {
 		a.initErr = "No directory selected"
@@ -206,6 +209,7 @@ func (a *App) tryInitLocked() error {
 			if dbErr == nil && schemaOK && versionOK && currentChecksum == storedChecksum {
 				// Fast path: checksums and schema version match, load from DB.
 				if err := a.loadFromDBLocked(); err == nil {
+					a.discoverDomainsLocked()
 					return nil
 				}
 				// Fall through to full rebuild if DB load fails.
@@ -214,7 +218,23 @@ func (a *App) tryInitLocked() error {
 	}
 
 	// Slow path: full source code parse + rebuild.
-	return a.fullRebuildLocked()
+	if err := a.fullRebuildLocked(); err != nil {
+		return err
+	}
+	a.discoverDomainsLocked()
+	return nil
+}
+
+// discoverDomainsLocked discovers .tokidomain.yml files in the project directory.
+func (a *App) discoverDomainsLocked() {
+	if a.dir == "" {
+		return
+	}
+	domains, err := codeparse.DiscoverDomains(a.dir)
+	if err != nil {
+		return // Non-fatal: domains page will just be empty.
+	}
+	a.domains = domains
 }
 
 // fullRebuildLocked runs full codeparse and rebuilds the index DB.
@@ -283,10 +303,20 @@ func (a *App) buildTemplateDataFromScanLocked() {
 
 	for _, i := range scan.TextIndexByID.SeqRead() {
 		t := scan.Texts.At(i)
+		var domainFullName string
+		if t.Domain != nil {
+			var names []string
+			for p := range t.Domain.Path() {
+				names = append(names, p.Name)
+			}
+			slices.Reverse(names)
+			domainFullName = strings.Join(names, ".")
+		}
 		tmplTIK := &template.TIK{
 			ID:          t.IDHash,
 			TIK:         t.TIK.Raw,
 			Description: strings.Join(t.Comments, " "),
+			Domain:      domainFullName,
 			ICU:         make([]*template.ICUMessage, 0, len(a.catalogs)),
 			Occurrences: occurrences[t.IDHash],
 		}
@@ -920,6 +950,12 @@ func (a *App) buildDashboardStats() template.DashboardStats {
 	if s.NumTIKs > 0 {
 		s.Completeness = float64(s.NumComplete) / float64(s.NumTIKs)
 	}
+
+	// Count domains.
+	if a.domains != nil {
+		s.NumDomains = a.domains.Len()
+	}
+
 	return s
 }
 
@@ -966,6 +1002,7 @@ func (p PageTIKs) GET(
 	query struct {
 		Filter  string `query:"f" reflectsignal:"filtertype"`
 		Locales string `query:"l" reflectsignal:"shownlocales"`
+		Domains string `query:"d" reflectsignal:"showndomains"`
 		Search  string `query:"q" reflectsignal:"searchquery"`
 	},
 ) (
@@ -999,7 +1036,8 @@ func (p PageTIKs) GET(
 	}
 
 	showLocales := parseLocalesParam(query.Locales)
-	data := p.App.buildFilteredDataIndex(query.Filter, showLocales, 0, query.Search)
+	showDomains := parseDomainsParam(query.Domains)
+	data := p.App.buildFilteredDataIndex(query.Filter, showLocales, showDomains, 0, query.Search)
 	body = template.PageTIKs(data)
 	return
 }
@@ -1010,6 +1048,7 @@ func (p PageTIKs) StreamOpen(
 	signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		ShowDomains map[string]bool `json:"showdomains"`
 		SearchQuery string          `json:"searchquery"`
 		InstanceID  string          `json:"instance_id"`
 	},
@@ -1019,6 +1058,7 @@ func (p PageTIKs) StreamOpen(
 	p.App.registerStreamLocked(streamID, signals.InstanceID, viewState{
 		filterType:  normalizeFilterType(signals.FilterType),
 		showLocales: signals.ShowLocales,
+		showDomains: normalizeDomainsSignal(signals.ShowDomains),
 		searchQuery: signals.SearchQuery,
 	})
 	return nil
@@ -1061,7 +1101,7 @@ func (p PageTIKs) OnUpdated(
 		exclude = event.ChangedEditor
 	}
 
-	data := p.App.buildFilteredDataIndex(vs.filterType, vs.showLocales, vs.windowStart, vs.searchQuery)
+	data := p.App.buildFilteredDataIndex(vs.filterType, vs.showLocales, vs.showDomains, vs.windowStart, vs.searchQuery)
 	if err := sse.PatchElementTempl(template.IndexContent(data)); err != nil {
 		return err
 	}
@@ -1096,6 +1136,7 @@ func (p PageTIKs) POSTFilter(
 	signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		ShowDomains map[string]bool `json:"showdomains"`
 		SearchQuery string          `json:"searchquery"`
 		InstanceID  string          `json:"instance_id"`
 	},
@@ -1118,10 +1159,11 @@ func (p PageTIKs) POSTFilter(
 		windowStart = vs.windowStart
 		vs.filterType = ft
 		vs.showLocales = signals.ShowLocales
+		vs.showDomains = normalizeDomainsSignal(signals.ShowDomains)
 		vs.searchQuery = signals.SearchQuery
 	}
 
-	data := p.App.buildFilteredDataIndex(ft, signals.ShowLocales, windowStart, signals.SearchQuery)
+	data := p.App.buildFilteredDataIndex(ft, signals.ShowLocales, normalizeDomainsSignal(signals.ShowDomains), windowStart, signals.SearchQuery)
 	if err := sse.PatchElementTempl(template.IndexContent(data)); err != nil {
 		return err
 	}
@@ -1135,12 +1177,13 @@ func (p PageTIKs) POSTScrollDown(
 	signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		ShowDomains map[string]bool `json:"showdomains"`
 		SearchQuery string          `json:"searchquery"`
 		WindowStart int             `json:"windowstart"`
 		InstanceID  string          `json:"instance_id"`
 	},
 ) error {
-	return p.handleScroll(sse, signals.FilterType, signals.ShowLocales,
+	return p.handleScroll(sse, signals.FilterType, signals.ShowLocales, normalizeDomainsSignal(signals.ShowDomains),
 		signals.SearchQuery, signals.WindowStart, signals.InstanceID, false)
 }
 
@@ -1151,18 +1194,19 @@ func (p PageTIKs) POSTScrollUp(
 	signals struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
+		ShowDomains map[string]bool `json:"showdomains"`
 		SearchQuery string          `json:"searchquery"`
 		WindowStart int             `json:"windowstart"`
 		InstanceID  string          `json:"instance_id"`
 	},
 ) error {
-	return p.handleScroll(sse, signals.FilterType, signals.ShowLocales,
+	return p.handleScroll(sse, signals.FilterType, signals.ShowLocales, normalizeDomainsSignal(signals.ShowDomains),
 		signals.SearchQuery, signals.WindowStart, signals.InstanceID, true)
 }
 
 func (p PageTIKs) handleScroll(
 	sse *datastar.ServerSentEventGenerator,
-	filterType string, showLocales map[string]bool,
+	filterType string, showLocales, showDomains map[string]bool,
 	searchQuery string, windowStart int, instanceID string,
 	scrollUp bool,
 ) error {
@@ -1178,7 +1222,7 @@ func (p PageTIKs) handleScroll(
 		vs.windowStart = windowStart
 	}
 
-	data := p.App.buildFilteredDataIndex(ft, showLocales, windowStart, searchQuery)
+	data := p.App.buildFilteredDataIndex(ft, showLocales, showDomains, windowStart, searchQuery)
 
 	if scrollUp {
 		// Before morph: find the first visible card and record its viewport
@@ -1404,6 +1448,136 @@ func (PageTIK) OnReset(
 	return sse.ExecuteScript(fmt.Sprintf(
 		"resetEditorValue(%q,%q)", event.ResetEditor, event.ResetValue,
 	))
+}
+
+// PageDomains is /domains
+type PageDomains struct{ App *App }
+
+func (p PageDomains) GET(
+	r *http.Request,
+) (body templ.Component, redirect string, err error) {
+	p.App.mu.Lock()
+	defer p.App.mu.Unlock()
+
+	if p.App.building {
+		return nil, href.PageBuildBundle(), nil
+	}
+	if p.App.dir == "" || p.App.initErr != "" {
+		return nil, href.PageProjectDir(), nil
+	}
+
+	data := p.App.buildDomainData()
+	return template.PageDomains(data), "", nil
+}
+
+func (a *App) buildDomainData() template.DataDomains {
+	data := template.DataDomains{
+		Dir:             a.dir,
+		TotalChanges:    len(a.changed),
+		CanApplyChanges: a.canApplyChangesLocked(),
+	}
+
+	if a.domains == nil {
+		return data
+	}
+
+	// Build per-domain stats from template TIKs.
+	// Map TIK ID -> domain dir (only available with full scan).
+	tikDomainDir := make(map[string]string)
+	if a.scan != nil {
+		for i := range a.scan.Texts.Len() {
+			t := a.scan.Texts.At(i)
+			if t.Domain != nil {
+				tikDomainDir[t.IDHash] = t.Domain.Dir
+			}
+		}
+	}
+
+	type domainStats struct {
+		numTIKs, complete, incomplete, empty, invalid, changed int
+	}
+	statsByDir := make(map[string]*domainStats)
+
+	for _, tk := range a.tiks {
+		dir, ok := tikDomainDir[tk.ID]
+		if !ok {
+			continue
+		}
+		ds := statsByDir[dir]
+		if ds == nil {
+			ds = &domainStats{}
+			statsByDir[dir] = ds
+		}
+		ds.numTIKs++
+		if tk.IsChanged {
+			ds.changed++
+		}
+		if tk.IsComplete {
+			ds.complete++
+		}
+		if tk.IsIncomplete {
+			ds.incomplete++
+		}
+		if tk.IsEmpty {
+			ds.empty++
+		}
+		if tk.IsInvalid {
+			ds.invalid++
+		}
+	}
+
+	// Build domain info tree from the DomainTree roots.
+	var buildInfo func(d *codeparse.Domain) template.DomainInfo
+	buildInfo = func(d *codeparse.Domain) template.DomainInfo {
+		// Build full name from path iterator.
+		var names []string
+		for p := range d.Path() {
+			names = append(names, p.Name)
+		}
+		slices.Reverse(names)
+		fullName := strings.Join(names, ".")
+
+		info := template.DomainInfo{
+			Name:        d.Name,
+			Description: d.Description,
+			Dir:         d.Dir,
+			FullName:    fullName,
+		}
+		if d.Parent != nil {
+			info.ParentName = d.Parent.Name
+			var parentNames []string
+			for p := range d.Parent.Path() {
+				parentNames = append(parentNames, p.Name)
+			}
+			slices.Reverse(parentNames)
+			info.ParentFullName = strings.Join(parentNames, ".")
+		}
+		if ds := statsByDir[d.Dir]; ds != nil {
+			info.NumTIKs = ds.numTIKs
+			info.NumComplete = ds.complete
+			info.NumIncomplete = ds.incomplete
+			info.NumEmpty = ds.empty
+			info.NumInvalid = ds.invalid
+			info.NumChanged = ds.changed
+			if ds.numTIKs > 0 {
+				info.Completeness = float64(ds.complete) / float64(ds.numTIKs)
+			}
+		}
+		for _, sub := range d.SubDomains {
+			info.SubDomains = append(info.SubDomains, buildInfo(sub))
+		}
+		return info
+	}
+
+	// Find root domains (no parent).
+	for d := range a.domains.All() {
+		if d.Parent == nil {
+			data.Domains = append(data.Domains, buildInfo(d))
+		}
+	}
+
+	data.TotalDomains = a.domains.Len()
+	return data
 }
 
 // PageSettings is /settings
@@ -1711,6 +1885,25 @@ func parseLocalesParam(s string) map[string]bool {
 	return m
 }
 
+// parseDomainsParam uses the same format as parseLocalesParam:
+// "" = show all, "-" = show none, "a,b" = show listed.
+func parseDomainsParam(s string) map[string]bool {
+	return parseLocalesParam(s) // Same parsing logic.
+}
+
+// normalizeDomainsSignal converts Datastar signal keys (underscored)
+// back to dotted full names used internally.
+func normalizeDomainsSignal(m map[string]bool) map[string]bool {
+	if m == nil {
+		return nil
+	}
+	out := make(map[string]bool, len(m))
+	for k, v := range m {
+		out[strings.ReplaceAll(k, "_", ".")] = v
+	}
+	return out
+}
+
 func normalizeFilterType(filterType string) string {
 	if filterType == "" {
 		return "all"
@@ -1899,11 +2092,13 @@ func (a *App) buildTIKForDisplay(
 // When searchQuery is non-empty, filter stats are skipped and results
 // are fetched directly from the FTS5 index with LIMIT/OFFSET.
 func (a *App) buildFilteredDataIndex(
-	filterType string, showLocales map[string]bool, windowStart int, searchQuery string,
+	filterType string, showLocales, showDomains map[string]bool,
+	windowStart int, searchQuery string,
 ) template.DataIndex {
 	data := template.DataIndex{
 		Dir:             a.dir,
 		ShownLocales:    showLocales,
+		ShownDomains:    showDomains,
 		FilterType:      filterType,
 		CanApplyChanges: a.canApplyChangesLocked(),
 		TotalChanges:    len(a.changed),
@@ -1922,6 +2117,26 @@ func (a *App) buildFilteredDataIndex(
 		}
 	}
 	data.Catalogs = cats
+
+	// Populate domain filters.
+	if a.domains != nil {
+		for d := range a.domains.All() {
+			var names []string
+			for p := range d.Path() {
+				names = append(names, p.Name)
+			}
+			slices.Reverse(names)
+			fullName := strings.Join(names, ".")
+			data.Domains = append(data.Domains, template.DomainFilter{
+				FullName:  fullName,
+				SignalKey: strings.ReplaceAll(fullName, ".", "_"),
+				Name:      d.Name,
+			})
+		}
+		sort.Slice(data.Domains, func(i, j int) bool {
+			return data.Domains[i].FullName < data.Domains[j].FullName
+		})
+	}
 
 	if searchQuery != "" && a.indexDB != nil {
 		return a.buildSearchDataIndex(data, showLocales, windowStart, searchQuery)
@@ -1967,6 +2182,10 @@ func (a *App) buildFilterDataIndex(
 ) template.DataIndex {
 	filtered := make([]int, 0, len(a.tiks))
 	for i, tk := range a.tiks {
+		// Domain filter: skip TIKs not in any shown domain.
+		if data.ShownDomains != nil && !data.ShownDomains[tk.Domain] {
+			continue
+		}
 		hasChanged, hasEmpty, hasIncomplete, hasInvalid := a.tikStatusFlags(tk, showLocales)
 		isComplete := !hasIncomplete
 

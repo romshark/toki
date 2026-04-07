@@ -22,14 +22,18 @@ templ PageDashboard(stats DashboardStats) {
 						<h3>Navigation</h3>
 						<ul>
 							<li>
-								//datapages:nolint
+								<a href={ href.PageDomains() } data-ignore-current>
+									@iconDomains()
+									Domains
+								</a>
+							</li>
+							<li>
 								<a href="#overview" data-ignore-current>
 									@iconLayoutDashboard()
 									Overview
 								</a>
 							</li>
 							<li>
-								//datapages:nolint
 								<a href="#locales" data-ignore-current>
 									@iconLanguages()
 									Locales
@@ -54,7 +58,10 @@ templ PageDashboard(stats DashboardStats) {
 			}, stats.TotalChanges, stats.CanApplyChanges)
 			<main>
 				<div class="contents">
-					<h2 id="overview">@iconLayoutDashboard() Overview</h2>
+					<h2 id="overview">
+						@iconLayoutDashboard()
+						Overview
+					</h2>
 					<div class="dashboard-grid">
 						<a
 							href={ href.PageTIKs(href.QueryPageTIKs{Locales: stats.NativeLocale.Locale}) }
@@ -84,6 +91,30 @@ templ PageDashboard(stats DashboardStats) {
 								</p>
 							</section>
 						</a>
+						<div class="card">
+							<header>
+								<span class="dashboard-stat-value">{ strfmt.Int(stats.NumLocales) }</span>
+								<span class="dashboard-stat-label">
+									@iconLanguages()
+									Locales
+								</span>
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">Languages configured</p>
+							</section>
+						</div>
+						<a href={ href.PageDomains() } class="card dashboard-stat-link">
+							<header>
+								<span class="dashboard-stat-value">{ strfmt.Int(stats.NumDomains) }</span>
+								<span class="dashboard-stat-label">
+									@iconDomains()
+									Domains
+								</span>
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">TIK domain scopes</p>
+							</section>
+						</a>
 						<a
 							href={ href.PageTIKs(href.QueryPageTIKs{}) }
 							class="card dashboard-stat-link"
@@ -101,18 +132,6 @@ templ PageDashboard(stats DashboardStats) {
 								<p class="dashboard-stat-desc">Total translation keys</p>
 							</section>
 						</a>
-						<div class="card">
-							<header>
-								<span class="dashboard-stat-value">{ strfmt.Int(stats.NumLocales) }</span>
-								<span class="dashboard-stat-label">
-									@iconLanguages()
-									Locales
-								</span>
-							</header>
-							<section>
-								<p class="dashboard-stat-desc">Languages configured</p>
-							</section>
-						</div>
 						<a
 							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "complete"}) }
 							class="card dashboard-stat-link"
@@ -150,8 +169,6 @@ templ PageDashboard(stats DashboardStats) {
 								<p class="dashboard-stat-desc">Pending changes</p>
 							</section>
 						</a>
-					</div>
-					<div class="dashboard-grid">
 						<a
 							href={ href.PageTIKs(href.QueryPageTIKs{
 								Filter: "incomplete",
@@ -171,8 +188,10 @@ templ PageDashboard(stats DashboardStats) {
 								<p class="dashboard-stat-desc">TIKs with missing translations</p>
 							</section>
 						</a>
-						//datapages:nolint
-						<a href="/tiks/?f=empty" class="card dashboard-stat-link">
+						<a
+							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "empty"}) }
+							class="card dashboard-stat-link"
+						>
 							<header>
 								<span class="dashboard-stat-value">
 									{ strfmt.Int(stats.NumEmpty) }
@@ -186,8 +205,10 @@ templ PageDashboard(stats DashboardStats) {
 								<p class="dashboard-stat-desc">TIKs with no translation</p>
 							</section>
 						</a>
-						//datapages:nolint
-						<a href="/tiks/?f=invalid" class="card dashboard-stat-link">
+						<a
+							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "invalid"}) }
+							class="card dashboard-stat-link"
+						>
 							<header>
 								<span class="dashboard-stat-value">
 									{ strfmt.Int(stats.NumInvalid) }
@@ -236,7 +257,10 @@ templ PageDashboard(stats DashboardStats) {
 							</section>
 						</div>
 					}
-					<h2 id="locales">@iconLanguages() Locales</h2>
+					<h2 id="locales">
+						@iconLanguages()
+						Locales
+					</h2>
 					<div class="dashboard-grid">
 						for _, ls := range stats.Locales {
 							<a

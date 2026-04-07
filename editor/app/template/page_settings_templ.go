@@ -63,7 +63,7 @@ func PageSettings(version string, data DataSettingsPreview) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(version)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 63, Col: 34}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 60, Col: 34}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -144,7 +144,7 @@ func PageSettings(version string, data DataSettingsPreview) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(data.UIPreviewTIK)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 181, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 178, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -173,7 +173,7 @@ func PageSettings(version string, data DataSettingsPreview) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(data.UIPreviewICUEN)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 206, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 203, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -186,7 +186,7 @@ func PageSettings(version string, data DataSettingsPreview) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(data.UIPreviewICUDE)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 220, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 217, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
@@ -261,7 +261,7 @@ func PageSettings(version string, data DataSettingsPreview) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(data.UIPreviewEditorText)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 261, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 258, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -274,7 +274,7 @@ func PageSettings(version string, data DataSettingsPreview) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs("{count, plural, other {[object Object]}}")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 297, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 294, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {

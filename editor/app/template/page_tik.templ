@@ -45,8 +45,7 @@ templ tikSidebarNav(tk *TIK) {
 		<section>
 			<ul>
 				<li>
-					//datapages:nolint
-					<a href="#tik-card" data-ignore-current>
+<a href="#tik-card" data-ignore-current>
 						TIK
 					</a>
 				</li>
@@ -56,8 +55,7 @@ templ tikSidebarNav(tk *TIK) {
 				<ul>
 					for _, msg := range tk.ICU {
 						<li>
-							//datapages:nolint
-							<a
+				<a
 								href={ templ.SafeURL(fmt.Sprintf("#icu-%s-%s",
 									tk.ID, msg.Catalog.Locale,
 								)) }
@@ -97,8 +95,7 @@ templ tikSidebarNav(tk *TIK) {
 			if len(tk.Occurrences) > 0 {
 				<ul>
 					<li>
-						//datapages:nolint
-						<a href="#source-occurrences" data-ignore-current>
+		<a href="#source-occurrences" data-ignore-current>
 							Source Occurrences
 						</a>
 					</li>

@@ -10,6 +10,7 @@ type DashboardStats struct {
 	Dir             string
 	NumTIKs         int
 	NumLocales      int
+	NumDomains      int
 	NativeLocale    LocaleStats
 	Locales         []LocaleStats
 	TotalChanges    int
@@ -34,13 +35,24 @@ type LocaleStats struct {
 	Completeness float64 // 0.0–1.0
 }
 
+// DomainFilter holds a domain name for use in the sidebar filter UI.
+type DomainFilter struct {
+	FullName  string // Dot-separated qualified name used as filter value.
+	SignalKey string // FullName with dots replaced by underscores (safe for Datastar signals).
+	Name      string // Display name.
+}
+
 type DataIndex struct {
 	Dir      string
 	TIKs     []TIK // windowed slice of full TIKs to render
 	Catalogs []*Catalog
+	Domains  []DomainFilter
 
 	// ShownLocales which locales are shown (nil = all)
 	ShownLocales map[string]bool
+
+	// ShownDomains which domains are shown (nil = all)
+	ShownDomains map[string]bool
 
 	// FilterType is "all", "changed", etc.
 	FilterType string
@@ -91,6 +103,7 @@ type TIK struct {
 	ID          string
 	TIK         string
 	Description string
+	Domain      string // Fully qualified domain name (empty if no domain).
 	ICU         []*ICUMessage
 	Occurrences []SourceOccurrence
 	// Status flags for client-side filtering.
@@ -121,4 +134,31 @@ func FmtDuration(d time.Duration) string {
 		return fmt.Sprintf("%dms", d.Milliseconds())
 	}
 	return fmt.Sprintf("%.1fs", d.Seconds())
+}
+
+// DomainInfo holds display data for a single TIK domain.
+type DomainInfo struct {
+	Name           string
+	Description    string
+	Dir            string // Absolute path.
+	FullName       string // Dot-separated path (e.g. "myapp.storefront.checkout").
+	ParentName     string // Display name of parent domain (empty if root).
+	ParentFullName string // FullName of parent domain (empty if root).
+	NumTIKs        int    // TIKs directly in this domain.
+	NumComplete    int
+	NumIncomplete  int
+	NumEmpty       int
+	NumInvalid     int
+	NumChanged     int
+	Completeness   float64 // 0.0–1.0
+	SubDomains     []DomainInfo
+}
+
+// DataDomains holds data for the /domains/ page.
+type DataDomains struct {
+	Dir             string
+	Domains         []DomainInfo
+	TotalDomains    int
+	TotalChanges    int
+	CanApplyChanges bool
 }

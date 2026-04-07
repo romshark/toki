@@ -141,7 +141,7 @@ func tikSidebarNav(tk *TIK) templ.Component {
 				tk.ID, msg.Catalog.Locale,
 			)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 63, Col: 10}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 61, Col: 10}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -154,7 +154,7 @@ func tikSidebarNav(tk *TIK) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Catalog.Locale)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 67, Col: 57}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 65, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -172,7 +172,7 @@ func tikSidebarNav(tk *TIK) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Catalog.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 69, Col: 32}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 67, Col: 32}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -302,7 +302,7 @@ func tikMainArea(tk *TIK) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(tk.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 125, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 122, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {
@@ -315,7 +315,7 @@ func tikMainArea(tk *TIK) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(tk.TIK)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 128, Col: 22}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 125, Col: 22}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -333,7 +333,7 @@ func tikMainArea(tk *TIK) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(tk.Description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 135, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 132, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
@@ -364,7 +364,7 @@ func tikMainArea(tk *TIK) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("icu-%s-%s", tk.ID, msg.Catalog.Locale))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 147, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 144, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -377,7 +377,7 @@ func tikMainArea(tk *TIK) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Catalog.Locale)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 151, Col: 56}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 148, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -426,7 +426,7 @@ func tikMainArea(tk *TIK) templ.Component {
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("%s:%d:%d",
 					occ.File, occ.Line, occ.Column))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 172, Col: 42}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 169, Col: 42}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -439,7 +439,7 @@ func tikMainArea(tk *TIK) templ.Component {
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(occ.DisplayFile)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 175, Col: 28}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 172, Col: 28}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -452,7 +452,7 @@ func tikMainArea(tk *TIK) templ.Component {
 				var templ_7745c5c3_Var15 string
 				templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(occ.Pos())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 177, Col: 23}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_tik.templ`, Line: 174, Col: 23}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 				if templ_7745c5c3_Err != nil {
