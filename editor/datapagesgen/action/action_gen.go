@@ -195,6 +195,22 @@ func POSTPageProjectDirOpen(options ...option) string {
 	return b.String()
 }
 
+// POSTPageSettingsSetPref references /settings/set-pref/
+func POSTPageSettingsSetPref(options ...option) string {
+	if len(options) == 0 {
+		return "@post('/settings/set-pref/')"
+	}
+	var b strings.Builder
+	bl, al := beforeAfterLen(options)
+	b.Grow(bl + len("@post('/settings/set-pref/'") + optionsLen(options) + len(")") + al)
+	writeBefore(&b, options)
+	b.WriteString("@post('/settings/set-pref/'")
+	writeOptions(&b, options)
+	b.WriteByte(')')
+	writeAfter(&b, options)
+	return b.String()
+}
+
 // POSTPageTIKsFilter references /tiks/filter/
 func POSTPageTIKsFilter(options ...option) string {
 	if len(options) == 0 {

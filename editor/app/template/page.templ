@@ -1,0 +1,11 @@
+package template
+
+// page wraps every page body. UI preferences (theme, fonts) are applied
+// server-side from cookies — see head.templ and uiprefs.go.
+templ page(id string) {
+	<div id={ id }>
+		<div class="page-content">
+			{ children... }
+		</div>
+	</div>
+}

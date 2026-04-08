@@ -8,7 +8,7 @@ import (
 )
 
 templ PageDashboard(stats DashboardStats) {
-	<div id="page-dashboard">
+	@page("page-dashboard") {
 		<aside
 			class="sidebar"
 			id="editor-sidebar"
@@ -328,5 +328,5 @@ templ PageDashboard(stats DashboardStats) {
 				</div>
 			</main>
 		</div>
-	</div>
+	}
 }

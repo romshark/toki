@@ -4,20 +4,8 @@ import (
 	"fmt"
 
 	"github.com/romshark/toki/editor/datapagesgen/action"
-	"github.com/romshark/toki/editor/datapagesgen/assets"
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
-
-templ head() {
-	<title>Toki Editor</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1"/>
-	<meta charset="UTF-8"/>
-	<link rel="stylesheet" href={ assets.Path("basecoat.min.css") }/>
-	<script src={ assets.Path("basecoat.min.js") } defer></script>
-	<script src={ assets.Path("codemirror6.min.js") }></script>
-	<link rel="stylesheet" href={ assets.Path("style.css") }/>
-	<script src={ assets.Path("app.js") }></script>
-}
 
 // Breadcrumb represents a single breadcrumb entry.
 type Breadcrumb struct {
@@ -35,6 +23,9 @@ templ sidebarContent(data DataIndex) {
 					<div role="group" class="button-group">
 						<button
 							class="btn-secondary btn-sm"
+							if allDomainsInitial(data, false) {
+								disabled
+							}
 							data-attr:disabled={ allDomainsExpr(data, false) }
 							data-on:click={ action.POSTPageTIKsFilter(
 								action.WithBefore(setAllDomains(data, false)),
@@ -42,6 +33,9 @@ templ sidebarContent(data DataIndex) {
 						>Hide All</button>
 						<button
 							class="btn-secondary btn-sm"
+							if allDomainsInitial(data, true) {
+								disabled
+							}
 							data-attr:disabled={ allDomainsExpr(data, true) }
 							data-on:click={ action.POSTPageTIKsFilter(
 								action.WithBefore(setAllDomains(data, true)),
@@ -79,6 +73,9 @@ templ sidebarContent(data DataIndex) {
 				<div role="group" class="button-group">
 					<button
 						class="btn-secondary btn-sm"
+						if allLocalesInitial(data, false) {
+							disabled
+						}
 						data-attr:disabled={ allLocalesExpr(data, false) }
 						data-on:click={ action.POSTPageTIKsFilter(
 							action.WithBefore(setAllLocales(data, false)),
@@ -86,6 +83,9 @@ templ sidebarContent(data DataIndex) {
 					>Hide All</button>
 					<button
 						class="btn-secondary btn-sm"
+						if allLocalesInitial(data, true) {
+							disabled
+						}
 						data-attr:disabled={ allLocalesExpr(data, true) }
 						data-on:click={ action.POSTPageTIKsFilter(
 							action.WithBefore(setAllLocales(data, true)),
@@ -392,6 +392,30 @@ func allDomainsExpr(data DataIndex, enabled bool) string {
 		b = append(b, d.SignalKey...)
 	}
 	return string(b)
+}
+
+// allLocalesInitial evaluates the initial server-side state for the locale
+// Hide All / Show All buttons so the disabled attribute matches before Datastar runs.
+func allLocalesInitial(data DataIndex, enabled bool) bool {
+	for _, c := range data.Catalogs {
+		shown := data.ShownLocales == nil || data.ShownLocales[c.Locale]
+		if shown != enabled {
+			return false
+		}
+	}
+	return true
+}
+
+// allDomainsInitial evaluates the initial server-side state for the domain
+// Hide All / Show All buttons so the disabled attribute matches before Datastar runs.
+func allDomainsInitial(data DataIndex, enabled bool) bool {
+	for _, d := range data.Domains {
+		shown := data.ShownDomains == nil || data.ShownDomains[d.FullName]
+		if shown != enabled {
+			return false
+		}
+	}
+	return true
 }
 
 func tikChangedCount(tk *TIK) int {

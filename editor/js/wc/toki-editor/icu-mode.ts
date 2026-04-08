@@ -1,15 +1,22 @@
 // ICU message syntax mode for CodeMirror 6, using StreamLanguage compatibility.
-import { StreamLanguage } from "@codemirror/language";
+import { StreamLanguage, type StringStream } from "@codemirror/language";
 
-var typeRE = /^(plural|select|selectordinal|offset|number|date|time)\b/;
-var selectorRE = /^(?:=\d+|zero|one|two|few|many|other)\b/;
-var styleRE = /^(?:integer|currency|percent|scientific|short|medium|long|full)\b/;
-var numberRE = /^\d+/;
-var varRE = /^[A-Za-z_]\w*/;
+const typeRE = /^(plural|select|selectordinal|offset|number|date|time)\b/;
+const selectorRE = /^(?:=\d+|zero|one|two|few|many|other)\b/;
+const styleRE = /^(?:integer|currency|percent|scientific|short|medium|long|full)\b/;
+const numberRE = /^\d+/;
+const varRE = /^[A-Za-z_]\w*/;
+
+interface ICUState {
+  depth: number;
+  headerDepths: number[];
+  headerVar: number | null;
+  inQuote: boolean;
+}
 
 // Raw tokenizer — used both for StreamLanguage and static highlighting.
 export const icuTokenizer = {
-  startState() {
+  startState(): ICUState {
     return {
       depth: 0,
       headerDepths: [],
@@ -18,7 +25,7 @@ export const icuTokenizer = {
     };
   },
 
-  token(stream, state) {
+  token(stream: StringStream, state: ICUState): string | null {
     if (state.inQuote) {
       if (stream.skipTo("'")) {
         stream.next();
@@ -40,7 +47,7 @@ export const icuTokenizer = {
     }
 
     if (stream.eatSpace()) return null;
-    var ch = stream.peek();
+    const ch = stream.peek();
 
     if (ch === "{") {
       if (stream.match(/^\{\s*[A-Za-z_]\w*\s*(?:,|\})/, false)) {
@@ -57,7 +64,7 @@ export const icuTokenizer = {
 
     if (ch === "}") {
       stream.next();
-      var hd = state.headerDepths;
+      const hd = state.headerDepths;
       if (hd.length && hd[hd.length - 1] === state.depth) {
         hd.pop();
         if (state.headerVar === state.depth) state.headerVar = null;
@@ -66,7 +73,7 @@ export const icuTokenizer = {
       return "bracket";
     }
 
-    var topHeader = state.headerDepths[state.headerDepths.length - 1] || 0;
+    const topHeader = state.headerDepths[state.headerDepths.length - 1] || 0;
 
     if (state.depth > 0) {
       if (state.depth === topHeader) {
@@ -80,9 +87,10 @@ export const icuTokenizer = {
         if (stream.match(typeRE)) return "keyword";
         if (stream.match(selectorRE)) return "atom";
         if (stream.match(styleRE)) return "keyword";
-        var id = stream.match(varRE, true);
+        const id = stream.match(varRE, true);
         if (id) {
-          var s = stream.string, p = stream.pos, i = p;
+          const s = stream.string;
+          let i = stream.pos;
           while (i < s.length && /\s/.test(s.charAt(i))) i++;
           if (s.charAt(i) === "{") return "atom";
           return null;

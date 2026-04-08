@@ -2,13 +2,39 @@ package template
 
 import "github.com/romshark/toki/editor/datapagesgen/assets"
 
-templ Head() {
+func prefsStyleTag(p UIPrefs) string {
+	var s string
+	if p.UIFontCSS != "" {
+		s += "--font-ui:" + p.UIFontCSS + ";"
+	}
+	if p.EditorFontCSS != "" {
+		s += "--font-editor:" + p.EditorFontCSS + ";"
+	}
+	if p.UIFontSizeCSS != "" {
+		s += "--font-size-ui:" + p.UIFontSizeCSS + ";"
+	}
+	if p.EditorFontSizeCSS != "" {
+		s += "--font-size-editor:" + p.EditorFontSizeCSS + ";"
+	}
+	if s == "" {
+		return ""
+	}
+	return "<style>:root{" + s + "}</style>"
+}
+
+func prefsDarkScriptTag(p UIPrefs) string {
+	return "<script>if(" + p.IsDarkExpr +
+		")document.documentElement.classList.add('dark')</script>"
+}
+
+templ Head(prefs UIPrefs) {
 	<title>Toki Editor</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<meta charset="UTF-8"/>
 	<link rel="stylesheet" href={ assets.Path("basecoat.min.css") }/>
+	@templ.Raw(prefsDarkScriptTag(prefs))
+	@templ.Raw(prefsStyleTag(prefs))
 	<script src={ assets.Path("basecoat.min.js") } defer></script>
-	<script src={ assets.Path("codemirror6.min.js") }></script>
-	<link rel="stylesheet" href={ assets.Path("style.css") }/>
-	<script src={ assets.Path("app.js") }></script>
+	<script src={ assets.Path("bundle.js") }></script>
+	<link rel="stylesheet" href={ assets.Path("style.min.css") }/>
 }

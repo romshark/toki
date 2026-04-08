@@ -8,6 +8,29 @@ import (
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
+func settingsPrefSignal(key string) string {
+	switch key {
+	case "toki-theme":
+		return "pref_theme"
+	case "toki-ui-font":
+		return "pref_ui_font"
+	case "toki-editor-font":
+		return "pref_editor_font"
+	case "toki-ui-font-size":
+		return "pref_ui_font_size"
+	case "toki-editor-font-size":
+		return "pref_editor_font_size"
+	default:
+		return ""
+	}
+}
+
+func settingsSetPrefAction(key, value string) string {
+	return action.POSTPageSettingsSetPref(
+		action.WithBefore(fmt.Sprintf("$prefkey=%q;$prefvalue=%q", key, value)),
+	)
+}
+
 // --- Navbar ---
 templ componentNavbarBuildBtn(totalChanges int, canApplyChanges bool) {
 	if totalChanges > 0 {
@@ -38,17 +61,26 @@ templ componentNavbarCore(breadcrumbs []Breadcrumb) {
 		>
 			@iconMenu()
 		</button>
-		<div role="group" class="button-group">
+		<div
+			role="group"
+			class="button-group"
+			data-signals:_history.canback="!!(window.navigation&&navigation.canGoBack)"
+			data-signals:_history.canfwd="!!(window.navigation&&navigation.canGoForward)"
+		>
 			<button
-				class="btn-secondary btn-icon nav-back"
+				class="btn-secondary btn-icon"
+				disabled
 				data-on:click="history.back()"
+				data-attr:disabled="!$_history.canback"
 				aria-label="Go back"
 			>
 				@iconArrowLeft()
 			</button>
 			<button
-				class="btn-secondary btn-icon nav-forward"
+				class="btn-secondary btn-icon"
+				disabled
 				data-on:click="history.forward()"
+				data-attr:disabled="!$_history.canfwd"
 				aria-label="Go forward"
 			>
 				@iconArrowRight()
@@ -260,9 +292,14 @@ templ componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) {
 			data-locale={ msg.Catalog.Locale }
 			if msg.IsReadOnly {
 				readonly
-			}
-			if !msg.IsReadOnly {
+			} else {
 				data-ignore-morph
+				data-on:toki-change={ action.POSTAppSet(
+					action.WithBefore(fmt.Sprintf(
+						"$settikid='%s';$setlocale='%s';$icumsg=evt.detail.value",
+						tikID, msg.Catalog.Locale,
+					)),
+				) }
 			}
 		></toki-editor>
 		if msg.Changed {
@@ -302,13 +339,6 @@ templ componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) {
 
 // --- Modals ---
 templ componentEditorModals() {
-	<button
-		id="autosave-trigger"
-		class="sr-only"
-		data-on:click={ action.POSTAppSet(
-			action.WithBefore("$settikid=window._autosave.tikid;$setlocale=window._autosave.locale;$icumsg=window._autosave.value"),
-		) }
-	></button>
 	@componentResetModal()
 }
 
@@ -391,12 +421,17 @@ templ componentLoadingDots() {
 }
 
 // --- Settings page ---
-templ componentFontOption(fontKey string, f FontOption) {
+templ componentFontOption(fontKey, currentValue string, f FontOption) {
 	<button
+		type="button"
 		class="font-option font-card"
-		data-on:click={ "setFont('" + fontKey + "','" + f.Value + "')" }
-		data-font-key={ fontKey }
-		data-font-value={ f.Value }
+		if currentValue == f.Value {
+			aria-pressed="true"
+		}
+		data-attr:aria-pressed={ fmt.Sprintf(
+			"$%s==='%s' ? 'true' : 'false'", settingsPrefSignal(fontKey), f.Value,
+		) }
+		data-on:click={ settingsSetPrefAction(fontKey, f.Value) }
 	>
 		<span
 			class="font-option-preview"
@@ -408,12 +443,17 @@ templ componentFontOption(fontKey string, f FontOption) {
 	</button>
 }
 
-templ componentFontSizeBtn(key, value, size, fontFamily, label string) {
+templ componentFontSizeBtn(key, currentValue, value, size, fontFamily, label string) {
 	<button
+		type="button"
 		class="btn-secondary btn-sm font-size-card"
-		data-on:click={ "setFontSize('" + key + "','" + value + "')" }
-		data-size-key={ key }
-		data-size-value={ value }
+		if currentValue == value {
+			aria-pressed="true"
+		}
+		data-attr:aria-pressed={ fmt.Sprintf(
+			"$%s==='%s' ? 'true' : 'false'", settingsPrefSignal(key), value,
+		) }
+		data-on:click={ settingsSetPrefAction(key, value) }
 	>
 		<span
 			class="font-size-aa"

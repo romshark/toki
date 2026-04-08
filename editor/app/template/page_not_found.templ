@@ -1,27 +1,29 @@
 package template
 
 templ PageNotFound(path string) {
-	<div id="page-not-found" class="page-center">
-		<header>
-			<code>404</code>
-		</header>
-		<main>
-			<toki-editor
-				value={ "Hello, {name}!\n"+
+	@page("page-not-found") {
+		<div class="page-center">
+			<header>
+				<code>404</code>
+			</header>
+			<main>
+				<toki-editor
+					value={ "Hello, {name}!\n"+
 					"The page \"{text}\" you asked for, doesn''t exist.\n"+
 					"Want to go back, or to the dashboard?" }
-				readonly
-			></toki-editor>
-			<div role="group" class="button-group not-found-actions">
-				<button
-					class="btn-secondary"
-					data-on:click="history.back()"
-				>Previous Page</button>
-				<a
-					class="btn-primary"
-					href="/"
-				>Dashboard</a>
-			</div>
-		</main>
-	</div>
+					readonly
+				></toki-editor>
+				<div role="group" class="button-group not-found-actions">
+					<button
+						class="btn-secondary"
+						data-on:click="history.back()"
+					>Previous Page</button>
+					<a
+						class="btn-primary"
+						href="/"
+					>Dashboard</a>
+				</div>
+			</main>
+		</div>
+	}
 }

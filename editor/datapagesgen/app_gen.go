@@ -572,6 +572,9 @@ func setupHandlers(s *Server) {
 		"POST /project-dir/open/{$}",
 		s.handlePageProjectDirPOSTOpen)
 	s.mux.HandleFunc(
+		"POST /settings/set-pref/{$}",
+		s.handlePageSettingsPOSTSetPref)
+	s.mux.HandleFunc(
 		"POST /tiks/filter/{$}",
 		s.handlePageTIKsPOSTFilter)
 	s.mux.HandleFunc(
@@ -985,6 +988,32 @@ func (s *Server) handlePageSettingsGET(w http.ResponseWriter, r *http.Request) {
 		w, r, genericHead, nil, body, bodyAttrs, nil,
 	); err != nil {
 		s.logErr("rendering PageSettings", err)
+		return
+	}
+}
+
+func (s *Server) handlePageSettingsPOSTSetPref(
+	w http.ResponseWriter, r *http.Request,
+) {
+	if !s.checkIsDSReq(w, r) {
+		return
+	}
+	var signals struct {
+		PrefKey   string `json:"prefkey"`
+		PrefValue string `json:"prefvalue"`
+	}
+	if err := datastar.ReadSignals(r, &signals); err != nil {
+		s.httpErrBad(w, "reading signals", err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r, datastar.WithCompression())
+	p := app.PageSettings{
+		App: s.app,
+	}
+	err := p.POSTSetPref(r, sse, signals)
+	if err != nil {
+		s.httpErrIntern(w, r, sse, "handling action PageSettings.SetPref", err)
 		return
 	}
 }

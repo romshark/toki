@@ -8,7 +8,7 @@ import (
 )
 
 templ PageDomains(data DataDomains) {
-	<div id="page-domains">
+	@page("page-domains") {
 		<aside
 			class="sidebar"
 			id="editor-sidebar"
@@ -54,7 +54,7 @@ templ PageDomains(data DataDomains) {
 				</div>
 			</main>
 		</div>
-	</div>
+	}
 }
 
 templ domainSidebarLinks(d DomainInfo) {

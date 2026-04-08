@@ -7,29 +7,31 @@ import (
 )
 
 templ PageTIK(tk *TIK) {
-	<div
-		id="page-tik"
-		data-signals:icumsg="''"
-		data-signals:settikid="''"
-		data-signals:setlocale="''"
-		data-signals:resettikid="''"
-		data-signals:resetlocale="''"
-		data-signals:resetmodalopen="false"
-		data-signals:resetdonetikid="''"
-		data-signals:resetdonelocale="''"
-		data-signals:instance_id="getOrCreateInstanceID('toki-editor-instance-id')"
-	>
-		<aside
-			class="sidebar"
-			id="editor-sidebar"
-			data-side="left"
-			data-initial-open="true"
+	@page("page-tik") {
+		<div
+			style="display:contents"
+			data-signals:icumsg="''"
+			data-signals:settikid="''"
+			data-signals:setlocale="''"
+			data-signals:resettikid="''"
+			data-signals:resetlocale="''"
+			data-signals:resetmodalopen="false"
+			data-signals:resetdonetikid="''"
+			data-signals:resetdonelocale="''"
+			data-signals:instance_id="getOrCreateInstanceID('toki-editor-instance-id')"
 		>
-			@tikSidebarNav(tk)
-		</aside>
-		@tikMainArea(tk)
-		@componentEditorModals()
-	</div>
+			<aside
+				class="sidebar"
+				id="editor-sidebar"
+				data-side="left"
+				data-initial-open="true"
+			>
+				@tikSidebarNav(tk)
+			</aside>
+			@tikMainArea(tk)
+			@componentEditorModals()
+		</div>
+	}
 }
 
 // TIKContent is the morph target for PageTIK.OnUpdated SSE patches.
@@ -45,7 +47,7 @@ templ tikSidebarNav(tk *TIK) {
 		<section>
 			<ul>
 				<li>
-<a href="#tik-card" data-ignore-current>
+					<a href="#tik-card" data-ignore-current>
 						TIK
 					</a>
 				</li>
@@ -55,14 +57,16 @@ templ tikSidebarNav(tk *TIK) {
 				<ul>
 					for _, msg := range tk.ICU {
 						<li>
-				<a
+							<a
 								href={ templ.SafeURL(fmt.Sprintf("#icu-%s-%s",
 									tk.ID, msg.Catalog.Locale,
 								)) }
 								data-ignore-current
 							>
 								<span class="locale-link-name">
-									<strong class="locale-code">{ msg.Catalog.Locale }</strong>
+									<strong class="locale-code">
+										{ msg.Catalog.Locale }
+									</strong>
 									if msg.Catalog.Name != "" {
 										– { msg.Catalog.Name }
 									}
@@ -73,17 +77,26 @@ templ tikSidebarNav(tk *TIK) {
 									</span>
 								}
 								if msg.Changed {
-									<span class="badge badge-changed" title="Unsaved change">
+									<span
+										class="badge badge-changed"
+										title="Unsaved change"
+									>
 										@iconPencil()
 									</span>
 								}
 								if msg.Message == "" {
-									<span class="badge-secondary" title="Missing Translation">
+									<span
+										class="badge-secondary"
+										title="Missing Translation"
+									>
 										@iconCircleMinus()
 									</span>
 								}
 								if msg.Error != "" || len(msg.IncompleteReports) > 0 {
-									<span class="badge-destructive" title="Invalid ICU message">
+									<span
+										class="badge-destructive"
+										title="Invalid ICU message"
+									>
 										@iconAlertTriangle()
 									</span>
 								}
@@ -95,7 +108,7 @@ templ tikSidebarNav(tk *TIK) {
 			if len(tk.Occurrences) > 0 {
 				<ul>
 					<li>
-		<a href="#source-occurrences" data-ignore-current>
+						<a href="#source-occurrences" data-ignore-current>
 							Source Occurrences
 						</a>
 					</li>
@@ -145,7 +158,9 @@ templ tikMainArea(tk *TIK) {
 					>
 						<header>
 							<span class="icu-form-label">
-								<strong class="locale-code">{ msg.Catalog.Locale }</strong> — ICU Message
+								<strong class="locale-code">
+									{ msg.Catalog.Locale }
+								</strong> — ICU Message
 								@componentICUMessageBadges(msg)
 							</span>
 						</header>

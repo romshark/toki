@@ -637,7 +637,21 @@ func syncEditorsScript(tiks []template.TIK, excludeEditor string) string {
 	return fmt.Sprintf("syncEditorValues(%s)", j)
 }
 
-func (*App) Head(_ *http.Request) templ.Component { return template.Head() }
+func (*App) Head(r *http.Request) templ.Component {
+	p := ReadUIPrefs(r)
+	return template.Head(template.UIPrefs{
+		Theme:             p.Theme,
+		UIFont:            p.UIFont,
+		EditorFont:        p.EditorFont,
+		UIFontSize:        p.UIFontSize,
+		EditorFontSize:    p.EditorFontSize,
+		IsDarkExpr:        p.IsDark(),
+		UIFontCSS:         p.UIFontFamily(),
+		EditorFontCSS:     p.EditorFontFamily(),
+		UIFontSizeCSS:     p.UIFontSizeCSS(),
+		EditorFontSizeCSS: p.EditorFontSizeCSS(),
+	})
+}
 
 // POSTSet is /set/{$}
 func (a *App) POSTSet(
@@ -1595,9 +1609,17 @@ func (p PageSettings) GET(
 
 	preview := "The quick brown fox jumps over the lazy dog"
 	icuPreview := "{ plural, one {# item} other {# items} }"
+	prefs := ReadUIPrefs(r)
 	data := template.DataSettingsPreview{
+		Prefs: template.UIPrefs{
+			Theme:          prefs.Theme,
+			UIFont:         prefs.UIFont,
+			EditorFont:     prefs.EditorFont,
+			UIFontSize:     prefs.UIFontSize,
+			EditorFontSize: prefs.EditorFontSize,
+		},
 		UIFonts: []template.FontOption{
-			{Value: "system", Family: "", Label: "System Default", Preview: preview},
+			{Value: "system", Family: fontFamilies["system"], Label: "System Default", Preview: preview},
 			{Value: "georgia", Family: "Georgia, 'Times New Roman', serif", Label: "Georgia", Preview: preview},
 			{Value: "helvetica", Family: "'Helvetica Neue', Helvetica, Arial, sans-serif", Label: "Helvetica", Preview: preview},
 		},
@@ -1616,6 +1638,67 @@ func (p PageSettings) GET(
 	}
 	body = template.PageSettings(p.App.Version, data)
 	return
+}
+
+// POSTSetPref is /settings/set-pref/{$}
+func (p PageSettings) POSTSetPref(
+	r *http.Request,
+	sse *datastar.ServerSentEventGenerator,
+	signals struct {
+		PrefKey   string `json:"prefkey"`
+		PrefValue string `json:"prefvalue"`
+	},
+) error {
+	if !isValidUIPref(signals.PrefKey, signals.PrefValue) {
+		return httperr.BadRequest
+	}
+
+	switch signals.PrefKey {
+	case "toki-theme":
+		if err := sse.MarshalAndPatchSignals(struct {
+			PrefTheme string `json:"pref_theme"`
+		}{
+			PrefTheme: signals.PrefValue,
+		}); err != nil {
+			return err
+		}
+	case "toki-ui-font":
+		if err := sse.MarshalAndPatchSignals(struct {
+			PrefUIFont string `json:"pref_ui_font"`
+		}{
+			PrefUIFont: signals.PrefValue,
+		}); err != nil {
+			return err
+		}
+	case "toki-editor-font":
+		if err := sse.MarshalAndPatchSignals(struct {
+			PrefEditorFont string `json:"pref_editor_font"`
+		}{
+			PrefEditorFont: signals.PrefValue,
+		}); err != nil {
+			return err
+		}
+	case "toki-ui-font-size":
+		if err := sse.MarshalAndPatchSignals(struct {
+			PrefUIFontSize string `json:"pref_ui_font_size"`
+		}{
+			PrefUIFontSize: signals.PrefValue,
+		}); err != nil {
+			return err
+		}
+	case "toki-editor-font-size":
+		if err := sse.MarshalAndPatchSignals(struct {
+			PrefEditorFontSize string `json:"pref_editor_font_size"`
+		}{
+			PrefEditorFontSize: signals.PrefValue,
+		}); err != nil {
+			return err
+		}
+	default:
+		return httperr.BadRequest
+	}
+
+	return sse.ExecuteScript(applyUIPrefScript(signals.PrefKey, signals.PrefValue))
 }
 
 // PageError404 is /error404/

@@ -1,6 +1,7 @@
 import { EditorView } from "@codemirror/view";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
+import type { Extension } from "@codemirror/state";
 
 // Base16 Light
 const lightEditorTheme = EditorView.theme({
@@ -68,5 +69,5 @@ const darkHighlightStyle = HighlightStyle.define([
   { tag: tags.invalid, color: "#b0b0b0", backgroundColor: "#ac4142" },
 ]);
 
-export const lightTheme = [lightEditorTheme, syntaxHighlighting(lightHighlightStyle)];
-export const darkTheme = [darkEditorTheme, syntaxHighlighting(darkHighlightStyle)];
+export const lightTheme: Extension[] = [lightEditorTheme, syntaxHighlighting(lightHighlightStyle)];
+export const darkTheme: Extension[] = [darkEditorTheme, syntaxHighlighting(darkHighlightStyle)];

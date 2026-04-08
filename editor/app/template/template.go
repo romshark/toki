@@ -5,6 +5,21 @@ import (
 	"time"
 )
 
+// UIPrefs holds user interface preferences read from cookies.
+type UIPrefs struct {
+	Theme          string // "light", "dark", "system"
+	UIFont         string
+	EditorFont     string
+	UIFontSize     string
+	EditorFontSize string
+	// Pre-resolved CSS values.
+	IsDarkExpr       string // JS expression for dark mode: "true", "false", or "matchMedia(...).matches"
+	UIFontCSS        string // CSS font-family
+	EditorFontCSS    string // CSS font-family
+	UIFontSizeCSS    string // CSS font-size
+	EditorFontSizeCSS string // CSS font-size
+}
+
 // DashboardStats holds statistics for the dashboard page.
 type DashboardStats struct {
 	Dir             string

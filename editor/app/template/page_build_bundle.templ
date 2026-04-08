@@ -8,98 +8,99 @@ import (
 )
 
 templ PageBuildBundle(state BuildBundleState) {
-	<div
-		id="page-build-bundle"
-		class="page-center"
-		data-signals:instance_id="getOrCreateInstanceID('toki-editor-instance-id')"
-	>
-		<div id="build-bundle-content">
-			if state.Building {
-				<div class="card">
-					<header>
-						<h1>Building Bundle</h1>
-					</header>
-					<section>
-						<div class="loading-screen">
-							<div class="loading-dots">
-								<span></span>
-								<span></span>
-								<span></span>
-							</div>
-							<p>
-								Writing .arb files and generating Go code&hellip;
-							</p>
-							<p class="loading-hint">
-								This may take a moment for large codebases.
-							</p>
-						</div>
-					</section>
-				</div>
-			} else if state.Err != "" {
-				<div class="card">
-					<header>
-						<h1>Build Failed</h1>
-					</header>
-					<section>
-						<div class="build-result">
-							<div class="alert alert-destructive">
-								<section>{ state.Err }</section>
-							</div>
-							if state.Duration > 0 {
-								<p class="build-duration">
-									Failed after { FmtDuration(state.Duration) }
-								</p>
-							}
-							<a href={ href.PageIndex() } class="btn-primary">
-								Go to Dashboard
-							</a>
-						</div>
-					</section>
-				</div>
-			} else if state.Duration > 0 {
-				<div class="card">
-					<header>
-						<h1>Build Successful</h1>
-					</header>
-					<section>
-						<div class="build-result">
-							<div class="alert build-success-alert">
-								<section>
-									Bundle built successfully. The .arb files and Go code
-									have been updated.
-								</section>
-							</div>
-							<p class="build-duration">
-								Completed in { FmtDuration(state.Duration) }
-							</p>
-							<a href={ href.PageIndex() } class="btn-primary">
-								Go to Dashboard
-							</a>
-						</div>
-					</section>
-				</div>
-			} else {
-				<div class="card">
-					<header>
-						<h1>Build Bundle</h1>
-					</header>
-					<section>
-						<div class="build-result">
-							if state.TotalChanges == 0 {
-								<p>No unsaved changes to build.</p>
-							} else {
+	@page("page-build-bundle") {
+		<div
+			class="page-center"
+			data-signals:instance_id="getOrCreateInstanceID('toki-editor-instance-id')"
+		>
+			<div id="build-bundle-content">
+				if state.Building {
+					<div class="card">
+						<header>
+							<h1>Building Bundle</h1>
+						</header>
+						<section>
+							<div class="loading-screen">
+								<div class="loading-dots">
+									<span></span>
+									<span></span>
+									<span></span>
+								</div>
 								<p>
-									{ fmt.Sprintf("%d", state.TotalChanges) } unsaved
-									{ strfmt.ChangeWord(state.TotalChanges) } ready to build.
+									Writing .arb files and generating Go code&hellip;
 								</p>
-							}
-							<a href={ href.PageIndex() } class="btn-primary">
-								Go to Dashboard
-							</a>
-						</div>
-					</section>
-				</div>
-			}
+								<p class="loading-hint">
+									This may take a moment for large codebases.
+								</p>
+							</div>
+						</section>
+					</div>
+				} else if state.Err != "" {
+					<div class="card">
+						<header>
+							<h1>Build Failed</h1>
+						</header>
+						<section>
+							<div class="build-result">
+								<div class="alert alert-destructive">
+									<section>{ state.Err }</section>
+								</div>
+								if state.Duration > 0 {
+									<p class="build-duration">
+										Failed after { FmtDuration(state.Duration) }
+									</p>
+								}
+								<a href={ href.PageIndex() } class="btn-primary">
+									Go to Dashboard
+								</a>
+							</div>
+						</section>
+					</div>
+				} else if state.Duration > 0 {
+					<div class="card">
+						<header>
+							<h1>Build Successful</h1>
+						</header>
+						<section>
+							<div class="build-result">
+								<div class="alert build-success-alert">
+									<section>
+										Bundle built successfully. The .arb files and Go code
+										have been updated.
+									</section>
+								</div>
+								<p class="build-duration">
+									Completed in { FmtDuration(state.Duration) }
+								</p>
+								<a href={ href.PageIndex() } class="btn-primary">
+									Go to Dashboard
+								</a>
+							</div>
+						</section>
+					</div>
+				} else {
+					<div class="card">
+						<header>
+							<h1>Build Bundle</h1>
+						</header>
+						<section>
+							<div class="build-result">
+								if state.TotalChanges == 0 {
+									<p>No unsaved changes to build.</p>
+								} else {
+									<p>
+										{ fmt.Sprintf("%d", state.TotalChanges) } unsaved
+										{ strfmt.ChangeWord(state.TotalChanges) } ready to build.
+									</p>
+								}
+								<a href={ href.PageIndex() } class="btn-primary">
+									Go to Dashboard
+								</a>
+							</div>
+						</section>
+					</div>
+				}
+			</div>
 		</div>
-	</div>
+	}
 }

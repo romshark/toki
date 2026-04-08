@@ -25,7 +25,9 @@ var (
 type catalog_de struct{}
 
 var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
-	msg40298b0dfa835a18: nil,
+	msg40298b0dfa835a18: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "asd")
+	},
 	msg73df838e3688e65c: nil,
 	msg7b4460496c4dc063: nil,
 	msg7ba5e4f7ff9e557f: nil,
