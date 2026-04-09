@@ -162,10 +162,9 @@ func writeUIPrefCookieScript(
 }
 
 func writeRootStyleScript(script *strings.Builder, name, value string) {
-	script.WriteString(fmt.Sprintf(
+	fmt.Fprintf(script,
 		"document.documentElement.style.setProperty(%q,%q);",
-		name, value,
-	))
+		name, value)
 }
 
 func applyUIPrefsScript(p UIPrefs) string {
@@ -176,11 +175,12 @@ func applyUIPrefsScript(p UIPrefs) string {
 	writeUIPrefCookieScript(&script, "toki-ui-font", p.UIFont, maxAgeSeconds)
 	writeUIPrefCookieScript(&script, "toki-editor-font", p.EditorFont, maxAgeSeconds)
 	writeUIPrefCookieScript(&script, "toki-ui-font-size", p.UIFontSize, maxAgeSeconds)
-	writeUIPrefCookieScript(&script, "toki-editor-font-size", p.EditorFontSize, maxAgeSeconds)
+	writeUIPrefCookieScript(&script, "toki-editor-font-size",
+		p.EditorFontSize, maxAgeSeconds)
 
-	script.WriteString(
-		"document.documentElement.classList.toggle('dark'," + p.IsDark() + ");",
-	)
+	script.WriteString("document.documentElement.classList.toggle('dark',")
+	script.WriteString(p.IsDark())
+	script.WriteString(");")
 	writeRootStyleScript(&script, "--font-ui", p.UIFontFamily())
 	writeRootStyleScript(&script, "--font-editor", p.EditorFontFamily())
 	writeRootStyleScript(&script, "--font-size-ui", p.UIFontSizeCSS())
