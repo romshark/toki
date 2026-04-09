@@ -55,6 +55,9 @@ templ Head(prefs UIPrefs) {
 				}
 			</script>
 	}
+	// Inject CSS custom properties for user font preferences on :root.
+	// templ.Raw is acceptable here because templ has no native construct
+	// for <style> tags with dynamic content.
 	@templ.Raw(prefsStyleTag(prefs))
 	<script src={ assets.Path("basecoat.min.js") } defer></script>
 	<script src={ assets.Path("bundle.js") }></script>
