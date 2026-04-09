@@ -18,8 +18,8 @@ type PageDomains struct{ App *App }
 func (p PageDomains) GET(
 	r *http.Request,
 ) (body templ.Component, redirect string, err error) {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 
 	if p.App.building {
 		return nil, href.PageBuildBundle(), nil

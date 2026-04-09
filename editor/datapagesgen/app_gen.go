@@ -510,6 +510,12 @@ func evSubjPageBuildBundle() []string {
 	}
 }
 
+func evSubjPageIndex() []string {
+	return []string{
+		EvSubjUpdated,
+	}
+}
+
 func evSubjPageTIK() []string {
 	return []string{
 		EvSubjUpdated,
@@ -541,6 +547,9 @@ func setupHandlers(s *Server) {
 	s.mux.HandleFunc(
 		"GET /",
 		s.handlePageIndexGET)
+	s.mux.HandleFunc(
+		"GET /_$/{$}",
+		s.handlePageIndexGETStream)
 	s.mux.HandleFunc(
 		"GET /project-dir/{$}",
 		s.handlePageProjectDirGET)
@@ -917,12 +926,48 @@ func (s *Server) handlePageIndexGET(w http.ResponseWriter, r *http.Request) {
 		writeBodyAttrOnVisibilityChange(w)
 	}
 
+	bodySuffix := func(w http.ResponseWriter) {
+
+		_, _ = io.WriteString(w, `data-init="@get('/_$/')"`)
+	}
+
 	if err := s.writeHTML(
-		w, r, genericHead, nil, body, bodyAttrs, nil,
+		w, r, genericHead, nil, body, bodyAttrs, bodySuffix,
 	); err != nil {
 		s.logErr("rendering PageIndex", err)
 		return
 	}
+}
+
+func (s *Server) handlePageIndexGETStream(w http.ResponseWriter, r *http.Request) {
+	if !s.checkIsDSReq(w, r) {
+		return
+	}
+
+	p := app.PageIndex{
+		App: s.app,
+	}
+	s.handleStreamRequest(w, r, evSubjPageIndex(),
+		nil,
+		nil,
+		func(
+			streamID uint64,
+			sse *datastar.ServerSentEventGenerator, ch <-chan msgbroker.Message,
+		) {
+			for msg := range ch {
+				switch msg.Subject {
+				case EvSubjUpdated:
+					var e app.EventUpdated
+					if err := json.Unmarshal(msg.Data, &e); err != nil {
+						s.logErr("unmarshaling EventUpdated JSON", err)
+						continue
+					}
+					if err := p.OnUpdated(e, sse, streamID); err != nil {
+						s.logErr("handling PageIndex.OnUpdated", err)
+					}
+				}
+			}
+		})
 }
 
 func (s *Server) handlePageProjectDirGET(w http.ResponseWriter, r *http.Request) {

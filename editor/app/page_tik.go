@@ -36,8 +36,8 @@ func (p PageTIK) GET(
 		return
 	}
 
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 
 	if p.App.building {
 		redirect = href.PageBuildBundle()
@@ -72,15 +72,15 @@ func (p PageTIK) StreamOpen(
 	},
 ) error {
 	tikID := r.PathValue("id")
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 	p.App.registerTIKStreamLocked(streamID, signals.InstanceID, tikID)
 	return nil
 }
 
 func (p PageTIK) StreamClose(r *http.Request, streamID uint64) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 	p.App.unregisterTIKStreamLocked(streamID)
 	return nil
 }
@@ -90,14 +90,14 @@ func (p PageTIK) OnUpdated(
 	sse *datastar.ServerSentEventGenerator,
 	streamID uint64,
 ) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 
 	if p.App.building {
 		return sse.ExecuteScript(navigate(href.PageBuildBundle()))
 	}
 
-	instID := p.App.tikStreams[streamID]
+	instID := p.App.streamInst[streamID]
 	vs := p.App.tikViews[instID]
 	if vs == nil || vs.tikID == "" {
 		return nil

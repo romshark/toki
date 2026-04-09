@@ -23,8 +23,8 @@ func (p PageProjectDir) GET(r *http.Request) (
 	enableBackgroundStreaming = true
 	disableRefreshAfterHidden = true
 
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 
 	if p.App.building {
 		redirect = href.PageBuildBundle()

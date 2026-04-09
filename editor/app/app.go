@@ -69,7 +69,7 @@ type pageTIKState struct {
 }
 
 type App struct {
-	mu               sync.Mutex
+	lock             sync.Mutex
 	env              []string
 	dir              string
 	bundlePkgPath    string
@@ -104,12 +104,9 @@ type App struct {
 	buildDuration time.Duration
 
 	// Per-page server-side state, keyed by instance_id.
-	tiksViews   map[string]*pageTIKsState
-	tiksStreams map[uint64]string // streamID -> instance_id
-	tikViews    map[string]*pageTIKState
-	tikStreams  map[uint64]string // streamID -> instance_id
-	// Build bundle has no view state, just stream tracking.
-	buildStreams map[uint64]struct{}
+	tiksViews  map[string]*pageTIKsState
+	tikViews   map[string]*pageTIKState
+	streamInst map[uint64]string // streamID -> instance_id (shared across page types)
 
 	// PickDirectory opens a native directory picker dialog.
 	// Set by the Wails runner; nil in server mode.
@@ -142,10 +139,8 @@ func NewApp(dir, bundlePkgPath string, env []string, db *indexdb.DB) *App {
 		tikParser:        tik.NewParser(tik.DefaultConfig),
 		tikICUTranslator: tik.NewICUTranslator(tik.DefaultConfig),
 		tiksViews:        make(map[string]*pageTIKsState),
-		tiksStreams:      make(map[uint64]string),
 		tikViews:         make(map[string]*pageTIKState),
-		tikStreams:       make(map[uint64]string),
-		buildStreams:     make(map[uint64]struct{}),
+		streamInst:       make(map[uint64]string),
 	}
 }
 
@@ -160,20 +155,20 @@ func (a *App) SetLoading(v bool) {
 }
 
 func (a *App) Dir() string {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	a.lock.Lock()
+	defer a.lock.Unlock()
 	return a.dir
 }
 
 func (a *App) InitErr() string {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	a.lock.Lock()
+	defer a.lock.Unlock()
 	return a.initErr
 }
 
 func (a *App) TryInit() error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	a.lock.Lock()
+	defer a.lock.Unlock()
 	return a.tryInitLocked()
 }
 
@@ -576,8 +571,8 @@ func (a *App) loadFromDBLocked() error {
 }
 
 func (a *App) SetDir(dir string) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	a.lock.Lock()
+	defer a.lock.Unlock()
 
 	// Close the old DB and open a new one for the new directory.
 	if a.indexDB != nil {
@@ -597,7 +592,7 @@ func (a *App) SetDir(dir string) error {
 }
 
 func (a *App) registerTIKsStreamLocked(streamID uint64, instanceID string, vs pageTIKsState) {
-	a.tiksStreams[streamID] = instanceID
+	a.streamInst[streamID] = instanceID
 	if existing, ok := a.tiksViews[instanceID]; ok {
 		existing.filterType = vs.filterType
 		existing.showLocales = vs.showLocales
@@ -611,11 +606,11 @@ func (a *App) registerTIKsStreamLocked(streamID uint64, instanceID string, vs pa
 }
 
 func (a *App) unregisterTIKsStreamLocked(streamID uint64) {
-	instanceID, ok := a.tiksStreams[streamID]
+	instanceID, ok := a.streamInst[streamID]
 	if !ok {
 		return
 	}
-	delete(a.tiksStreams, streamID)
+	delete(a.streamInst, streamID)
 	if vs, ok := a.tiksViews[instanceID]; ok {
 		vs.refCount--
 		if vs.refCount <= 0 {
@@ -625,7 +620,7 @@ func (a *App) unregisterTIKsStreamLocked(streamID uint64) {
 }
 
 func (a *App) registerTIKStreamLocked(streamID uint64, instanceID string, tikID string) {
-	a.tikStreams[streamID] = instanceID
+	a.streamInst[streamID] = instanceID
 	if existing, ok := a.tikViews[instanceID]; ok {
 		existing.tikID = tikID
 		existing.refCount++
@@ -635,25 +630,17 @@ func (a *App) registerTIKStreamLocked(streamID uint64, instanceID string, tikID 
 }
 
 func (a *App) unregisterTIKStreamLocked(streamID uint64) {
-	instanceID, ok := a.tikStreams[streamID]
+	instanceID, ok := a.streamInst[streamID]
 	if !ok {
 		return
 	}
-	delete(a.tikStreams, streamID)
+	delete(a.streamInst, streamID)
 	if vs, ok := a.tikViews[instanceID]; ok {
 		vs.refCount--
 		if vs.refCount <= 0 {
 			delete(a.tikViews, instanceID)
 		}
 	}
-}
-
-func (a *App) registerBuildStreamLocked(streamID uint64) {
-	a.buildStreams[streamID] = struct{}{}
-}
-
-func (a *App) unregisterBuildStreamLocked(streamID uint64) {
-	delete(a.buildStreams, streamID)
 }
 
 // syncEditorsScript builds a JS call to syncEditorValues with current
@@ -702,8 +689,8 @@ func (a *App) POSTSet(
 		InstanceID string `json:"instance_id"`
 	},
 ) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	a.lock.Lock()
+	defer a.lock.Unlock()
 
 	id := signals.TIKID
 	locale := signals.Locale
@@ -790,8 +777,8 @@ func (a *App) POSTReset(
 		InstanceID  string `json:"instance_id"`
 	},
 ) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	a.lock.Lock()
+	defer a.lock.Unlock()
 
 	id := signals.ResetTIKID
 	locale := signals.ResetLocale
@@ -854,8 +841,8 @@ func (a *App) POSTApplyChanges(
 	dispatch func(EventUpdated) error,
 	signals struct{},
 ) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	a.lock.Lock()
+	defer a.lock.Unlock()
 
 	if !a.canApplyChangesLocked() {
 		return httperr.BadRequest
@@ -1049,8 +1036,8 @@ func (a *App) startBuildBundleLocked() {
 func (a *App) runBuildBundle(changed []*template.ICUMessage) {
 	start := time.Now()
 
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	a.lock.Lock()
+	defer a.lock.Unlock()
 	defer func() {
 		a.building = false
 		a.buildDuration = time.Since(start)
@@ -1242,8 +1229,8 @@ func normalizeFilterType(filterType string) string {
 // Existing unsaved user changes on other messages are preserved.
 // On failure, the error is stored in repairErr for display on the project-dir page.
 func (a *App) RepairCorrupt() {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	a.lock.Lock()
+	defer a.lock.Unlock()
 
 	a.repairErr = ""
 

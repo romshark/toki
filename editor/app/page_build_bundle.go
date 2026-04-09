@@ -30,8 +30,8 @@ func (p PageBuildBundle) GET(
 		return
 	}
 
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 
 	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
 		redirect = href.PageProjectDir()
@@ -63,10 +63,8 @@ func (p PageBuildBundle) StreamOpen(
 		InstanceID string `json:"instance_id"`
 	},
 ) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-	p.App.registerBuildStreamLocked(streamID)
-
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 	// Start the build now that the SSE stream is connected.
 	// This guarantees the client sees the loading state before the build runs.
 	if !p.App.building && p.App.buildDuration == 0 && p.App.buildErr == "" &&
@@ -76,10 +74,7 @@ func (p PageBuildBundle) StreamOpen(
 	return nil
 }
 
-func (p PageBuildBundle) StreamClose(r *http.Request, streamID uint64) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-	p.App.unregisterBuildStreamLocked(streamID)
+func (PageBuildBundle) StreamClose(r *http.Request, streamID uint64) error {
 	return nil
 }
 
@@ -88,8 +83,8 @@ func (p PageBuildBundle) OnUpdated(
 	sse *datastar.ServerSentEventGenerator,
 	streamID uint64,
 ) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 
 	state := p.App.buildBundleStateLocked()
 	return sse.PatchElementTempl(template.PageBuildBundle(state))

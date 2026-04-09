@@ -38,8 +38,8 @@ func (p PageTIKs) GET(
 		return
 	}
 
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 
 	if p.App.building {
 		redirect = href.PageBuildBundle()
@@ -72,8 +72,8 @@ func (p PageTIKs) StreamOpen(
 		InstanceID  string          `json:"instance_id"`
 	},
 ) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 	p.App.registerTIKsStreamLocked(streamID, signals.InstanceID, pageTIKsState{
 		filterType:  normalizeFilterType(signals.FilterType),
 		showLocales: signals.ShowLocales,
@@ -84,8 +84,8 @@ func (p PageTIKs) StreamOpen(
 }
 
 func (p PageTIKs) StreamClose(r *http.Request, streamID uint64) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 	p.App.unregisterTIKsStreamLocked(streamID)
 	return nil
 }
@@ -95,8 +95,8 @@ func (p PageTIKs) OnUpdated(
 	sse *datastar.ServerSentEventGenerator,
 	streamID uint64,
 ) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 
 	if p.App.building {
 		return sse.ExecuteScript(navigate(href.PageBuildBundle()))
@@ -106,7 +106,7 @@ func (p PageTIKs) OnUpdated(
 		return nil
 	}
 
-	instID := p.App.tiksStreams[streamID]
+	instID := p.App.streamInst[streamID]
 	vs := p.App.tiksViews[instID]
 	if vs == nil {
 		return nil
@@ -199,8 +199,8 @@ func (p PageTIKs) POSTFilter(
 		InstanceID  string          `json:"instance_id"`
 	},
 ) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 
 	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
 		return httperr.BadRequest
@@ -231,8 +231,8 @@ func (p PageTIKs) POSTShowAllLocales(
 		InstanceID string `json:"instance_id"`
 	},
 ) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 
 	vs := p.App.tiksViews[signals.InstanceID]
 	if vs == nil {
@@ -251,8 +251,8 @@ func (p PageTIKs) POSTHideAllLocales(
 		InstanceID string `json:"instance_id"`
 	},
 ) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 
 	vs := p.App.tiksViews[signals.InstanceID]
 	if vs == nil {
@@ -271,8 +271,8 @@ func (p PageTIKs) POSTShowAllDomains(
 		InstanceID string `json:"instance_id"`
 	},
 ) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 
 	vs := p.App.tiksViews[signals.InstanceID]
 	if vs == nil {
@@ -291,8 +291,8 @@ func (p PageTIKs) POSTHideAllDomains(
 		InstanceID string `json:"instance_id"`
 	},
 ) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 
 	vs := p.App.tiksViews[signals.InstanceID]
 	if vs == nil {
@@ -346,8 +346,8 @@ func (p PageTIKs) handleScroll(
 	searchQuery string, windowStart int, instanceID string,
 	scrollUp bool,
 ) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
 
 	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
 		return httperr.BadRequest

@@ -17,9 +17,9 @@ type PageSettings struct{ App *App }
 func (p PageSettings) GET(
 	r *http.Request,
 ) (body templ.Component, redirect string, err error) {
-	p.App.mu.Lock()
+	p.App.lock.Lock()
 	building := p.App.building
-	p.App.mu.Unlock()
+	p.App.lock.Unlock()
 	if building {
 		return nil, href.PageBuildBundle(), nil
 	}
