@@ -1155,6 +1155,7 @@ func (a *App) orderTIK(tk *template.TIK) *template.TIK {
 		ID:          tk.ID,
 		TIK:         tk.TIK,
 		Description: tk.Description,
+		Domain:      tk.Domain,
 		ICU:         ordered,
 		Occurrences: tk.Occurrences,
 		IsChanged:   tk.IsChanged,
@@ -1369,6 +1370,7 @@ func (a *App) buildTIKForDisplay(
 		ID:          tk.ID,
 		TIK:         tk.TIK,
 		Description: tk.Description,
+		Domain:      tk.Domain,
 		ICU:         make([]*template.ICUMessage, 0, len(a.catalogs)),
 	}
 	for _, c := range a.catalogs {

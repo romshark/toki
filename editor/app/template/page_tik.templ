@@ -129,24 +129,32 @@ templ tikMainArea(tk *TIK) {
 			<div class="contents">
 				<div class="card tik-card" id="tik-card">
 					<header>
-						<label class="tik-label">
-							<span>
+						<span class="tik-breadcrumb">
+							if tk.Domain != "" {
+								<span class="tik-domain">{ tk.Domain }</span>
+								<span class="tik-breadcrumb-sep">/</span>
+							}
+							<span class="msg-id">{ tk.ID }</span>
+						</span>
+					</header>
+					<section>
+						<div class="field">
+							<label class="label">
 								TIK
-								<span class="msg-id">{ tk.ID }</span>
 								@componentCopy(tk.TIK)
-							</span>
+							</label>
 							<toki-editor
 								value={ tk.TIK }
 								readonly
 							></toki-editor>
-						</label>
+						</div>
 						if tk.Description != "" {
-							<label>
-								<span>Description</span>
+							<div class="field">
+								<label class="label">Description</label>
 								<p>{ tk.Description }</p>
-							</label>
+							</div>
 						}
-					</header>
+					</section>
 				</div>
 				<h2 id="icu-messages">
 					@iconLanguages()

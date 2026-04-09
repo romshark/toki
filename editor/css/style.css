@@ -555,6 +555,25 @@ main {
 	outline-offset: -3px;
 }
 
+.card > section > .field + .field {
+	margin-block-start: 0.75rem;
+}
+
+.tik-breadcrumb {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem;
+	font-size: 1rem;
+}
+
+.tik-domain {
+	opacity: 0.5;
+}
+
+.tik-breadcrumb-sep {
+	opacity: 0.3;
+}
+
 .tik-label {
 	font-size: 1.2rem;
 	line-height: 1.6rem;
@@ -570,8 +589,6 @@ main {
 
 .msg-id {
 	text-transform: uppercase;
-	margin-inline-start: 0.5rem;
-	font-size: 1rem;
 	opacity: 0.5;
 	text-decoration: underline;
 	text-underline-offset: 0.15em;
@@ -1119,6 +1136,7 @@ toki-editor {
 
 	& .font-section {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 1rem;
 		min-block-size: 16rem;
 	}
@@ -1146,6 +1164,21 @@ toki-editor {
 			linear-gradient(transparent, var(--_bg) 67%) center bottom / 100% 1.5rem no-repeat local,
 			linear-gradient(to bottom, oklch(0 0 0 / 0.12), transparent) center top / 100% 0.75rem no-repeat scroll,
 			linear-gradient(to top, oklch(0 0 0 / 0.12), transparent) center bottom / 100% 0.75rem no-repeat scroll;
+	}
+
+	@media (max-width: 60rem) {
+		& .font-section {
+			flex-direction: column;
+		}
+
+		& .font-section-controls {
+			inline-size: 100%;
+		}
+
+		& .scroll-fade-list {
+			flex: none;
+			block-size: 12rem;
+		}
 	}
 
 	& .font-option {

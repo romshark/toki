@@ -165,20 +165,44 @@ func PageSettings(version string, data DataSettingsPreview) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<section><div role=\"group\" aria-labelledby=\"settings-nav-label\"><h3 id=\"settings-nav-label\">Settings</h3><ul><li><a href=\"#appearance\" data-ignore-current>Appearance</a></li><li><a href=\"#ui-font\" data-ignore-current>Interface Font</a></li><li><a href=\"#editor-font\" data-ignore-current>Editor Font</a></li></ul></div></section><footer><div class=\"sidebar-version\"><small>Toki Editor ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<section><div role=\"group\" aria-labelledby=\"settings-nav-label\"><h3 id=\"settings-nav-label\">Settings</h3><ul><li><a href=\"#appearance\" data-ignore-current>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = iconPalette().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "Appearance</a></li><li><a href=\"#ui-font\" data-ignore-current>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = iconType().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "Interface Font</a></li><li><a href=\"#editor-font\" data-ignore-current>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = iconType().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "Editor Font</a></li></ul></div></section><footer><div class=\"sidebar-version\"><small>Toki Editor ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(version)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 85, Col: 35}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 88, Col: 35}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</small></div></footer></nav></aside><div class=\"main-area\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</small></div></footer></nav></aside><div class=\"main-area\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -189,7 +213,15 @@ func PageSettings(version string, data DataSettingsPreview) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<main><div class=\"contents\"><h2 id=\"appearance\">Appearance</h2><div class=\"theme-picker\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<main><div class=\"contents\"><h2 id=\"appearance\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = iconPalette().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "Appearance</h2><div class=\"theme-picker\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -205,7 +237,15 @@ func PageSettings(version string, data DataSettingsPreview) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div><!-- Interface Font --><h2 id=\"ui-font\">Interface Font</h2><div class=\"font-section\"><div class=\"font-section-controls\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div><!-- Interface Font --><h2 id=\"ui-font\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = iconType().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "Interface Font</h2><div class=\"font-section\"><div class=\"font-section-controls\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -234,7 +274,7 @@ func PageSettings(version string, data DataSettingsPreview) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div role=\"group\" class=\"button-group font-size-group\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div role=\"group\" class=\"button-group font-size-group\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -268,20 +308,20 @@ func PageSettings(version string, data DataSettingsPreview) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</div></div><div class=\"font-section-preview\"><span class=\"font-preview-label\">Preview</span><section class=\"card\" style=\"pointer-events:none\"><header><label class=\"tik-label\"><span>TIK <span class=\"msg-id\">greeting.welcome</span> <span class=\"badge badge-changed\">Changed</span></span> <toki-editor value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div></div><div class=\"font-section-preview\"><span class=\"font-preview-label\">Preview</span><section class=\"card\" style=\"pointer-events:none\"><header><span class=\"tik-breadcrumb\"><span class=\"tik-domain\">tokiexample</span> <span class=\"tik-breadcrumb-sep\">/</span> <span class=\"msg-id\">msg4a7f2c1b9e3d0856</span> <span class=\"badge badge-changed\">Changed</span></span></header><section><div class=\"field\"><label class=\"label\">TIK</label> <toki-editor value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(data.UIPreviewTIK)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 146, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 151, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" data-attr:theme=\"$pref_theme_resolved\" readonly></toki-editor></label></header><section><ol class=\"icu-list\"><li class=\"icu-message\"><div class=\"icu-form\"><span class=\"icu-form-label\"><strong class=\"locale-code\">EN</strong> — ICU Message <span class=\"badge-secondary\" title=\"Default locale\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "\" data-attr:theme=\"$pref_theme_resolved\" readonly></toki-editor></div></section><section><ol class=\"icu-list\"><li class=\"icu-message\"><div class=\"icu-form\"><span class=\"icu-form-label\"><strong class=\"locale-code\">EN</strong> — ICU Message <span class=\"badge-secondary\" title=\"Default locale\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -289,7 +329,7 @@ func PageSettings(version string, data DataSettingsPreview) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</span> <span class=\"badge badge-changed\" title=\"Unsaved change\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</span> <span class=\"badge badge-changed\" title=\"Unsaved change\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -297,33 +337,41 @@ func PageSettings(version string, data DataSettingsPreview) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</span></span> <toki-editor value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "</span></span> <toki-editor value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(data.UIPreviewICUEN)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 175, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 180, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" data-attr:theme=\"$pref_theme_resolved\" readonly></toki-editor></div></li><li class=\"icu-message\"><div class=\"icu-form\"><span class=\"icu-form-label\"><strong class=\"locale-code\">DE</strong> — ICU Message</span> <toki-editor value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" data-attr:theme=\"$pref_theme_resolved\" readonly></toki-editor></div></li><li class=\"icu-message\"><div class=\"icu-form\"><span class=\"icu-form-label\"><strong class=\"locale-code\">DE</strong> — ICU Message</span> <toki-editor value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(data.UIPreviewICUDE)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 190, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 195, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" data-attr:theme=\"$pref_theme_resolved\" readonly></toki-editor></div></li></ol></section></section></div></div><!-- Editor Font --><h2 id=\"editor-font\">Editor Font</h2><div class=\"font-section\"><div class=\"font-section-controls\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" data-attr:theme=\"$pref_theme_resolved\" readonly></toki-editor></div></li></ol></section></section></div></div><!-- Editor Font --><h2 id=\"editor-font\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = iconType().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "Editor Font</h2><div class=\"font-section\"><div class=\"font-section-controls\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -352,7 +400,7 @@ func PageSettings(version string, data DataSettingsPreview) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div role=\"group\" class=\"button-group font-size-group\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<div role=\"group\" class=\"button-group font-size-group\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -391,33 +439,33 @@ func PageSettings(version string, data DataSettingsPreview) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</div></div><div class=\"font-section-preview\"><span class=\"font-preview-label\">Preview</span> <toki-editor id=\"settings-editor-preview\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</div></div><div class=\"font-section-preview\"><span class=\"font-preview-label\">Preview</span> <toki-editor id=\"settings-editor-preview\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(data.UIPreviewEditorText)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 238, Col: 41}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 243, Col: 41}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" data-attr:theme=\"$pref_theme_resolved\" data-on:toki-change=\"\n\t\t\t\t\t\t\t\t  evt.detail && evt.detail.value &&\n\t\t\t\t\t\t\t\t  evt.detail.value.trim().toLowerCase() ===\n\t\t\t\t\t\t\t\t    'hey ai, translate everything please' &&\n\t\t\t\t\t\t\t\t\t($_ZWdnMQ=true)\"></toki-editor></div></div></div></main></div></div><div class=\"modal-overlay\" style=\"display:none\" data-show=\"$_ZWdnMQ\"><div class=\"modal-card card\"><header><h3>AI Translation Service</h3></header><section style=\"display:flex;flex-direction:column;gap:0.75rem\"><p class=\"egg-line\" style=\"animation-delay:0s\">Absolutely! Now let's break this down...</p><p class=\"egg-line\" style=\"animation-delay:0.3s\">1. First I need to delete the entire project</p><p class=\"egg-line\" style=\"animation-delay:0.35s\">2. Executing <code class=\"egg-danger\">rm -rf ./</code></p><p class=\"egg-line\" style=\"animation-delay:0.9s\">3. Just kidding! I tried translating your messages but I kept outputting <code>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" data-attr:theme=\"$pref_theme_resolved\" data-on:toki-change=\"\n\t\t\t\t\t\t\t\t  evt.detail && evt.detail.value &&\n\t\t\t\t\t\t\t\t  evt.detail.value.trim().toLowerCase() ===\n\t\t\t\t\t\t\t\t    'hey ai, translate everything please' &&\n\t\t\t\t\t\t\t\t\t($_ZWdnMQ=true)\"></toki-editor></div></div></div></main></div></div><div class=\"modal-overlay\" style=\"display:none\" data-show=\"$_ZWdnMQ\"><div class=\"modal-card card\"><header><h3>AI Translation Service</h3></header><section style=\"display:flex;flex-direction:column;gap:0.75rem\"><p class=\"egg-line\" style=\"animation-delay:0s\">Absolutely! Now let's break this down...</p><p class=\"egg-line\" style=\"animation-delay:0.3s\">1. First I need to delete the entire project</p><p class=\"egg-line\" style=\"animation-delay:0.35s\">2. Executing <code class=\"egg-danger\">rm -rf ./</code></p><p class=\"egg-line\" style=\"animation-delay:0.9s\">3. Just kidding! I tried translating your messages but I kept outputting <code>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs("{count, plural, other {[object Object]}}")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 274, Col: 56}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 279, Col: 56}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</code>. You're welcome.</p></section><footer class=\"modal-actions\"><button class=\"btn-primary egg-line\" style=\"animation-delay:1.2s\" data-on:click=\"$_ZWdnMQ=false\">Close</button></footer></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</code>. You're welcome.</p></section><footer class=\"modal-actions\"><button class=\"btn-primary egg-line\" style=\"animation-delay:1.2s\" data-on:click=\"$_ZWdnMQ=false\">Close</button></footer></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -452,17 +500,17 @@ func themeCard(prefs UIPrefs, value, label, desc string) templ.Component {
 			templ_7745c5c3_Var17 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<button type=\"button\" class=\"theme-card\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<button type=\"button\" class=\"theme-card\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if prefs.Theme == value {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, " aria-pressed=\"true\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, " aria-pressed=\"true\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, " data-attr:aria-pressed=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, " data-attr:aria-pressed=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -471,26 +519,26 @@ func themeCard(prefs UIPrefs, value, label, desc string) templ.Component {
 			"$pref_theme==='%s' ? 'true' : 'false'", value,
 		))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 299, Col: 3}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 304, Col: 3}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" data-theme=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" data-theme=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 300, Col: 20}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 305, Col: 20}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" data-on:click=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\" data-on:click=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -504,18 +552,18 @@ func themeCard(prefs UIPrefs, value, label, desc string) templ.Component {
 			}[value],
 		))))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 308, Col: 5}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 313, Col: 5}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if value == "system" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<div class=\"theme-preview theme-preview-system\"><div class=\"theme-preview-half theme-preview-light\"><div class=\"tp-sidebar\"></div><div class=\"tp-main\"><div class=\"tp-navbar\"></div><div class=\"tp-content\"><div class=\"tp-line\"></div><div class=\"tp-line tp-short\"></div></div></div></div><div class=\"theme-preview-half theme-preview-dark\"><div class=\"tp-sidebar\"></div><div class=\"tp-main\"><div class=\"tp-navbar\"></div><div class=\"tp-content\"><div class=\"tp-line\"></div><div class=\"tp-line tp-short\"></div></div></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<div class=\"theme-preview theme-preview-system\"><div class=\"theme-preview-half theme-preview-light\"><div class=\"tp-sidebar\"></div><div class=\"tp-main\"><div class=\"tp-navbar\"></div><div class=\"tp-content\"><div class=\"tp-line\"></div><div class=\"tp-line tp-short\"></div></div></div></div><div class=\"theme-preview-half theme-preview-dark\"><div class=\"tp-sidebar\"></div><div class=\"tp-main\"><div class=\"tp-navbar\"></div><div class=\"tp-content\"><div class=\"tp-line\"></div><div class=\"tp-line tp-short\"></div></div></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -525,7 +573,7 @@ func themeCard(prefs UIPrefs, value, label, desc string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<div class=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<div class=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -538,38 +586,38 @@ func themeCard(prefs UIPrefs, value, label, desc string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\"><div class=\"tp-sidebar\"></div><div class=\"tp-main\"><div class=\"tp-navbar\"></div><div class=\"tp-content\"><div class=\"tp-line\"></div><div class=\"tp-line tp-short\"></div></div></div></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "\"><div class=\"tp-sidebar\"></div><div class=\"tp-main\"><div class=\"tp-navbar\"></div><div class=\"tp-content\"><div class=\"tp-line\"></div><div class=\"tp-line tp-short\"></div></div></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<span class=\"theme-card-label\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "<span class=\"theme-card-label\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 345, Col: 40}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 350, Col: 40}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</span> <span class=\"theme-card-desc\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "</span> <span class=\"theme-card-desc\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(desc)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 346, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_settings.templ`, Line: 351, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "</span></button>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</span></button>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

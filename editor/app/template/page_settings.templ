@@ -64,16 +64,19 @@ templ PageSettings(version string, data DataSettingsPreview) {
 							<ul>
 								<li>
 									<a href="#appearance" data-ignore-current>
+										@iconPalette()
 										Appearance
 									</a>
 								</li>
 								<li>
 									<a href="#ui-font" data-ignore-current>
+										@iconType()
 										Interface Font
 									</a>
 								</li>
 								<li>
 									<a href="#editor-font" data-ignore-current>
+										@iconType()
 										Editor Font
 									</a>
 								</li>
@@ -94,14 +97,14 @@ templ PageSettings(version string, data DataSettingsPreview) {
 				}, 0, false)
 				<main>
 					<div class="contents">
-						<h2 id="appearance">Appearance</h2>
+						<h2 id="appearance">@iconPalette() Appearance</h2>
 						<div class="theme-picker">
 							@themeCard(data.Prefs, "light", "Light", "Bright theme")
 							@themeCard(data.Prefs, "dark", "Dark", "Dark theme")
 							@themeCard(data.Prefs, "system", "System", "Match OS setting")
 						</div>
 						<!-- Interface Font -->
-						<h2 id="ui-font">Interface Font</h2>
+						<h2 id="ui-font">@iconType() Interface Font</h2>
 						<div class="font-section">
 							<div class="font-section-controls">
 								@componentList() {
@@ -132,23 +135,25 @@ templ PageSettings(version string, data DataSettingsPreview) {
 								<span class="font-preview-label">Preview</span>
 								<section class="card" style="pointer-events:none">
 									<header>
-										<label class="tik-label">
-											<span>
-												TIK
-												<span class="msg-id">
-													greeting.welcome
-												</span>
-												<span class="badge badge-changed">
-													Changed
-												</span>
+										<span class="tik-breadcrumb">
+											<span class="tik-domain">tokiexample</span>
+											<span class="tik-breadcrumb-sep">/</span>
+											<span class="msg-id">msg4a7f2c1b9e3d0856</span>
+											<span class="badge badge-changed">
+												Changed
 											</span>
+										</span>
+									</header>
+									<section>
+										<div class="field">
+											<label class="label">TIK</label>
 											<toki-editor
 												value={ data.UIPreviewTIK }
 												data-attr:theme="$pref_theme_resolved"
 												readonly
 											></toki-editor>
-										</label>
-									</header>
+										</div>
+									</section>
 									<section>
 										<ol class="icu-list">
 											<li class="icu-message">
@@ -199,7 +204,7 @@ templ PageSettings(version string, data DataSettingsPreview) {
 							</div>
 						</div>
 						<!-- Editor Font -->
-						<h2 id="editor-font">Editor Font</h2>
+						<h2 id="editor-font">@iconType() Editor Font</h2>
 						<div class="font-section">
 							<div class="font-section-controls">
 								@componentList() {

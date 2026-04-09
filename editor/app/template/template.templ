@@ -202,34 +202,42 @@ templ TiksContentList(data DataIndex) {
 templ TikSectionFull(tik TIK) {
 	<section class="card" id={ fmt.Sprintf("tik-%s", tik.ID) }>
 		<header>
-			<label class="tik-label">
-				<span>
+			<span class="tik-breadcrumb">
+				if tik.Domain != "" {
+					<span class="tik-domain">{ tik.Domain }</span>
+					<span class="tik-breadcrumb-sep">/</span>
+				}
+				<a
+					href={ href.PageTIK(tik.ID) }
+					class="msg-id"
+				>{ tik.ID }</a>
+				if tik.IsChanged {
+					<span class="badge badge-changed">Changed</span>
+				}
+				if tik.IsInvalid {
+					<span class="badge-destructive">Invalid</span>
+				}
+			</span>
+		</header>
+		<section>
+			<div class="field">
+				<label class="label">
 					TIK
-					<a
-						href={ href.PageTIK(tik.ID) }
-						class="msg-id"
-					>{ tik.ID }</a>
-					if tik.IsChanged {
-						<span class="badge badge-changed">Changed</span>
-					}
-					if tik.IsInvalid {
-						<span class="badge-destructive">Invalid</span>
-					}
 					@componentCopy(tik.TIK)
-				</span>
+				</label>
 				<toki-editor
 					value={ tik.TIK }
 					data-attr:theme={ resolvedThemeExpr() }
 					readonly
 				></toki-editor>
-			</label>
+			</div>
 			if tik.Description != "" {
-				<label>
-					<span>Description</span>
+				<div class="field">
+					<label class="label">Description</label>
 					<p>{ tik.Description }</p>
-				</label>
+				</div>
 			}
-		</header>
+		</section>
 		if len(tik.ICU) > 0 {
 			<section>
 				<ol class="icu-list">
