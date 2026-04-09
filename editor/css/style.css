@@ -133,6 +133,7 @@ body {
 	inline-size: 100%;
 	padding-block: 0.25rem;
 	padding-inline-start: 2rem;
+	text-overflow: ellipsis;
 }
 
 /* Mobile search mode */
@@ -564,6 +565,9 @@ main {
 	align-items: center;
 	gap: 0.3rem;
 	font-size: 1rem;
+	flex-wrap: wrap;
+	min-inline-size: 0;
+	overflow-wrap: anywhere;
 }
 
 .tik-domain {
