@@ -215,6 +215,7 @@ templ TikSectionFull(tik TIK) {
 					if tik.IsInvalid {
 						<span class="badge-destructive">Invalid</span>
 					}
+					@componentCopy(tik.TIK)
 				</span>
 				<toki-editor
 					value={ tik.TIK }

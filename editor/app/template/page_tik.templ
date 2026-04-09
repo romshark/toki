@@ -133,6 +133,7 @@ templ tikMainArea(tk *TIK) {
 							<span>
 								TIK
 								<span class="msg-id">{ tk.ID }</span>
+								@componentCopy(tk.TIK)
 							</span>
 							<toki-editor
 								value={ tk.TIK }
