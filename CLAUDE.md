@@ -31,10 +31,10 @@ This application uses the Datapages Go frontend framework, for code requirements
 
 The editor follows the CQRS (Command Query Responsibility Segregation) architecture as described in [The Tao of Datastar](https://data-star.dev/guide/the_tao_of_datastar). Key principles:
 
-- **Server-side first**: All state and logic lives in Go on the server. The server owns the truth — page state is stored server-side (like `pageTIKsState`, `pageTIKState`) and actions are server POST/PUT/DELETE handlers, not client-side signal manipulation.
+- **Server-side first**: All state and logic lives in Go on the server. The server owns the truth — page state is stored server-side (like `pageTIKsState`, `pageTIKState`) and actions are server POST/PUT/PATCH/DELETE handlers, not client-side signal manipulation.
 - **Datastar signals are sparingly used**: Signals should only hold transient UI state (e.g. form input bindings). Never build complex client-side JS expressions to manipulate signals — add a server action instead.
 - **JavaScript is a last resort**: Only use JavaScript/TypeScript for things that physically cannot be done on the server (e.g. `matchMedia` dark mode detection, clipboard access, scroll position, etc.). If you're tempted to write JS, consider whether a server POST + SSE morph / SSE signal patch can do it instead.
-- **Actions are Datapages POST handlers**: To add a new action, add a `POST*` method on the page type in `app.go`. Datapages generates the route, action function, and SSE boilerplate automatically.
+- **Actions dispatch events, not patches**: With CQRS, action handlers should mutate server-side state if necessary and dispatch Datapages events, not directly patch the DOM using SSE. The `OnXXX` event handler methods on pages pick up the event and patch the page/signals for that page instance. This ensures all connected clients stay in sync — not just the one that triggered the action.
 - **Page state lifecycle**:
   - `GET` renders the initial page. State is recovered from URL query parameters (e.g. filter type, shown locales/domains) and cookies (e.g. UI preferences like theme, fonts via `ReadUIPrefs`), enabling bookmarkable URLs and persistent preferences without server-side storage.
   - `StreamOpen` initializes server-side state from signals
@@ -52,3 +52,4 @@ The editor follows the CQRS (Command Query Responsibility Segregation) architect
 The editor uses [basecoatui](https://basecoatui.com/) (CSS component library based on Tailwind CSS). When building or modifying the editor UI:
 
 - **Prefer basecoat components** (alert, badge, card, button, input, switch, sidebar, etc.) over custom CSS whenever possible.
+- **Use modern nested CSS** — group related styles using CSS nesting instead of flat selectors. This keeps styles co-located with their parent context and reduces repetition.
