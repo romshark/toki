@@ -152,11 +152,13 @@ func (s settingsPrefSignals) Normalized() settingsPrefSignals {
 	return s
 }
 
-func writeUIPrefCookieScript(script *strings.Builder, name, value string, maxAgeSeconds int) {
-	script.WriteString(fmt.Sprintf(
+func writeUIPrefCookieScript(
+	script *strings.Builder, name, value string, maxAgeSeconds int,
+) {
+	fmt.Fprintf(script,
 		"document.cookie=%q;",
-		fmt.Sprintf("%s=%s; Path=/; Max-Age=%d; SameSite=Lax", name, value, maxAgeSeconds),
-	))
+		fmt.Sprintf("%s=%s; Path=/; Max-Age=%d; SameSite=Lax",
+			name, value, maxAgeSeconds))
 }
 
 func writeRootStyleScript(script *strings.Builder, name, value string) {

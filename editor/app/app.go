@@ -1202,7 +1202,7 @@ func parseLocalesParam(s string) map[string]bool {
 		return map[string]bool{}
 	}
 	m := make(map[string]bool)
-	for _, l := range strings.Split(s, ",") {
+	for l := range strings.SplitSeq(s, ",") {
 		l = strings.TrimSpace(l)
 		if l != "" {
 			m[l] = true
@@ -1568,10 +1568,7 @@ func (a *App) buildFilterDataIndex(
 	}
 	data.WindowStart = windowStart
 
-	end := windowStart + data.WindowSize
-	if end > len(filtered) {
-		end = len(filtered)
-	}
+	end := min(windowStart+data.WindowSize, len(filtered))
 
 	// Build full TIKs only for the window.
 	for _, idx := range filtered[windowStart:end] {

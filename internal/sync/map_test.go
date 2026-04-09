@@ -2,7 +2,7 @@ package sync
 
 import (
 	"errors"
-	"iter"
+	"maps"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -40,8 +40,8 @@ func TestMap(t *testing.T) {
 		require.Equal(t, "second", v)
 	}
 
-	require.Equal(t, map[int]string{1: "first", 2: "second"}, readMap(m.Seq()))
-	require.Equal(t, map[int]string{1: "first", 2: "second"}, readMap(m.SeqRead()))
+	require.Equal(t, map[int]string{1: "first", 2: "second"}, maps.Collect(m.Seq()))
+	require.Equal(t, map[int]string{1: "first", 2: "second"}, maps.Collect(m.SeqRead()))
 
 	{
 		i := 0
@@ -78,12 +78,4 @@ func TestMap(t *testing.T) {
 		require.Equal(t, errTest, err)
 	}
 	require.Equal(t, 1, m.Len())
-}
-
-func readMap[K comparable, V any](i iter.Seq2[K, V]) map[K]V {
-	m := make(map[K]V)
-	for k, v := range i {
-		m[k] = v
-	}
-	return m
 }
