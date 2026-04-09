@@ -467,6 +467,22 @@ templ componentFontSizeBtn(
 }
 
 // --- Dashboard ---
+
+templ componentCompletenessBar(completeness float64) {
+	<div class="locale-stats">
+		<div class="locale-stat-row">
+			<span>Completeness</span>
+			<strong>{ strfmt.Percent(completeness) }</strong>
+		</div>
+		<div class="locale-progress">
+			<div
+				class="locale-progress-bar"
+				style={ fmt.Sprintf("inline-size:%.1f%%", completeness*100) }
+			></div>
+		</div>
+	</div>
+}
+
 templ componentDashboardCard(title, value, description string) {
 	<div class="card">
 		<header>

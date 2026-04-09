@@ -539,9 +539,6 @@ func setupHandlers(s *Server) {
 		"GET /build-bundle/_$/{$}",
 		s.handlePageBuildBundleGETStream)
 	s.mux.HandleFunc(
-		"GET /domains/{$}",
-		s.handlePageDomainsGET)
-	s.mux.HandleFunc(
 		"GET /error404/{$}",
 		s.handlePageError404GET)
 	s.mux.HandleFunc(
@@ -852,32 +849,6 @@ func (s *Server) handlePageBuildBundleGETStream(w http.ResponseWriter, r *http.R
 				}
 			}
 		})
-}
-
-func (s *Server) handlePageDomainsGET(w http.ResponseWriter, r *http.Request) {
-	p := app.PageDomains{
-		App: s.app,
-	}
-	body, redirect, err := p.GET(r)
-	if err != nil {
-		s.httpErrIntern(w, r, nil, "handling PageDomains.GET", err)
-		return
-	}
-	if httpRedirect(w, r, redirect, 0) {
-		return
-	}
-	genericHead := s.app.Head(r)
-
-	bodyAttrs := func(w http.ResponseWriter) {
-		writeBodyAttrOnVisibilityChange(w)
-	}
-
-	if err := s.writeHTML(
-		w, r, genericHead, nil, body, bodyAttrs, nil,
-	); err != nil {
-		s.logErr("rendering PageDomains", err)
-		return
-	}
 }
 
 func (s *Server) handlePageError404GET(w http.ResponseWriter, r *http.Request) {

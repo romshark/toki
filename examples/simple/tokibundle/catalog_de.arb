@@ -3,7 +3,7 @@
 	"@@last_modified": "2025-06-16T00:23:28+02:00",
 	"@@x-generator": "github.com/romshark/toki",
 	"@@x-generator-version": "v0.8.4-0.20260407160851-65d21749aa88+dirty",
-	"msg40298b0dfa835a18": "asd",
+	"msg40298b0dfa835a18": "Im Ordner {var0} wurde nichts gefunden",
 	"@msg40298b0dfa835a18": {
 		"type": "text"
 	},
@@ -36,7 +36,7 @@
 	"@msgca9572938a754c86": {
 		"type": "text"
 	},
-	"msgd402b253f75c3b74": "",
+	"msgd402b253f75c3b74": "Wir sehen uns, {var0}!",
 	"@msgd402b253f75c3b74": {
 		"type": "text"
 	}

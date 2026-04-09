@@ -47,9 +47,6 @@ func Asset(p string) string {
 // PageBuildBundle references /build-bundle/{$}
 func PageBuildBundle() string { return "/build-bundle/" }
 
-// PageDomains references /domains/{$}
-func PageDomains() string { return "/domains/" }
-
 // PageError404 references /error404//{$}
 func PageError404() string { return "/error404/" }
 

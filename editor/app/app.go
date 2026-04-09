@@ -413,6 +413,7 @@ func (a *App) populateDBFromScanLocked() error {
 			ID:          tk.ID,
 			Raw:         tk.TIK,
 			Description: tk.Description,
+			Domain:      tk.Domain,
 		}); err != nil {
 			return fmt.Errorf("inserting TIK %s: %w", tk.ID, err)
 		}
@@ -520,6 +521,7 @@ func (a *App) loadFromDBLocked() error {
 			ID:          dt.ID,
 			TIK:         dt.Raw,
 			Description: dt.Description,
+			Domain:      dt.Domain,
 			ICU:         make([]*template.ICUMessage, 0, len(a.catalogs)),
 		}
 		for _, dm := range msgsByTIK[dt.ID] {
@@ -959,9 +961,11 @@ func (a *App) buildDashboardStats() template.DashboardStats {
 		s.Completeness = float64(s.NumComplete) / float64(s.NumTIKs)
 	}
 
-	// Count domains.
+	// Build domain info.
 	if a.domains != nil {
 		s.NumDomains = a.domains.Len()
+		domainData := a.buildDomainData()
+		s.Domains = domainData.Domains
 	}
 
 	return s
@@ -1615,4 +1619,103 @@ func (a *App) localeTagByLocale(locale string) language.Tag {
 		}
 	}
 	return language.Und
+}
+
+func (a *App) buildDomainData() template.DataDomains {
+	data := template.DataDomains{
+		Dir:             a.dir,
+		TotalChanges:    len(a.changed),
+		CanApplyChanges: a.canApplyChangesLocked(),
+	}
+
+	if a.domains == nil {
+		return data
+	}
+
+	// Build per-domain stats from template TIKs, keyed by domain full name.
+	type domainStats struct {
+		numTIKs, complete, incomplete, empty, invalid, changed int
+	}
+	statsByName := make(map[string]*domainStats)
+
+	for _, tk := range a.tiks {
+		if tk.Domain == "" {
+			continue
+		}
+		ds := statsByName[tk.Domain]
+		if ds == nil {
+			ds = &domainStats{}
+			statsByName[tk.Domain] = ds
+		}
+		ds.numTIKs++
+		hasChanged, hasEmpty, hasIncomplete, hasInvalid := a.tikStatusFlags(tk, nil)
+		if hasChanged {
+			ds.changed++
+		}
+		if !hasIncomplete {
+			ds.complete++
+		}
+		if hasIncomplete {
+			ds.incomplete++
+		}
+		if hasEmpty {
+			ds.empty++
+		}
+		if hasInvalid {
+			ds.invalid++
+		}
+	}
+
+	// Build domain info tree from the DomainTree roots.
+	var buildInfo func(d *codeparse.Domain) template.DomainInfo
+	buildInfo = func(d *codeparse.Domain) template.DomainInfo {
+		// Build full name from path iterator.
+		var names []string
+		for p := range d.Path() {
+			names = append(names, p.Name)
+		}
+		slices.Reverse(names)
+		fullName := strings.Join(names, ".")
+
+		info := template.DomainInfo{
+			Name:        d.Name,
+			Description: d.Description,
+			Dir:         d.Dir,
+			FullName:    fullName,
+		}
+		if d.Parent != nil {
+			info.ParentName = d.Parent.Name
+			var parentNames []string
+			for p := range d.Parent.Path() {
+				parentNames = append(parentNames, p.Name)
+			}
+			slices.Reverse(parentNames)
+			info.ParentFullName = strings.Join(parentNames, ".")
+		}
+		if ds := statsByName[fullName]; ds != nil {
+			info.NumTIKs = ds.numTIKs
+			info.NumComplete = ds.complete
+			info.NumIncomplete = ds.incomplete
+			info.NumEmpty = ds.empty
+			info.NumInvalid = ds.invalid
+			info.NumChanged = ds.changed
+			if ds.numTIKs > 0 {
+				info.Completeness = float64(ds.complete) / float64(ds.numTIKs)
+			}
+		}
+		for _, sub := range d.SubDomains {
+			info.SubDomains = append(info.SubDomains, buildInfo(sub))
+		}
+		return info
+	}
+
+	// Find root domains (no parent).
+	for d := range a.domains.All() {
+		if d.Parent == nil {
+			data.Domains = append(data.Domains, buildInfo(d))
+		}
+	}
+
+	data.TotalDomains = a.domains.Len()
+	return data
 }

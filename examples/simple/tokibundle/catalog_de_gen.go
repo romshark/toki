@@ -26,7 +26,26 @@ type catalog_de struct{}
 
 var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
 	msg40298b0dfa835a18: func(w io.Writer, args ...any) (written int, err error) {
-		return wrs(w, "asd")
+		var n int
+		n, err = wrs(w, "Im Ordner ")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		{
+			s, _ := sv(args[0])
+			n, err = wrs(w, s)
+		}
+		if err != nil {
+			return written, err
+		}
+		written += n
+		n, err = wrs(w, " wurde nichts gefunden")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		return written, nil
 	},
 	msg73df838e3688e65c: nil,
 	msg7b4460496c4dc063: nil,
@@ -35,7 +54,28 @@ var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
 	msgba9076fe8292afb0: nil,
 	msgbcdb3dde88d7bbb2: nil,
 	msgca9572938a754c86: nil,
-	msgd402b253f75c3b74: nil,
+	msgd402b253f75c3b74: func(w io.Writer, args ...any) (written int, err error) {
+		var n int
+		n, err = wrs(w, "Wir sehen uns, ")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		{
+			s, _ := sv(args[0])
+			n, err = wrs(w, s)
+		}
+		if err != nil {
+			return written, err
+		}
+		written += n
+		n, err = wrs(w, "!")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		return written, nil
+	},
 }
 
 func (catalog_de) Locale() language.Tag { return loc_de }

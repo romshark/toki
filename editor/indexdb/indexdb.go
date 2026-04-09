@@ -35,6 +35,7 @@ type TIK struct {
 	ID          string
 	Raw         string
 	Description string
+	Domain      string // Fully qualified domain name (e.g. "myapp.storefront").
 }
 
 // Message represents a single ICU message stored in the index DB.
@@ -86,7 +87,8 @@ func createSchema(sq *sqinn.Sqinn) error {
 		`CREATE TABLE IF NOT EXISTS tik (
 			id TEXT PRIMARY KEY,
 			raw TEXT NOT NULL,
-			description TEXT NOT NULL DEFAULT ''
+			description TEXT NOT NULL DEFAULT '',
+			domain TEXT NOT NULL DEFAULT ''
 		)`,
 		`CREATE TABLE IF NOT EXISTS message (
 			tik_id TEXT NOT NULL,
@@ -112,6 +114,7 @@ func createSchema(sq *sqinn.Sqinn) error {
 	// Migrations for existing databases.
 	migrations := []string{
 		`ALTER TABLE catalog ADD COLUMN messages_corrupt INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE tik ADD COLUMN domain TEXT NOT NULL DEFAULT ''`,
 	}
 	for _, m := range migrations {
 		_ = sq.ExecSql(m) // Ignore "duplicate column" errors.
@@ -121,7 +124,7 @@ func createSchema(sq *sqinn.Sqinn) error {
 
 // SchemaVersion is incremented when the index DB schema or detection logic
 // changes in a way that requires a full rebuild of the cached data.
-const SchemaVersion = "3"
+const SchemaVersion = "4"
 
 // GetSchemaVersion returns the stored schema version, or "" if none.
 func (db *DB) GetSchemaVersion() string {
@@ -311,12 +314,13 @@ func (db *DB) InsertCatalog(c Catalog) error {
 // InsertTIK inserts a TIK into the database.
 func (db *DB) InsertTIK(t TIK) error {
 	return db.sq.ExecParams(
-		"INSERT OR REPLACE INTO tik (id, raw, description) VALUES (?, ?, ?)",
-		1, 3,
+		"INSERT OR REPLACE INTO tik (id, raw, description, domain) VALUES (?, ?, ?, ?)",
+		1, 4,
 		[]sqinn.Value{
 			sqinn.StringValue(t.ID),
 			sqinn.StringValue(t.Raw),
 			sqinn.StringValue(t.Description),
+			sqinn.StringValue(t.Domain),
 		},
 	)
 }
@@ -384,9 +388,9 @@ func (db *DB) LoadCatalogs() ([]Catalog, error) {
 // LoadTIKs returns all TIKs from the database, sorted by ID.
 func (db *DB) LoadTIKs() ([]TIK, error) {
 	rows, err := db.sq.QueryRows(
-		"SELECT id, raw, description FROM tik ORDER BY id",
+		"SELECT id, raw, description, domain FROM tik ORDER BY id",
 		nil,
-		[]byte{sqinn.ValString, sqinn.ValString, sqinn.ValString},
+		[]byte{sqinn.ValString, sqinn.ValString, sqinn.ValString, sqinn.ValString},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("loading tiks: %w", err)
@@ -397,6 +401,7 @@ func (db *DB) LoadTIKs() ([]TIK, error) {
 			ID:          row[0].String,
 			Raw:         row[1].String,
 			Description: row[2].String,
+			Domain:      row[3].String,
 		}
 	}
 	return tiks, nil

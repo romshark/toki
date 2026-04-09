@@ -27,6 +27,7 @@ type DashboardStats struct {
 	NumDomains      int
 	NativeLocale    LocaleStats
 	Locales         []LocaleStats
+	Domains         []DomainInfo
 	TotalChanges    int
 	CanApplyChanges bool
 	NumComplete     int
