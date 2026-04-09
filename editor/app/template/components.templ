@@ -265,16 +265,12 @@ templ componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) {
 			<span class="icu-form-label">
 				<strong class="locale-code">{ msg.Catalog.Locale }</strong> — ICU Message
 				@componentICUMessageBadges(msg)
-				if msg.Message != "" {
-					@componentCopy(msg.Message)
-				}
+				@componentCopy(msg.Message)
 			</span>
 		} else {
 			<span class="icu-form-label">
 				ICU Message
-				if msg.Message != "" {
-					@componentCopy(msg.Message)
-				}
+				@componentCopy(msg.Message)
 			</span>
 		}
 		<toki-editor
@@ -389,6 +385,9 @@ templ componentList() {
 templ componentCopy(text string) {
 	<button
 		class="btn-secondary btn-icon copy-btn"
+		if text == "" {
+			disabled
+		}
 		data-val-txt={ text }
 		data-on:click="
 			const b = evt.target.closest('[data-val-txt]');

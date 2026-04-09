@@ -553,6 +553,13 @@ main {
 	font-size: 1.2rem;
 	line-height: 1.6rem;
 	min-inline-size: 0;
+
+	& > span {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		flex-wrap: wrap;
+	}
 }
 
 .msg-id {
@@ -619,7 +626,8 @@ main {
 
 	& toki-editor {
 		inline-size: 100%;
-		max-block-size: 90dvh;
+		max-block-size: 80dvh;
+		overflow: auto;
 	}
 }
 
@@ -627,7 +635,8 @@ main {
    so only host-level sizing rules are needed here. */
 toki-editor {
 	inline-size: 100%;
-	max-block-size: 90dvh;
+	max-block-size: 80dvh;
+	overflow: auto;
 }
 
 /* Prevent CodeMirror from overflowing cards */
