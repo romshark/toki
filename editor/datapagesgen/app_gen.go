@@ -578,6 +578,18 @@ func setupHandlers(s *Server) {
 		"POST /tiks/filter/{$}",
 		s.handlePageTIKsPOSTFilter)
 	s.mux.HandleFunc(
+		"POST /tiks/show-all-locales/{$}",
+		s.handlePageTIKsPOSTShowAllLocales)
+	s.mux.HandleFunc(
+		"POST /tiks/hide-all-locales/{$}",
+		s.handlePageTIKsPOSTHideAllLocales)
+	s.mux.HandleFunc(
+		"POST /tiks/show-all-domains/{$}",
+		s.handlePageTIKsPOSTShowAllDomains)
+	s.mux.HandleFunc(
+		"POST /tiks/hide-all-domains/{$}",
+		s.handlePageTIKsPOSTHideAllDomains)
+	s.mux.HandleFunc(
 		"POST /tiks/scroll-down/{$}",
 		s.handlePageTIKsPOSTScrollDown)
 	s.mux.HandleFunc(
@@ -999,8 +1011,12 @@ func (s *Server) handlePageSettingsPOSTSetPref(
 		return
 	}
 	var signals struct {
-		PrefKey   string `json:"prefkey"`
-		PrefValue string `json:"prefvalue"`
+		PrefTheme          string `json:"pref_theme"`
+		PrefThemeResolved  string `json:"pref_theme_resolved"`
+		PrefUIFont         string `json:"pref_ui_font"`
+		PrefEditorFont     string `json:"pref_editor_font"`
+		PrefUIFontSize     string `json:"pref_ui_font_size"`
+		PrefEditorFontSize string `json:"pref_editor_font_size"`
 	}
 	if err := datastar.ReadSignals(r, &signals); err != nil {
 		s.httpErrBad(w, "reading signals", err)
@@ -1285,6 +1301,106 @@ func (s *Server) handlePageTIKsPOSTFilter(
 	err := p.POSTFilter(r, sse, signals)
 	if err != nil {
 		s.httpErrIntern(w, r, sse, "handling action PageTIKs.Filter", err)
+		return
+	}
+}
+
+func (s *Server) handlePageTIKsPOSTShowAllLocales(
+	w http.ResponseWriter, r *http.Request,
+) {
+	if !s.checkIsDSReq(w, r) {
+		return
+	}
+	var signals struct {
+		InstanceID string `json:"instance_id"`
+	}
+	if err := datastar.ReadSignals(r, &signals); err != nil {
+		s.httpErrBad(w, "reading signals", err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r, datastar.WithCompression())
+	p := app.PageTIKs{
+		App: s.app,
+	}
+	err := p.POSTShowAllLocales(r, sse, signals)
+	if err != nil {
+		s.httpErrIntern(w, r, sse, "handling action PageTIKs.ShowAllLocales", err)
+		return
+	}
+}
+
+func (s *Server) handlePageTIKsPOSTHideAllLocales(
+	w http.ResponseWriter, r *http.Request,
+) {
+	if !s.checkIsDSReq(w, r) {
+		return
+	}
+	var signals struct {
+		InstanceID string `json:"instance_id"`
+	}
+	if err := datastar.ReadSignals(r, &signals); err != nil {
+		s.httpErrBad(w, "reading signals", err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r, datastar.WithCompression())
+	p := app.PageTIKs{
+		App: s.app,
+	}
+	err := p.POSTHideAllLocales(r, sse, signals)
+	if err != nil {
+		s.httpErrIntern(w, r, sse, "handling action PageTIKs.HideAllLocales", err)
+		return
+	}
+}
+
+func (s *Server) handlePageTIKsPOSTShowAllDomains(
+	w http.ResponseWriter, r *http.Request,
+) {
+	if !s.checkIsDSReq(w, r) {
+		return
+	}
+	var signals struct {
+		InstanceID string `json:"instance_id"`
+	}
+	if err := datastar.ReadSignals(r, &signals); err != nil {
+		s.httpErrBad(w, "reading signals", err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r, datastar.WithCompression())
+	p := app.PageTIKs{
+		App: s.app,
+	}
+	err := p.POSTShowAllDomains(r, sse, signals)
+	if err != nil {
+		s.httpErrIntern(w, r, sse, "handling action PageTIKs.ShowAllDomains", err)
+		return
+	}
+}
+
+func (s *Server) handlePageTIKsPOSTHideAllDomains(
+	w http.ResponseWriter, r *http.Request,
+) {
+	if !s.checkIsDSReq(w, r) {
+		return
+	}
+	var signals struct {
+		InstanceID string `json:"instance_id"`
+	}
+	if err := datastar.ReadSignals(r, &signals); err != nil {
+		s.httpErrBad(w, "reading signals", err)
+		return
+	}
+
+	sse := datastar.NewSSE(w, r, datastar.WithCompression())
+	p := app.PageTIKs{
+		App: s.app,
+	}
+	err := p.POSTHideAllDomains(r, sse, signals)
+	if err != nil {
+		s.httpErrIntern(w, r, sse, "handling action PageTIKs.HideAllDomains", err)
 		return
 	}
 }

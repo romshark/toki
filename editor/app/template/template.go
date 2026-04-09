@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// UIPrefs holds user interface preferences read from cookies.
+// UIPrefs holds user interface appearance preferences read from cookies.
 type UIPrefs struct {
 	Theme          string // "light", "dark", "system"
 	UIFont         string
@@ -13,10 +13,9 @@ type UIPrefs struct {
 	UIFontSize     string
 	EditorFontSize string
 	// Pre-resolved CSS values.
-	IsDarkExpr       string // JS expression for dark mode: "true", "false", or "matchMedia(...).matches"
-	UIFontCSS        string // CSS font-family
-	EditorFontCSS    string // CSS font-family
-	UIFontSizeCSS    string // CSS font-size
+	UIFontCSS         string // CSS font-family
+	EditorFontCSS     string // CSS font-family
+	UIFontSizeCSS     string // CSS font-size
 	EditorFontSizeCSS string // CSS font-size
 }
 

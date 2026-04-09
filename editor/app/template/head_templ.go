@@ -8,31 +8,41 @@ package template
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/romshark/toki/editor/datapagesgen/assets"
+import (
+	"strings"
+
+	"github.com/romshark/toki/editor/datapagesgen/assets"
+)
 
 func prefsStyleTag(p UIPrefs) string {
-	var s string
-	if p.UIFontCSS != "" {
-		s += "--font-ui:" + p.UIFontCSS + ";"
-	}
-	if p.EditorFontCSS != "" {
-		s += "--font-editor:" + p.EditorFontCSS + ";"
-	}
-	if p.UIFontSizeCSS != "" {
-		s += "--font-size-ui:" + p.UIFontSizeCSS + ";"
-	}
-	if p.EditorFontSizeCSS != "" {
-		s += "--font-size-editor:" + p.EditorFontSizeCSS + ";"
-	}
-	if s == "" {
+	if p.UIFontCSS == "" && p.EditorFontCSS == "" &&
+		p.UIFontSizeCSS == "" && p.EditorFontSizeCSS == "" {
 		return ""
 	}
-	return "<style>:root{" + s + "}</style>"
-}
-
-func prefsDarkScriptTag(p UIPrefs) string {
-	return "<script>if(" + p.IsDarkExpr +
-		")document.documentElement.classList.add('dark')</script>"
+	var s strings.Builder
+	s.WriteString("<style>:root{")
+	if p.UIFontCSS != "" {
+		s.WriteString("--font-ui:")
+		s.WriteString(p.UIFontCSS)
+		s.WriteByte(';')
+	}
+	if p.EditorFontCSS != "" {
+		s.WriteString("--font-editor:")
+		s.WriteString(p.EditorFontCSS)
+		s.WriteByte(';')
+	}
+	if p.UIFontSizeCSS != "" {
+		s.WriteString("--font-size-ui:")
+		s.WriteString(p.UIFontSizeCSS)
+		s.WriteByte(';')
+	}
+	if p.EditorFontSizeCSS != "" {
+		s.WriteString("--font-size-editor:")
+		s.WriteString(p.EditorFontSizeCSS)
+		s.WriteByte(';')
+	}
+	s.WriteString("}</style>")
+	return s.String()
 }
 
 func Head(prefs UIPrefs) templ.Component {
@@ -63,7 +73,7 @@ func Head(prefs UIPrefs) templ.Component {
 		var templ_7745c5c3_Var2 templ.SafeURL
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinURLErrs(assets.Path("basecoat.min.css"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 34, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 44, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -73,54 +83,67 @@ func Head(prefs UIPrefs) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templ.Raw(prefsDarkScriptTag(prefs)).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		switch prefs.Theme {
+		case "dark":
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<script>document.documentElement.classList.add('dark')</script>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case "light":
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<script>document.documentElement.classList.add('light')</script>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		default:
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<script>\n\t\t\t\tif(matchMedia('(prefers-color-scheme:dark)').matches) {\n\t\t\t\t\tdocument.documentElement.classList.add('dark')\n\t\t\t\t}\n\t\t\t</script>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
 		templ_7745c5c3_Err = templ.Raw(prefsStyleTag(prefs)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<script src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<script src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(assets.Path("basecoat.min.js"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 37, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 59, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" defer></script><script src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\" defer></script><script src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(assets.Path("bundle.js"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 38, Col: 39}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 60, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\"></script><link rel=\"stylesheet\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\"></script><link rel=\"stylesheet\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 templ.SafeURL
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinURLErrs(assets.Path("style.min.css"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 39, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 61, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

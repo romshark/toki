@@ -3,6 +3,7 @@ package template
 import (
 	"fmt"
 
+	"github.com/romshark/toki/editor/datapagesgen/action"
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
@@ -24,18 +25,30 @@ type DataSettingsPreview struct {
 	UIPreviewEditorText string
 }
 
+func settingsResolvedThemeSignalExpr(theme string) string {
+	switch theme {
+	case "dark":
+		return "'dark'"
+	case "light":
+		return "'light'"
+	default:
+		return resolvedThemeExpr()
+	}
+}
+
 templ PageSettings(version string, data DataSettingsPreview) {
 	@page("page-settings") {
 		<div
 			style="display:contents"
 			data-signals:_ZWdnMQ="false"
-			data-signals:prefkey="''"
-			data-signals:prefvalue="''"
 			data-signals:pref_theme={ fmt.Sprintf("'%s'", data.Prefs.Theme) }
+			data-signals:pref_theme_resolved={ settingsResolvedThemeSignalExpr(
+				data.Prefs.Theme) }
 			data-signals:pref_ui_font={ fmt.Sprintf("'%s'", data.Prefs.UIFont) }
 			data-signals:pref_editor_font={ fmt.Sprintf("'%s'", data.Prefs.EditorFont) }
 			data-signals:pref_ui_font_size={ fmt.Sprintf("'%s'", data.Prefs.UIFontSize) }
-			data-signals:pref_editor_font_size={ fmt.Sprintf("'%s'", data.Prefs.EditorFontSize) }
+			data-signals:pref_editor_font_size={ fmt.Sprintf("'%s'",
+				data.Prefs.EditorFontSize) }
 		>
 			<aside
 				class="sidebar"
@@ -93,19 +106,25 @@ templ PageSettings(version string, data DataSettingsPreview) {
 							<div class="font-section-controls">
 								@componentList() {
 									for _, f := range data.UIFonts {
-										@componentFontOption("toki-ui-font", data.Prefs.UIFont, f)
+										@componentFontOption("pref_ui_font",
+											data.Prefs.UIFont, f)
 									}
 								}
 								<div role="group" class="button-group font-size-group">
-									@componentFontSizeBtn("toki-ui-font-size", data.Prefs.UIFontSize,
+									@componentFontSizeBtn("pref_ui_font_size",
+										data.Prefs.UIFontSize,
 										"very-small", "0.8rem", "", "Very Small")
-									@componentFontSizeBtn("toki-ui-font-size", data.Prefs.UIFontSize,
+									@componentFontSizeBtn("pref_ui_font_size",
+										data.Prefs.UIFontSize,
 										"small", "0.9rem", "", "Small")
-									@componentFontSizeBtn("toki-ui-font-size", data.Prefs.UIFontSize,
+									@componentFontSizeBtn("pref_ui_font_size",
+										data.Prefs.UIFontSize,
 										"default", "1rem", "", "Default")
-									@componentFontSizeBtn("toki-ui-font-size", data.Prefs.UIFontSize,
+									@componentFontSizeBtn("pref_ui_font_size",
+										data.Prefs.UIFontSize,
 										"big", "1.1rem", "", "Big")
-									@componentFontSizeBtn("toki-ui-font-size", data.Prefs.UIFontSize,
+									@componentFontSizeBtn("pref_ui_font_size",
+										data.Prefs.UIFontSize,
 										"bigger", "1.25rem", "", "Bigger")
 								</div>
 							</div>
@@ -125,6 +144,7 @@ templ PageSettings(version string, data DataSettingsPreview) {
 											</span>
 											<toki-editor
 												value={ data.UIPreviewTIK }
+												data-attr:theme="$pref_theme_resolved"
 												readonly
 											></toki-editor>
 										</label>
@@ -144,12 +164,16 @@ templ PageSettings(version string, data DataSettingsPreview) {
 														>
 															@iconCode()
 														</span>
-														<span class="badge badge-changed" title="Unsaved change">
+														<span
+															class="badge badge-changed"
+															title="Unsaved change"
+														>
 															@iconPencil()
 														</span>
 													</span>
 													<toki-editor
 														value={ data.UIPreviewICUEN }
+														data-attr:theme="$pref_theme_resolved"
 														readonly
 													></toki-editor>
 												</div>
@@ -164,6 +188,7 @@ templ PageSettings(version string, data DataSettingsPreview) {
 													</span>
 													<toki-editor
 														value={ data.UIPreviewICUDE }
+														data-attr:theme="$pref_theme_resolved"
 														readonly
 													></toki-editor>
 												</div>
@@ -179,23 +204,29 @@ templ PageSettings(version string, data DataSettingsPreview) {
 							<div class="font-section-controls">
 								@componentList() {
 									for _, f := range data.EditorFonts {
-										@componentFontOption("toki-editor-font", data.Prefs.EditorFont, f)
+										@componentFontOption("pref_editor_font",
+											data.Prefs.EditorFont, f)
 									}
 								}
 								<div role="group" class="button-group font-size-group">
-									@componentFontSizeBtn("toki-editor-font-size", data.Prefs.EditorFontSize,
+									@componentFontSizeBtn("pref_editor_font_size",
+										data.Prefs.EditorFontSize,
 										"very-small",
 										"0.8rem", "ui-monospace,monospace", "Very Small")
-									@componentFontSizeBtn("toki-editor-font-size", data.Prefs.EditorFontSize,
+									@componentFontSizeBtn("pref_editor_font_size",
+										data.Prefs.EditorFontSize,
 										"small",
 										"0.9rem", "ui-monospace,monospace", "Small")
-									@componentFontSizeBtn("toki-editor-font-size", data.Prefs.EditorFontSize,
+									@componentFontSizeBtn("pref_editor_font_size",
+										data.Prefs.EditorFontSize,
 										"default",
 										"1rem", "ui-monospace,monospace", "Default")
-									@componentFontSizeBtn("toki-editor-font-size", data.Prefs.EditorFontSize,
+									@componentFontSizeBtn("pref_editor_font_size",
+										data.Prefs.EditorFontSize,
 										"big",
 										"1.1rem", "ui-monospace,monospace", "Big")
-									@componentFontSizeBtn("toki-editor-font-size", data.Prefs.EditorFontSize,
+									@componentFontSizeBtn("pref_editor_font_size",
+										data.Prefs.EditorFontSize,
 										"bigger",
 										"1.25rem", "ui-monospace,monospace", "Bigger")
 								</div>
@@ -205,6 +236,7 @@ templ PageSettings(version string, data DataSettingsPreview) {
 								<toki-editor
 									id="settings-editor-preview"
 									value={ data.UIPreviewEditorText }
+									data-attr:theme="$pref_theme_resolved"
 									data-on:toki-change="
 								  evt.detail && evt.detail.value &&
 								  evt.detail.value.trim().toLowerCase() ===
@@ -217,7 +249,6 @@ templ PageSettings(version string, data DataSettingsPreview) {
 				</main>
 			</div>
 		</div>
-		<!-- Easter egg -->
 		<div
 			class="modal-overlay"
 			style="display:none"
@@ -263,9 +294,18 @@ templ themeCard(prefs UIPrefs, value, label, desc string) {
 		if prefs.Theme == value {
 			aria-pressed="true"
 		}
-		data-attr:aria-pressed={ fmt.Sprintf("$pref_theme==='%s' ? 'true' : 'false'", value) }
+		data-attr:aria-pressed={ fmt.Sprintf(
+			"$pref_theme==='%s' ? 'true' : 'false'", value,
+		) }
 		data-theme={ value }
-		data-on:click={ settingsSetPrefAction("toki-theme", value) }
+		data-on:click={ action.POSTPageSettingsSetPref(action.WithBefore(fmt.Sprintf(
+			"$pref_theme=%q;$pref_theme_resolved=%s", value,
+			map[string]string{
+				"light":  "'light'",
+				"dark":   "'dark'",
+				"system": "matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'",
+			}[value],
+		))) }
 	>
 		if value == "system" {
 			<div class="theme-preview theme-preview-system">

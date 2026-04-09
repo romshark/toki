@@ -32,7 +32,6 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
       "dark",
       matchMedia("(prefers-color-scheme: dark)").matches,
     );
-    document.dispatchEvent(new CustomEvent("toki-theme-change"));
   }
 });
 
@@ -67,30 +66,4 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
   }
   sessionStorage.setItem(storageKey, id);
   return id;
-};
-
-// --- Filter signal sync ---
-
-(window as any).syncShownLocales = function syncShownLocales(): string {
-  const switches = document.querySelectorAll<HTMLInputElement>('[data-bind^="showlocales."]');
-  const shown: string[] = [];
-  switches.forEach((sw) => {
-    if (sw.checked) {
-      const locale = sw.getAttribute("data-bind")!.replace("showlocales.", "");
-      shown.push(locale);
-    }
-  });
-  return shown.length > 0 ? shown.join(",") : "-";
-};
-
-(window as any).syncShownDomains = function syncShownDomains(): string {
-  const switches = document.querySelectorAll<HTMLInputElement>('[data-bind^="showdomains."]');
-  const shown: string[] = [];
-  switches.forEach((sw) => {
-    if (sw.checked) {
-      const key = sw.getAttribute("data-bind")!.replace("showdomains.", "");
-      shown.push(key.replace(/_/g, "."));
-    }
-  });
-  return shown.length > 0 ? shown.join(",") : "-";
 };

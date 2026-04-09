@@ -1,6 +1,7 @@
 package template
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/romshark/toki/editor/datapagesgen/action"
@@ -26,20 +27,14 @@ templ sidebarContent(data DataIndex) {
 							if allDomainsInitial(data, false) {
 								disabled
 							}
-							data-attr:disabled={ allDomainsExpr(data, false) }
-							data-on:click={ action.POSTPageTIKsFilter(
-								action.WithBefore(setAllDomains(data, false)),
-							) }
+							data-on:click={ action.POSTPageTIKsHideAllDomains() }
 						>Hide All</button>
 						<button
 							class="btn-secondary btn-sm"
 							if allDomainsInitial(data, true) {
 								disabled
 							}
-							data-attr:disabled={ allDomainsExpr(data, true) }
-							data-on:click={ action.POSTPageTIKsFilter(
-								action.WithBefore(setAllDomains(data, true)),
-							) }
+							data-on:click={ action.POSTPageTIKsShowAllDomains() }
 						>Show All</button>
 					</div>
 					<ul>
@@ -54,9 +49,7 @@ templ sidebarContent(data DataIndex) {
 											checked
 										}
 										data-bind={ fmt.Sprintf("showdomains.%s", domain.SignalKey) }
-										data-on:change={ action.POSTPageTIKsFilter(
-											action.WithBefore("$showndomains=syncShownDomains()"),
-										) }
+										data-on:change={ action.POSTPageTIKsFilter() }
 									/>
 									<span>
 										<strong>{ domain.Name }</strong>
@@ -76,20 +69,14 @@ templ sidebarContent(data DataIndex) {
 						if allLocalesInitial(data, false) {
 							disabled
 						}
-						data-attr:disabled={ allLocalesExpr(data, false) }
-						data-on:click={ action.POSTPageTIKsFilter(
-							action.WithBefore(setAllLocales(data, false)),
-						) }
+						data-on:click={ action.POSTPageTIKsHideAllLocales() }
 					>Hide All</button>
 					<button
 						class="btn-secondary btn-sm"
 						if allLocalesInitial(data, true) {
 							disabled
 						}
-						data-attr:disabled={ allLocalesExpr(data, true) }
-						data-on:click={ action.POSTPageTIKsFilter(
-							action.WithBefore(setAllLocales(data, true)),
-						) }
+						data-on:click={ action.POSTPageTIKsShowAllLocales() }
 					>Show All</button>
 				</div>
 				<ul>
@@ -104,9 +91,7 @@ templ sidebarContent(data DataIndex) {
 										checked
 									}
 									data-bind={ fmt.Sprintf("showlocales.%s", catalog.Locale) }
-									data-on:change={ action.POSTPageTIKsFilter(
-										action.WithBefore("$shownlocales=syncShownLocales()"),
-									) }
+									data-on:change={ action.POSTPageTIKsFilter() }
 								/>
 								<span>
 									<strong class="locale-code">{ catalog.Locale }</strong>
@@ -154,10 +139,8 @@ templ sidebarContent(data DataIndex) {
 	</nav>
 }
 
-// IndexContent is the morph target for OnUpdated SSE patches.
-// Renders sidebar content + main area. The <aside> wrapper is NOT
-// included so basecoat's open/closed state is preserved.
-templ IndexContent(data DataIndex) {
+// PageTIKsContent is the morph target for OnUpdated SSE patches.
+templ PageTIKsContent(data DataIndex) {
 	@sidebarContent(data)
 	<div id="main-area" class="main-area">
 		@componentNavbarSearch([]Breadcrumb{
@@ -186,7 +169,8 @@ templ TiksContentList(data DataIndex) {
 					class="loading-indicator"
 					data-on-intersect__once={ action.POSTPageTIKsScrollUp(
 							action.WithBefore(fmt.Sprintf(
-								"$windowstart=%d", max(0, data.WindowStart-data.WindowSize/2),
+								"$windowstart=%d",
+								max(0, data.WindowStart-data.WindowSize/2),
 							)),
 						) }
 				>
@@ -234,6 +218,7 @@ templ TikSectionFull(tik TIK) {
 				</span>
 				<toki-editor
 					value={ tik.TIK }
+					data-attr:theme={ resolvedThemeExpr() }
 					readonly
 				></toki-editor>
 			</label>
@@ -259,138 +244,23 @@ templ TikSectionFull(tik TIK) {
 }
 
 func initShowLocalesSignal(data DataIndex) string {
-	var b []byte
-	b = append(b, '{')
-	for i, c := range data.Catalogs {
-		if i > 0 {
-			b = append(b, ',')
-		}
-		b = append(b, c.Locale...)
-		b = append(b, ':')
-		if data.ShownLocales == nil {
-			b = append(b, "true"...)
-		} else {
-			shown, ok := data.ShownLocales[c.Locale]
-			if ok && shown {
-				b = append(b, "true"...)
-			} else {
-				b = append(b, "false"...)
-			}
-		}
-	}
-	b = append(b, '}')
-	return string(b)
-}
-
-// setAllLocales builds a JS expression that sets all showlocales signals
-// and the shownlocales string directly (without reading DOM checkboxes).
-func setAllLocales(data DataIndex, enabled bool) string {
-	val := "false"
-	if enabled {
-		val = "true"
-	}
-	var b []byte
+	m := make(map[string]bool, len(data.Catalogs))
 	for _, c := range data.Catalogs {
-		b = append(b, "$showlocales."...)
-		b = append(b, c.Locale...)
-		b = append(b, '=')
-		b = append(b, val...)
-		b = append(b, ';')
+		m[c.Locale] = data.ShownLocales == nil || data.ShownLocales[c.Locale]
 	}
-	// Build shownlocales string directly.
-	b = append(b, "$shownlocales='"...)
-	if enabled {
-		for i, c := range data.Catalogs {
-			if i > 0 {
-				b = append(b, ',')
-			}
-			b = append(b, c.Locale...)
-		}
-	} else {
-		b = append(b, '-')
-	}
-	b = append(b, '\'')
-	return string(b)
-}
-
-// allLocalesExpr returns a JS expression that is true when all locales
-// match the given state (all enabled or all disabled).
-func allLocalesExpr(data DataIndex, enabled bool) string {
-	var b []byte
-	for i, c := range data.Catalogs {
-		if i > 0 {
-			b = append(b, "&&"...)
-		}
-		if !enabled {
-			b = append(b, '!')
-		}
-		b = append(b, "$showlocales."...)
-		b = append(b, c.Locale...)
+	b, err := json.Marshal(m)
+	if err != nil {
+		panic("unexpected marshaling error")
 	}
 	return string(b)
 }
 
 func initShowDomainsSignal(data DataIndex) string {
-	var b []byte
-	b = append(b, '{')
-	for i, d := range data.Domains {
-		if i > 0 {
-			b = append(b, ',')
-		}
-		b = append(b, d.SignalKey...)
-		b = append(b, ':')
-		if data.ShownDomains == nil {
-			b = append(b, "true"...)
-		} else if data.ShownDomains[d.FullName] {
-			b = append(b, "true"...)
-		} else {
-			b = append(b, "false"...)
-		}
-	}
-	b = append(b, '}')
-	return string(b)
-}
-
-func setAllDomains(data DataIndex, enabled bool) string {
-	val := "false"
-	if enabled {
-		val = "true"
-	}
-	var b []byte
+	m := make(map[string]bool, len(data.Domains))
 	for _, d := range data.Domains {
-		b = append(b, "$showdomains."...)
-		b = append(b, d.SignalKey...)
-		b = append(b, '=')
-		b = append(b, val...)
-		b = append(b, ';')
+		m[d.SignalKey] = data.ShownDomains == nil || data.ShownDomains[d.FullName]
 	}
-	b = append(b, "$showndomains='"...)
-	if enabled {
-		for i, d := range data.Domains {
-			if i > 0 {
-				b = append(b, ',')
-			}
-			b = append(b, d.FullName...)
-		}
-	} else {
-		b = append(b, '-')
-	}
-	b = append(b, '\'')
-	return string(b)
-}
-
-func allDomainsExpr(data DataIndex, enabled bool) string {
-	var b []byte
-	for i, d := range data.Domains {
-		if i > 0 {
-			b = append(b, "&&"...)
-		}
-		if !enabled {
-			b = append(b, '!')
-		}
-		b = append(b, "$showdomains."...)
-		b = append(b, d.SignalKey...)
-	}
+	b, _ := json.Marshal(m)
 	return string(b)
 }
 

@@ -45,7 +45,7 @@ templ PageDomains(data DataDomains) {
 			<main>
 				<div class="contents">
 					<h2>
-						@iconDomains()
+						@iconHierarchy()
 						Domains
 					</h2>
 					for _, d := range data.Domains {
@@ -63,7 +63,7 @@ templ domainSidebarLinks(d DomainInfo) {
 			href={ templ.SafeURL(fmt.Sprintf("#domain-%s", d.FullName)) }
 			data-ignore-current
 		>
-			@iconDomains()
+			@iconHierarchy()
 			{ d.Name }
 		</a>
 	</li>
@@ -91,7 +91,7 @@ templ domainCard(d DomainInfo) {
 				<div class="domain-relation">
 					<span>Parent</span>
 					<a href={ templ.SafeURL(fmt.Sprintf("#domain-%s", d.ParentFullName)) }>
-						@iconDomains()
+						@iconHierarchy()
 						{ d.ParentName }
 					</a>
 				</div>
@@ -102,7 +102,7 @@ templ domainCard(d DomainInfo) {
 					<div class="domain-relation-links">
 						for _, sub := range d.SubDomains {
 							<a href={ templ.SafeURL(fmt.Sprintf("#domain-%s", sub.FullName)) }>
-								@iconDomains()
+								@iconHierarchy()
 								{ sub.Name }
 							</a>
 						}

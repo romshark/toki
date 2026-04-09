@@ -1,30 +1,40 @@
 package template
 
-import "github.com/romshark/toki/editor/datapagesgen/assets"
+import (
+	"strings"
+
+	"github.com/romshark/toki/editor/datapagesgen/assets"
+)
 
 func prefsStyleTag(p UIPrefs) string {
-	var s string
-	if p.UIFontCSS != "" {
-		s += "--font-ui:" + p.UIFontCSS + ";"
-	}
-	if p.EditorFontCSS != "" {
-		s += "--font-editor:" + p.EditorFontCSS + ";"
-	}
-	if p.UIFontSizeCSS != "" {
-		s += "--font-size-ui:" + p.UIFontSizeCSS + ";"
-	}
-	if p.EditorFontSizeCSS != "" {
-		s += "--font-size-editor:" + p.EditorFontSizeCSS + ";"
-	}
-	if s == "" {
+	if p.UIFontCSS == "" && p.EditorFontCSS == "" &&
+		p.UIFontSizeCSS == "" && p.EditorFontSizeCSS == "" {
 		return ""
 	}
-	return "<style>:root{" + s + "}</style>"
-}
-
-func prefsDarkScriptTag(p UIPrefs) string {
-	return "<script>if(" + p.IsDarkExpr +
-		")document.documentElement.classList.add('dark')</script>"
+	var s strings.Builder
+	s.WriteString("<style>:root{")
+	if p.UIFontCSS != "" {
+		s.WriteString("--font-ui:")
+		s.WriteString(p.UIFontCSS)
+		s.WriteByte(';')
+	}
+	if p.EditorFontCSS != "" {
+		s.WriteString("--font-editor:")
+		s.WriteString(p.EditorFontCSS)
+		s.WriteByte(';')
+	}
+	if p.UIFontSizeCSS != "" {
+		s.WriteString("--font-size-ui:")
+		s.WriteString(p.UIFontSizeCSS)
+		s.WriteByte(';')
+	}
+	if p.EditorFontSizeCSS != "" {
+		s.WriteString("--font-size-editor:")
+		s.WriteString(p.EditorFontSizeCSS)
+		s.WriteByte(';')
+	}
+	s.WriteString("}</style>")
+	return s.String()
 }
 
 templ Head(prefs UIPrefs) {
@@ -32,7 +42,19 @@ templ Head(prefs UIPrefs) {
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<meta charset="UTF-8"/>
 	<link rel="stylesheet" href={ assets.Path("basecoat.min.css") }/>
-	@templ.Raw(prefsDarkScriptTag(prefs))
+	// Set dark/light class before any content renders to avoid FOUC.
+	switch prefs.Theme {
+		case "dark":
+			<script>document.documentElement.classList.add('dark')</script>
+		case "light":
+			<script>document.documentElement.classList.add('light')</script>
+		default:
+			<script>
+				if(matchMedia('(prefers-color-scheme:dark)').matches) {
+					document.documentElement.classList.add('dark')
+				}
+			</script>
+	}
 	@templ.Raw(prefsStyleTag(prefs))
 	<script src={ assets.Path("basecoat.min.js") } defer></script>
 	<script src={ assets.Path("bundle.js") }></script>

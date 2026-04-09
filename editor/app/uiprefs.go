@@ -16,6 +16,15 @@ type UIPrefs struct {
 	EditorFontSize string // "default", "small", "big", etc.
 }
 
+type settingsPrefSignals struct {
+	PrefTheme          string `json:"pref_theme"`
+	PrefThemeResolved  string `json:"pref_theme_resolved"`
+	PrefUIFont         string `json:"pref_ui_font"`
+	PrefEditorFont     string `json:"pref_editor_font"`
+	PrefUIFontSize     string `json:"pref_ui_font_size"`
+	PrefEditorFontSize string `json:"pref_editor_font_size"`
+}
+
 var uiPrefsDefaults = UIPrefs{
 	Theme:          "system",
 	UIFont:         "system",
@@ -104,82 +113,76 @@ func isValidUIPref(name, value string) bool {
 	return false
 }
 
-func setUIPrefCookie(w http.ResponseWriter, name, value string) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     name,
-		Value:    value,
-		Path:     "/",
-		MaxAge:   int((365 * 24 * time.Hour).Seconds()),
-		SameSite: http.SameSiteLaxMode,
-		HttpOnly: false,
-	})
-}
-
-func rootStyleVarForUIPref(name string) string {
-	switch name {
-	case "toki-ui-font":
-		return "--font-ui"
-	case "toki-editor-font":
-		return "--font-editor"
-	case "toki-ui-font-size":
-		return "--font-size-ui"
-	case "toki-editor-font-size":
-		return "--font-size-editor"
-	default:
-		return ""
+func (p UIPrefs) Signals() settingsPrefSignals {
+	return settingsPrefSignals{
+		PrefTheme:          p.Theme,
+		PrefUIFont:         p.UIFont,
+		PrefEditorFont:     p.EditorFont,
+		PrefUIFontSize:     p.UIFontSize,
+		PrefEditorFontSize: p.EditorFontSize,
 	}
 }
 
-func rootStyleValueForUIPref(name, value string) string {
-	switch name {
-	case "toki-ui-font", "toki-editor-font":
-		return fontFamilies[value]
-	case "toki-ui-font-size", "toki-editor-font-size":
-		return fontSizes[value]
-	default:
-		return ""
+func (s settingsPrefSignals) Valid() bool {
+	return isValidUIPref("toki-theme", s.PrefTheme) &&
+		(s.PrefThemeResolved == "light" || s.PrefThemeResolved == "dark") &&
+		isValidUIPref("toki-ui-font", s.PrefUIFont) &&
+		isValidUIPref("toki-editor-font", s.PrefEditorFont) &&
+		isValidUIPref("toki-ui-font-size", s.PrefUIFontSize) &&
+		isValidUIPref("toki-editor-font-size", s.PrefEditorFontSize)
+}
+
+func (s settingsPrefSignals) UIPrefs() UIPrefs {
+	return UIPrefs{
+		Theme:          s.PrefTheme,
+		UIFont:         s.PrefUIFont,
+		EditorFont:     s.PrefEditorFont,
+		UIFontSize:     s.PrefUIFontSize,
+		EditorFontSize: s.PrefEditorFontSize,
 	}
 }
 
-func applyUIPrefScript(name, value string) string {
-	maxAgeSeconds := int((365 * 24 * time.Hour).Seconds())
+func (s settingsPrefSignals) Normalized() settingsPrefSignals {
+	switch s.PrefTheme {
+	case "dark":
+		s.PrefThemeResolved = "dark"
+	case "light":
+		s.PrefThemeResolved = "light"
+	}
+	return s
+}
 
-	var script strings.Builder
+func writeUIPrefCookieScript(script *strings.Builder, name, value string, maxAgeSeconds int) {
 	script.WriteString(fmt.Sprintf(
 		"document.cookie=%q;",
 		fmt.Sprintf("%s=%s; Path=/; Max-Age=%d; SameSite=Lax", name, value, maxAgeSeconds),
 	))
+}
 
-	switch name {
-	case "toki-theme":
-		darkExpr := "false"
-		switch value {
-		case "dark":
-			darkExpr = "true"
-		case "system":
-			darkExpr = "matchMedia('(prefers-color-scheme: dark)').matches"
-		}
-		script.WriteString(
-			"document.documentElement.classList.toggle('dark'," + darkExpr + ");",
-		)
-		script.WriteString("document.dispatchEvent(new CustomEvent('toki-theme-change'));")
-	default:
-		styleVar := rootStyleVarForUIPref(name)
-		if styleVar == "" {
-			return script.String()
-		}
-		styleValue := rootStyleValueForUIPref(name, value)
-		if styleValue == "" {
-			script.WriteString(fmt.Sprintf(
-				"document.documentElement.style.removeProperty(%q);", styleVar,
-			))
-		} else {
-			script.WriteString(fmt.Sprintf(
-				"document.documentElement.style.setProperty(%q,%q);",
-				styleVar, styleValue,
-			))
-		}
-	}
+func writeRootStyleScript(script *strings.Builder, name, value string) {
+	script.WriteString(fmt.Sprintf(
+		"document.documentElement.style.setProperty(%q,%q);",
+		name, value,
+	))
+}
+
+func applyUIPrefsScript(p UIPrefs) string {
+	maxAgeSeconds := int((365 * 24 * time.Hour).Seconds())
+
+	var script strings.Builder
+	writeUIPrefCookieScript(&script, "toki-theme", p.Theme, maxAgeSeconds)
+	writeUIPrefCookieScript(&script, "toki-ui-font", p.UIFont, maxAgeSeconds)
+	writeUIPrefCookieScript(&script, "toki-editor-font", p.EditorFont, maxAgeSeconds)
+	writeUIPrefCookieScript(&script, "toki-ui-font-size", p.UIFontSize, maxAgeSeconds)
+	writeUIPrefCookieScript(&script, "toki-editor-font-size", p.EditorFontSize, maxAgeSeconds)
+
+	script.WriteString(
+		"document.documentElement.classList.toggle('dark'," + p.IsDark() + ");",
+	)
+	writeRootStyleScript(&script, "--font-ui", p.UIFontFamily())
+	writeRootStyleScript(&script, "--font-editor", p.EditorFontFamily())
+	writeRootStyleScript(&script, "--font-size-ui", p.UIFontSizeCSS())
+	writeRootStyleScript(&script, "--font-size-editor", p.EditorFontSizeCSS())
 
 	return script.String()
 }

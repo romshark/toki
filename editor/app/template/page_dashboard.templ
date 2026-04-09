@@ -23,7 +23,7 @@ templ PageDashboard(stats DashboardStats) {
 						<ul>
 							<li>
 								<a href={ href.PageDomains() } data-ignore-current>
-									@iconDomains()
+									@iconHierarchy()
 									Domains
 								</a>
 							</li>
@@ -64,7 +64,9 @@ templ PageDashboard(stats DashboardStats) {
 					</h2>
 					<div class="dashboard-grid">
 						<a
-							href={ href.PageTIKs(href.QueryPageTIKs{Locales: stats.NativeLocale.Locale}) }
+							href={ href.PageTIKs(href.QueryPageTIKs{
+								Locales: stats.NativeLocale.Locale,
+							}) }
 							class="card native-locale-cell dashboard-stat-link"
 						>
 							<header>
@@ -93,7 +95,9 @@ templ PageDashboard(stats DashboardStats) {
 						</a>
 						<div class="card">
 							<header>
-								<span class="dashboard-stat-value">{ strfmt.Int(stats.NumLocales) }</span>
+								<span class="dashboard-stat-value">
+									{ strfmt.Int(stats.NumLocales) }
+								</span>
 								<span class="dashboard-stat-label">
 									@iconLanguages()
 									Locales
@@ -105,9 +109,11 @@ templ PageDashboard(stats DashboardStats) {
 						</div>
 						<a href={ href.PageDomains() } class="card dashboard-stat-link">
 							<header>
-								<span class="dashboard-stat-value">{ strfmt.Int(stats.NumDomains) }</span>
+								<span class="dashboard-stat-value">
+									{ strfmt.Int(stats.NumDomains) }
+								</span>
 								<span class="dashboard-stat-label">
-									@iconDomains()
+									@iconHierarchy()
 									Domains
 								</span>
 							</header>
@@ -264,7 +270,9 @@ templ PageDashboard(stats DashboardStats) {
 					<div class="dashboard-grid">
 						for _, ls := range stats.Locales {
 							<a
-								href={ href.PageTIKs(href.QueryPageTIKs{Locales: ls.Locale}) }
+								href={ href.PageTIKs(href.QueryPageTIKs{
+									Locales: ls.Locale,
+								}) }
 								class="card locale-card dashboard-stat-link"
 							>
 								<header>

@@ -224,20 +224,13 @@ class TokiEditorElement extends HTMLElement {
   _syncing = false;
   _dirty = false;
   _staticDom: HTMLElement | null = null;
-  _handleDocumentThemeChange: () => void;
 
   constructor() {
     super();
     this._shadow = this.attachShadow({ mode: "open" });
-    this._handleDocumentThemeChange = () => {
-      if (!this.hasAttribute("theme")) {
-        this._onThemeChange(null);
-      }
-    };
   }
 
   connectedCallback() {
-    document.addEventListener("toki-theme-change", this._handleDocumentThemeChange);
     const style = document.createElement("style");
     style.textContent = SHADOW_CSS;
     this._shadow.appendChild(style);
@@ -258,10 +251,6 @@ class TokiEditorElement extends HTMLElement {
         this._promote(e);
       }, { once: true });
     }
-  }
-
-  disconnectedCallback() {
-    document.removeEventListener("toki-theme-change", this._handleDocumentThemeChange);
   }
 
   attributeChangedCallback(name: string, _oldVal: string | null, newVal: string | null) {

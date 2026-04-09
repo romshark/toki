@@ -227,6 +227,38 @@ func POSTPageTIKsFilter(options ...option) string {
 	return b.String()
 }
 
+// POSTPageTIKsHideAllDomains references /tiks/hide-all-domains/
+func POSTPageTIKsHideAllDomains(options ...option) string {
+	if len(options) == 0 {
+		return "@post('/tiks/hide-all-domains/')"
+	}
+	var b strings.Builder
+	bl, al := beforeAfterLen(options)
+	b.Grow(bl + len("@post('/tiks/hide-all-domains/'") + optionsLen(options) + len(")") + al)
+	writeBefore(&b, options)
+	b.WriteString("@post('/tiks/hide-all-domains/'")
+	writeOptions(&b, options)
+	b.WriteByte(')')
+	writeAfter(&b, options)
+	return b.String()
+}
+
+// POSTPageTIKsHideAllLocales references /tiks/hide-all-locales/
+func POSTPageTIKsHideAllLocales(options ...option) string {
+	if len(options) == 0 {
+		return "@post('/tiks/hide-all-locales/')"
+	}
+	var b strings.Builder
+	bl, al := beforeAfterLen(options)
+	b.Grow(bl + len("@post('/tiks/hide-all-locales/'") + optionsLen(options) + len(")") + al)
+	writeBefore(&b, options)
+	b.WriteString("@post('/tiks/hide-all-locales/'")
+	writeOptions(&b, options)
+	b.WriteByte(')')
+	writeAfter(&b, options)
+	return b.String()
+}
+
 // POSTPageTIKsScrollDown references /tiks/scroll-down/
 func POSTPageTIKsScrollDown(options ...option) string {
 	if len(options) == 0 {
@@ -253,6 +285,38 @@ func POSTPageTIKsScrollUp(options ...option) string {
 	b.Grow(bl + len("@post('/tiks/scroll-up/'") + optionsLen(options) + len(")") + al)
 	writeBefore(&b, options)
 	b.WriteString("@post('/tiks/scroll-up/'")
+	writeOptions(&b, options)
+	b.WriteByte(')')
+	writeAfter(&b, options)
+	return b.String()
+}
+
+// POSTPageTIKsShowAllDomains references /tiks/show-all-domains/
+func POSTPageTIKsShowAllDomains(options ...option) string {
+	if len(options) == 0 {
+		return "@post('/tiks/show-all-domains/')"
+	}
+	var b strings.Builder
+	bl, al := beforeAfterLen(options)
+	b.Grow(bl + len("@post('/tiks/show-all-domains/'") + optionsLen(options) + len(")") + al)
+	writeBefore(&b, options)
+	b.WriteString("@post('/tiks/show-all-domains/'")
+	writeOptions(&b, options)
+	b.WriteByte(')')
+	writeAfter(&b, options)
+	return b.String()
+}
+
+// POSTPageTIKsShowAllLocales references /tiks/show-all-locales/
+func POSTPageTIKsShowAllLocales(options ...option) string {
+	if len(options) == 0 {
+		return "@post('/tiks/show-all-locales/')"
+	}
+	var b strings.Builder
+	bl, al := beforeAfterLen(options)
+	b.Grow(bl + len("@post('/tiks/show-all-locales/'") + optionsLen(options) + len(")") + al)
+	writeBefore(&b, options)
+	b.WriteString("@post('/tiks/show-all-locales/'")
 	writeOptions(&b, options)
 	b.WriteByte(')')
 	writeAfter(&b, options)

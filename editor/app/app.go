@@ -19,7 +19,6 @@ import (
 	"github.com/romshark/icumsg"
 	"github.com/romshark/tik/tik-go"
 	"github.com/romshark/toki/editor/app/template"
-	"github.com/romshark/toki/editor/datapagesgen/href"
 	"github.com/romshark/toki/editor/datapagesgen/httperr"
 	"github.com/romshark/toki/editor/indexdb"
 	"github.com/romshark/toki/internal/arb"
@@ -27,7 +26,6 @@ import (
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/icu"
 	tikutil "github.com/romshark/toki/internal/tik"
-	"github.com/starfederation/datastar-go/datastar"
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
 )
@@ -54,16 +52,20 @@ type EventReset struct {
 	Locale      string `json:"locale"`
 }
 
-// viewState holds per-instance server-side view parameters so that
-// OnUpdated handlers can fat-morph each stream with the correct filters.
-type viewState struct {
+// pageTIKsState holds server-side view state for the TIKs list page.
+type pageTIKsState struct {
 	filterType  string
 	showLocales map[string]bool
 	showDomains map[string]bool
-	tikID       string // only used by PageTIK streams
 	windowStart int
 	searchQuery string
 	refCount    int
+}
+
+// pageTIKState holds server-side view state for a single TIK page.
+type pageTIKState struct {
+	tikID    string
+	refCount int
 }
 
 type App struct {
@@ -93,15 +95,21 @@ type App struct {
 	// indexDB is the SQLite index database. Nil if not configured.
 	indexDB *indexdb.DB
 
+	// SqinnPath is the path to the sqinn binary (with FTS5). Set by editor.Setup.
+	SqinnPath string
+
 	// Build bundle state (protected by mu).
 	building      bool
 	buildErr      string
 	buildDuration time.Duration
 
-	// views maps instance_id -> view state
-	views map[string]*viewState
-	// streamInst maps streamID -> instance_id
-	streamInst map[uint64]string
+	// Per-page server-side state, keyed by instance_id.
+	tiksViews   map[string]*pageTIKsState
+	tiksStreams map[uint64]string // streamID -> instance_id
+	tikViews    map[string]*pageTIKState
+	tikStreams  map[uint64]string // streamID -> instance_id
+	// Build bundle has no view state, just stream tracking.
+	buildStreams map[uint64]struct{}
 
 	// PickDirectory opens a native directory picker dialog.
 	// Set by the Wails runner; nil in server mode.
@@ -109,9 +117,6 @@ type App struct {
 
 	// Version is the Toki version string. Set by editor.Setup.
 	Version string
-
-	// SqinnPath is the path to the sqinn binary (with FTS5). Set by editor.Setup.
-	SqinnPath string
 
 	// CleanGenerated deletes stale generated Go files and creates a minimal
 	// bundle so codeparse can succeed. Set by editor.Setup.
@@ -136,8 +141,11 @@ func NewApp(dir, bundlePkgPath string, env []string, db *indexdb.DB) *App {
 		icuTokenizer:     new(icumsg.Tokenizer),
 		tikParser:        tik.NewParser(tik.DefaultConfig),
 		tikICUTranslator: tik.NewICUTranslator(tik.DefaultConfig),
-		views:            make(map[string]*viewState),
-		streamInst:       make(map[uint64]string),
+		tiksViews:        make(map[string]*pageTIKsState),
+		tiksStreams:      make(map[uint64]string),
+		tikViews:         make(map[string]*pageTIKState),
+		tikStreams:       make(map[uint64]string),
+		buildStreams:     make(map[uint64]struct{}),
 	}
 }
 
@@ -588,33 +596,64 @@ func (a *App) SetDir(dir string) error {
 	return a.tryInitLocked()
 }
 
-func (a *App) registerStreamLocked(streamID uint64, instanceID string, vs viewState) {
-	a.streamInst[streamID] = instanceID
-	if existing, ok := a.views[instanceID]; ok {
+func (a *App) registerTIKsStreamLocked(streamID uint64, instanceID string, vs pageTIKsState) {
+	a.tiksStreams[streamID] = instanceID
+	if existing, ok := a.tiksViews[instanceID]; ok {
 		existing.filterType = vs.filterType
 		existing.showLocales = vs.showLocales
-		if vs.tikID != "" {
-			existing.tikID = vs.tikID
-		}
+		existing.showDomains = vs.showDomains
+		existing.searchQuery = vs.searchQuery
 		existing.refCount++
 	} else {
 		vs.refCount = 1
-		a.views[instanceID] = &vs
+		a.tiksViews[instanceID] = &vs
 	}
 }
 
-func (a *App) unregisterStreamLocked(streamID uint64) {
-	instanceID, ok := a.streamInst[streamID]
+func (a *App) unregisterTIKsStreamLocked(streamID uint64) {
+	instanceID, ok := a.tiksStreams[streamID]
 	if !ok {
 		return
 	}
-	delete(a.streamInst, streamID)
-	if vs, ok := a.views[instanceID]; ok {
+	delete(a.tiksStreams, streamID)
+	if vs, ok := a.tiksViews[instanceID]; ok {
 		vs.refCount--
 		if vs.refCount <= 0 {
-			delete(a.views, instanceID)
+			delete(a.tiksViews, instanceID)
 		}
 	}
+}
+
+func (a *App) registerTIKStreamLocked(streamID uint64, instanceID string, tikID string) {
+	a.tikStreams[streamID] = instanceID
+	if existing, ok := a.tikViews[instanceID]; ok {
+		existing.tikID = tikID
+		existing.refCount++
+	} else {
+		a.tikViews[instanceID] = &pageTIKState{tikID: tikID, refCount: 1}
+	}
+}
+
+func (a *App) unregisterTIKStreamLocked(streamID uint64) {
+	instanceID, ok := a.tikStreams[streamID]
+	if !ok {
+		return
+	}
+	delete(a.tikStreams, streamID)
+	if vs, ok := a.tikViews[instanceID]; ok {
+		vs.refCount--
+		if vs.refCount <= 0 {
+			delete(a.tikViews, instanceID)
+		}
+	}
+}
+
+func (a *App) registerBuildStreamLocked(streamID uint64) {
+	a.buildStreams[streamID] = struct{}{}
+}
+
+func (a *App) unregisterBuildStreamLocked(streamID uint64) {
+	delete(a.buildStreams, streamID)
 }
 
 // syncEditorsScript builds a JS call to syncEditorValues with current
@@ -645,7 +684,6 @@ func (*App) Head(r *http.Request) templ.Component {
 		EditorFont:        p.EditorFont,
 		UIFontSize:        p.UIFontSize,
 		EditorFontSize:    p.EditorFontSize,
-		IsDarkExpr:        p.IsDark(),
 		UIFontCSS:         p.UIFontFamily(),
 		EditorFontCSS:     p.EditorFontFamily(),
 		UIFontSizeCSS:     p.UIFontSizeCSS(),
@@ -842,37 +880,6 @@ func (a *App) clearBuildResultLocked() {
 	}
 }
 
-// PageIndex is /
-type PageIndex struct{ App *App }
-
-func (p PageIndex) GET(
-	r *http.Request,
-) (
-	body templ.Component,
-	redirect string,
-	err error,
-) {
-	if p.App.IsLoading() {
-		return template.PageLoading(), "", nil
-	}
-
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-
-	if p.App.building {
-		return nil, href.PageBuildBundle(), nil
-	}
-
-	p.App.clearBuildResultLocked()
-
-	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
-		return nil, href.PageProjectDir(), nil
-	}
-
-	stats := p.App.buildDashboardStats()
-	return template.PageDashboard(stats), "", nil
-}
-
 func (a *App) buildDashboardStats() template.DashboardStats {
 	s := template.DashboardStats{
 		Dir:             a.dir,
@@ -1008,697 +1015,8 @@ func (a *App) ensureNativeCatalogExists(scan *codeparse.Scan) {
 	})
 }
 
-// PageTIKs is /tiks
-type PageTIKs struct{ App *App }
-
-func (p PageTIKs) GET(
-	r *http.Request,
-	query struct {
-		Filter  string `query:"f" reflectsignal:"filtertype"`
-		Locales string `query:"l" reflectsignal:"shownlocales"`
-		Domains string `query:"d" reflectsignal:"showndomains"`
-		Search  string `query:"q" reflectsignal:"searchquery"`
-	},
-) (
-	body templ.Component,
-	redirect string,
-	enableBackgroundStreaming bool,
-	disableRefreshAfterHidden bool,
-	err error,
-) {
-	enableBackgroundStreaming = true
-	disableRefreshAfterHidden = true
-
-	if p.App.IsLoading() {
-		body = template.PageLoading()
-		return
-	}
-
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-
-	if p.App.building {
-		redirect = href.PageBuildBundle()
-		return
-	}
-
-	p.App.clearBuildResultLocked()
-
-	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
-		redirect = href.PageProjectDir()
-		return
-	}
-
-	showLocales := parseLocalesParam(query.Locales)
-	showDomains := parseDomainsParam(query.Domains)
-	data := p.App.buildFilteredDataIndex(query.Filter, showLocales, showDomains, 0, query.Search)
-	body = template.PageTIKs(data)
-	return
-}
-
-func (p PageTIKs) StreamOpen(
-	r *http.Request,
-	streamID uint64,
-	signals struct {
-		FilterType  string          `json:"filtertype"`
-		ShowLocales map[string]bool `json:"showlocales"`
-		ShowDomains map[string]bool `json:"showdomains"`
-		SearchQuery string          `json:"searchquery"`
-		InstanceID  string          `json:"instance_id"`
-	},
-) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-	p.App.registerStreamLocked(streamID, signals.InstanceID, viewState{
-		filterType:  normalizeFilterType(signals.FilterType),
-		showLocales: signals.ShowLocales,
-		showDomains: normalizeDomainsSignal(signals.ShowDomains),
-		searchQuery: signals.SearchQuery,
-	})
-	return nil
-}
-
-func (p PageTIKs) StreamClose(r *http.Request, streamID uint64) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-	p.App.unregisterStreamLocked(streamID)
-	return nil
-}
-
-func (p PageTIKs) OnUpdated(
-	event EventUpdated,
-	sse *datastar.ServerSentEventGenerator,
-	streamID uint64,
-) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-
-	if p.App.building {
-		return sse.ExecuteScript(navigate(href.PageBuildBundle()))
-	}
-
-	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
-		return nil
-	}
-
-	instID := p.App.streamInst[streamID]
-	vs := p.App.views[instID]
-	if vs == nil {
-		return nil
-	}
-
-	// If this SSE connection belongs to the tab that triggered the
-	// change, exclude the changed editor from the sync so that in-
-	// progress typing is never overwritten by its own stale echo.
-	var exclude string
-	if event.SourceInstanceID != "" && event.SourceInstanceID == instID {
-		exclude = event.ChangedEditor
-	}
-
-	data := p.App.buildFilteredDataIndex(vs.filterType, vs.showLocales, vs.showDomains, vs.windowStart, vs.searchQuery)
-	if err := sse.PatchElementTempl(template.IndexContent(data)); err != nil {
-		return err
-	}
-	return sse.ExecuteScript(syncEditorsScript(data.TIKs, exclude))
-}
-
-func (PageTIKs) OnReset(
-	event EventReset,
-	sse *datastar.ServerSentEventGenerator,
-) error {
-	if event.ResetEditor == "" {
-		return nil
-	}
-	if err := sse.MarshalAndPatchSignals(struct {
-		ResetDoneTIKID  string `json:"resetdonetikid"`
-		ResetDoneLocale string `json:"resetdonelocale"`
-	}{
-		ResetDoneTIKID:  event.TIKID,
-		ResetDoneLocale: event.Locale,
-	}); err != nil {
-		return err
-	}
-	return sse.ExecuteScript(fmt.Sprintf(
-		"resetEditorValue(%q,%q)", event.ResetEditor, event.ResetValue,
-	))
-}
-
-// POSTFilter is /tiks/filter/{$}
-func (p PageTIKs) POSTFilter(
-	r *http.Request,
-	sse *datastar.ServerSentEventGenerator,
-	signals struct {
-		FilterType  string          `json:"filtertype"`
-		ShowLocales map[string]bool `json:"showlocales"`
-		ShowDomains map[string]bool `json:"showdomains"`
-		SearchQuery string          `json:"searchquery"`
-		InstanceID  string          `json:"instance_id"`
-	},
-) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-
-	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
-		return httperr.BadRequest
-	}
-
-	ft := normalizeFilterType(signals.FilterType)
-	windowStart := 0
-	vs := p.App.views[signals.InstanceID]
-	if vs != nil {
-		// Reset window to 0 when filter type or search query changes.
-		if vs.filterType != ft || vs.searchQuery != signals.SearchQuery {
-			vs.windowStart = 0
-		}
-		windowStart = vs.windowStart
-		vs.filterType = ft
-		vs.showLocales = signals.ShowLocales
-		vs.showDomains = normalizeDomainsSignal(signals.ShowDomains)
-		vs.searchQuery = signals.SearchQuery
-	}
-
-	data := p.App.buildFilteredDataIndex(ft, signals.ShowLocales, normalizeDomainsSignal(signals.ShowDomains), windowStart, signals.SearchQuery)
-	if err := sse.PatchElementTempl(template.IndexContent(data)); err != nil {
-		return err
-	}
-	return sse.ExecuteScript(syncEditorsScript(data.TIKs, ""))
-}
-
-// POSTScrollDown is /tiks/scroll-down/{$}
-func (p PageTIKs) POSTScrollDown(
-	r *http.Request,
-	sse *datastar.ServerSentEventGenerator,
-	signals struct {
-		FilterType  string          `json:"filtertype"`
-		ShowLocales map[string]bool `json:"showlocales"`
-		ShowDomains map[string]bool `json:"showdomains"`
-		SearchQuery string          `json:"searchquery"`
-		WindowStart int             `json:"windowstart"`
-		InstanceID  string          `json:"instance_id"`
-	},
-) error {
-	return p.handleScroll(sse, signals.FilterType, signals.ShowLocales, normalizeDomainsSignal(signals.ShowDomains),
-		signals.SearchQuery, signals.WindowStart, signals.InstanceID, false)
-}
-
-// POSTScrollUp is /tiks/scroll-up/{$}
-func (p PageTIKs) POSTScrollUp(
-	r *http.Request,
-	sse *datastar.ServerSentEventGenerator,
-	signals struct {
-		FilterType  string          `json:"filtertype"`
-		ShowLocales map[string]bool `json:"showlocales"`
-		ShowDomains map[string]bool `json:"showdomains"`
-		SearchQuery string          `json:"searchquery"`
-		WindowStart int             `json:"windowstart"`
-		InstanceID  string          `json:"instance_id"`
-	},
-) error {
-	return p.handleScroll(sse, signals.FilterType, signals.ShowLocales, normalizeDomainsSignal(signals.ShowDomains),
-		signals.SearchQuery, signals.WindowStart, signals.InstanceID, true)
-}
-
-func (p PageTIKs) handleScroll(
-	sse *datastar.ServerSentEventGenerator,
-	filterType string, showLocales, showDomains map[string]bool,
-	searchQuery string, windowStart int, instanceID string,
-	scrollUp bool,
-) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-
-	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
-		return httperr.BadRequest
-	}
-
-	ft := normalizeFilterType(filterType)
-	if vs := p.App.views[instanceID]; vs != nil {
-		vs.windowStart = windowStart
-	}
-
-	data := p.App.buildFilteredDataIndex(ft, showLocales, showDomains, windowStart, searchQuery)
-
-	if scrollUp {
-		// Before morph: find the first visible card and record its viewport
-		// position so we can restore it after items are inserted above.
-		if err := sse.ExecuteScript(
-			`(function(){` +
-				`var m=document.querySelector('#page-tiks main');` +
-				`var cards=m.querySelectorAll('section.card[id]');` +
-				`for(var i=0;i<cards.length;i++){` +
-				`var r=cards[i].getBoundingClientRect();` +
-				`if(r.bottom>0){window._tikAnchor={id:cards[i].id,top:r.top};return}}` +
-				`})()`,
-		); err != nil {
-			return err
-		}
-	}
-
-	if err := sse.PatchElementTempl(template.TiksContentList(data)); err != nil {
-		return err
-	}
-
-	if scrollUp {
-		// After morph: find the same card and scroll so it's at the
-		// same viewport position as before.
-		return sse.ExecuteScript(
-			`if(window._tikAnchor&&window._tikAnchor.id){` +
-				`var el=document.getElementById(window._tikAnchor.id);` +
-				`if(el){` +
-				`var m=document.querySelector('#page-tiks main');` +
-				`m.scrollTop+=el.getBoundingClientRect().top-window._tikAnchor.top` +
-				`}}`,
-		)
-	}
-	return nil
-}
-
 func navigate(url string) string {
 	return "window.location='" + url + "'"
-}
-
-// PageProjectDir is /project-dir
-type PageProjectDir struct{ App *App }
-
-func (p PageProjectDir) GET(r *http.Request) (
-	body templ.Component,
-	redirect string,
-	enableBackgroundStreaming bool,
-	disableRefreshAfterHidden bool,
-	err error,
-) {
-	enableBackgroundStreaming = true
-	disableRefreshAfterHidden = true
-
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-
-	if p.App.building {
-		redirect = href.PageBuildBundle()
-		return
-	}
-
-	body = template.PageProjectDir(p.App.dir, p.App.initErr, p.App.repairErr, len(p.App.changed), p.App.numCorrupt)
-	return
-}
-
-// POSTOpen is /project-dir/open/{$}
-//
-// In Wails mode, PickDirectory opens a native OS directory picker dialog
-// and the selected path overrides the folder signal.
-// In web/server mode, PickDirectory is nil so the folder path comes
-// from the text input signal.
-func (p PageProjectDir) POSTOpen(
-	r *http.Request,
-	sse *datastar.ServerSentEventGenerator,
-	signals struct {
-		Folder string `json:"folder"`
-	},
-) error {
-	folder := signals.Folder
-	if p.App.PickDirectory != nil {
-		picked, err := p.App.PickDirectory()
-		if err != nil || picked == "" {
-			return sse.ExecuteScript(navigate(href.PageProjectDir()))
-		}
-		folder = picked
-	}
-	if folder == "" {
-		return sse.ExecuteScript(navigate(href.PageProjectDir()))
-	}
-	if err := p.App.SetDir(folder); err != nil {
-		return sse.ExecuteScript(navigate(href.PageProjectDir()))
-	}
-	return sse.ExecuteScript(navigate("/tiks/"))
-}
-
-// PageTIK is /tik/{id}
-type PageTIK struct{ App *App }
-
-func (p PageTIK) GET(
-	r *http.Request,
-	path struct {
-		ID string `path:"id"`
-	},
-) (
-	body templ.Component,
-	redirect string,
-	enableBackgroundStreaming bool,
-	disableRefreshAfterHidden bool,
-	err error,
-) {
-	enableBackgroundStreaming = true
-	disableRefreshAfterHidden = true
-
-	if p.App.IsLoading() {
-		body = template.PageLoading()
-		return
-	}
-
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-
-	if p.App.building {
-		redirect = href.PageBuildBundle()
-		return
-	}
-
-	p.App.clearBuildResultLocked()
-
-	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
-		redirect = href.PageProjectDir()
-		return
-	}
-
-	iTIK := slices.IndexFunc(p.App.tiks, func(t *template.TIK) bool {
-		return t.ID == path.ID
-	})
-	if iTIK == -1 {
-		err = httperr.NotFound
-		return
-	}
-
-	tk := p.App.orderTIK(p.App.tiks[iTIK])
-	body = template.PageTIK(tk)
-	return
-}
-
-func (p PageTIK) StreamOpen(
-	r *http.Request,
-	streamID uint64,
-	signals struct {
-		InstanceID string `json:"instance_id"`
-	},
-) error {
-	tikID := r.PathValue("id")
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-	p.App.registerStreamLocked(streamID, signals.InstanceID, viewState{
-		tikID: tikID,
-	})
-	return nil
-}
-
-func (p PageTIK) StreamClose(r *http.Request, streamID uint64) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-	p.App.unregisterStreamLocked(streamID)
-	return nil
-}
-
-func (p PageTIK) OnUpdated(
-	event EventUpdated,
-	sse *datastar.ServerSentEventGenerator,
-	streamID uint64,
-) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-
-	if p.App.building {
-		return sse.ExecuteScript(navigate(href.PageBuildBundle()))
-	}
-
-	instID := p.App.streamInst[streamID]
-	vs := p.App.views[instID]
-	if vs == nil || vs.tikID == "" {
-		return nil
-	}
-
-	iTIK := slices.IndexFunc(p.App.tiks, func(t *template.TIK) bool {
-		return t.ID == vs.tikID
-	})
-	if iTIK == -1 {
-		return nil
-	}
-
-	var exclude string
-	if event.SourceInstanceID != "" && event.SourceInstanceID == instID {
-		exclude = event.ChangedEditor
-	}
-
-	tk := p.App.orderTIK(p.App.tiks[iTIK])
-	if err := sse.PatchElementTempl(template.TIKContent(tk)); err != nil {
-		return err
-	}
-	return sse.ExecuteScript(syncEditorsScript([]template.TIK{*tk}, exclude))
-}
-
-func (PageTIK) OnReset(
-	event EventReset,
-	sse *datastar.ServerSentEventGenerator,
-) error {
-	if event.ResetEditor == "" {
-		return nil
-	}
-	if err := sse.MarshalAndPatchSignals(struct {
-		ResetDoneTIKID  string `json:"resetdonetikid"`
-		ResetDoneLocale string `json:"resetdonelocale"`
-	}{
-		ResetDoneTIKID:  event.TIKID,
-		ResetDoneLocale: event.Locale,
-	}); err != nil {
-		return err
-	}
-	return sse.ExecuteScript(fmt.Sprintf(
-		"resetEditorValue(%q,%q)", event.ResetEditor, event.ResetValue,
-	))
-}
-
-// PageDomains is /domains
-type PageDomains struct{ App *App }
-
-func (p PageDomains) GET(
-	r *http.Request,
-) (body templ.Component, redirect string, err error) {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-
-	if p.App.building {
-		return nil, href.PageBuildBundle(), nil
-	}
-	if p.App.dir == "" || p.App.initErr != "" {
-		return nil, href.PageProjectDir(), nil
-	}
-
-	data := p.App.buildDomainData()
-	return template.PageDomains(data), "", nil
-}
-
-func (a *App) buildDomainData() template.DataDomains {
-	data := template.DataDomains{
-		Dir:             a.dir,
-		TotalChanges:    len(a.changed),
-		CanApplyChanges: a.canApplyChangesLocked(),
-	}
-
-	if a.domains == nil {
-		return data
-	}
-
-	// Build per-domain stats from template TIKs.
-	// Map TIK ID -> domain dir (only available with full scan).
-	tikDomainDir := make(map[string]string)
-	if a.scan != nil {
-		for i := range a.scan.Texts.Len() {
-			t := a.scan.Texts.At(i)
-			if t.Domain != nil {
-				tikDomainDir[t.IDHash] = t.Domain.Dir
-			}
-		}
-	}
-
-	type domainStats struct {
-		numTIKs, complete, incomplete, empty, invalid, changed int
-	}
-	statsByDir := make(map[string]*domainStats)
-
-	for _, tk := range a.tiks {
-		dir, ok := tikDomainDir[tk.ID]
-		if !ok {
-			continue
-		}
-		ds := statsByDir[dir]
-		if ds == nil {
-			ds = &domainStats{}
-			statsByDir[dir] = ds
-		}
-		ds.numTIKs++
-		if tk.IsChanged {
-			ds.changed++
-		}
-		if tk.IsComplete {
-			ds.complete++
-		}
-		if tk.IsIncomplete {
-			ds.incomplete++
-		}
-		if tk.IsEmpty {
-			ds.empty++
-		}
-		if tk.IsInvalid {
-			ds.invalid++
-		}
-	}
-
-	// Build domain info tree from the DomainTree roots.
-	var buildInfo func(d *codeparse.Domain) template.DomainInfo
-	buildInfo = func(d *codeparse.Domain) template.DomainInfo {
-		// Build full name from path iterator.
-		var names []string
-		for p := range d.Path() {
-			names = append(names, p.Name)
-		}
-		slices.Reverse(names)
-		fullName := strings.Join(names, ".")
-
-		info := template.DomainInfo{
-			Name:        d.Name,
-			Description: d.Description,
-			Dir:         d.Dir,
-			FullName:    fullName,
-		}
-		if d.Parent != nil {
-			info.ParentName = d.Parent.Name
-			var parentNames []string
-			for p := range d.Parent.Path() {
-				parentNames = append(parentNames, p.Name)
-			}
-			slices.Reverse(parentNames)
-			info.ParentFullName = strings.Join(parentNames, ".")
-		}
-		if ds := statsByDir[d.Dir]; ds != nil {
-			info.NumTIKs = ds.numTIKs
-			info.NumComplete = ds.complete
-			info.NumIncomplete = ds.incomplete
-			info.NumEmpty = ds.empty
-			info.NumInvalid = ds.invalid
-			info.NumChanged = ds.changed
-			if ds.numTIKs > 0 {
-				info.Completeness = float64(ds.complete) / float64(ds.numTIKs)
-			}
-		}
-		for _, sub := range d.SubDomains {
-			info.SubDomains = append(info.SubDomains, buildInfo(sub))
-		}
-		return info
-	}
-
-	// Find root domains (no parent).
-	for d := range a.domains.All() {
-		if d.Parent == nil {
-			data.Domains = append(data.Domains, buildInfo(d))
-		}
-	}
-
-	data.TotalDomains = a.domains.Len()
-	return data
-}
-
-// PageSettings is /settings
-type PageSettings struct{ App *App }
-
-func (p PageSettings) GET(
-	r *http.Request,
-) (body templ.Component, redirect string, err error) {
-	p.App.mu.Lock()
-	building := p.App.building
-	p.App.mu.Unlock()
-	if building {
-		return nil, href.PageBuildBundle(), nil
-	}
-
-	preview := "The quick brown fox jumps over the lazy dog"
-	icuPreview := "{ plural, one {# item} other {# items} }"
-	prefs := ReadUIPrefs(r)
-	data := template.DataSettingsPreview{
-		Prefs: template.UIPrefs{
-			Theme:          prefs.Theme,
-			UIFont:         prefs.UIFont,
-			EditorFont:     prefs.EditorFont,
-			UIFontSize:     prefs.UIFontSize,
-			EditorFontSize: prefs.EditorFontSize,
-		},
-		UIFonts: []template.FontOption{
-			{Value: "system", Family: fontFamilies["system"], Label: "System Default", Preview: preview},
-			{Value: "georgia", Family: "Georgia, 'Times New Roman', serif", Label: "Georgia", Preview: preview},
-			{Value: "helvetica", Family: "'Helvetica Neue', Helvetica, Arial, sans-serif", Label: "Helvetica", Preview: preview},
-		},
-		EditorFonts: []template.FontOption{
-			{Value: "mono-system", Family: "ui-monospace, 'SF Mono', 'Cascadia Code', monospace", Label: "System Mono", Preview: icuPreview},
-			{Value: "mono-firacode", Family: "'Fira Code', monospace", Label: "Fira Code", Preview: icuPreview},
-			{Value: "mono-monaco", Family: "Monaco, Consolas, monospace", Label: "Monaco", Preview: icuPreview},
-			{Value: "mono-courier", Family: "'Courier New', Courier, monospace", Label: "Courier New", Preview: icuPreview},
-		},
-		UIPreviewTIK:   "{name, select, other {Welcome, {name}!}}",
-		UIPreviewICUEN: "{name, select, other {Welcome back, {name}!}}",
-		UIPreviewICUDE: "{name, select, other {Willkommen, {name}!}}",
-		UIPreviewEditorText: "{count, plural,\n" +
-			"  one {You have # new message}\n" +
-			"  other {You have # new messages}\n}",
-	}
-	body = template.PageSettings(p.App.Version, data)
-	return
-}
-
-// POSTSetPref is /settings/set-pref/{$}
-func (p PageSettings) POSTSetPref(
-	r *http.Request,
-	sse *datastar.ServerSentEventGenerator,
-	signals struct {
-		PrefKey   string `json:"prefkey"`
-		PrefValue string `json:"prefvalue"`
-	},
-) error {
-	if !isValidUIPref(signals.PrefKey, signals.PrefValue) {
-		return httperr.BadRequest
-	}
-
-	switch signals.PrefKey {
-	case "toki-theme":
-		if err := sse.MarshalAndPatchSignals(struct {
-			PrefTheme string `json:"pref_theme"`
-		}{
-			PrefTheme: signals.PrefValue,
-		}); err != nil {
-			return err
-		}
-	case "toki-ui-font":
-		if err := sse.MarshalAndPatchSignals(struct {
-			PrefUIFont string `json:"pref_ui_font"`
-		}{
-			PrefUIFont: signals.PrefValue,
-		}); err != nil {
-			return err
-		}
-	case "toki-editor-font":
-		if err := sse.MarshalAndPatchSignals(struct {
-			PrefEditorFont string `json:"pref_editor_font"`
-		}{
-			PrefEditorFont: signals.PrefValue,
-		}); err != nil {
-			return err
-		}
-	case "toki-ui-font-size":
-		if err := sse.MarshalAndPatchSignals(struct {
-			PrefUIFontSize string `json:"pref_ui_font_size"`
-		}{
-			PrefUIFontSize: signals.PrefValue,
-		}); err != nil {
-			return err
-		}
-	case "toki-editor-font-size":
-		if err := sse.MarshalAndPatchSignals(struct {
-			PrefEditorFontSize string `json:"pref_editor_font_size"`
-		}{
-			PrefEditorFontSize: signals.PrefValue,
-		}); err != nil {
-			return err
-		}
-	default:
-		return httperr.BadRequest
-	}
-
-	return sse.ExecuteScript(applyUIPrefScript(signals.PrefKey, signals.PrefValue))
 }
 
 // PageError404 is /error404/
@@ -1706,100 +1024,6 @@ type PageError404 struct{ App *App }
 
 func (PageError404) GET(r *http.Request) (body templ.Component, err error) {
 	return template.PageNotFound(r.URL.Path), nil
-}
-
-// PageBuildBundle is /build-bundle
-type PageBuildBundle struct{ App *App }
-
-func (p PageBuildBundle) GET(
-	r *http.Request,
-) (
-	body templ.Component,
-	redirect string,
-	enableBackgroundStreaming bool,
-	disableRefreshAfterHidden bool,
-	err error,
-) {
-	enableBackgroundStreaming = true
-	disableRefreshAfterHidden = true
-
-	if p.App.IsLoading() {
-		body = template.PageLoading()
-		return
-	}
-
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-
-	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
-		redirect = href.PageProjectDir()
-		return
-	}
-
-	state := p.App.buildBundleStateLocked()
-
-	// If not building and no result to show, redirect to dashboard.
-	if !state.Building && state.Duration == 0 && state.Err == "" {
-		if len(p.App.changed) == 0 || !p.App.canApplyChangesLocked() {
-			redirect = href.PageIndex()
-			return
-		}
-		// Show "Building..." — the actual build starts in StreamOpen
-		// once the SSE stream is connected, ensuring the user sees
-		// the loading state before the build begins.
-		state.Building = true
-	}
-
-	body = template.PageBuildBundle(state)
-	return
-}
-
-func (p PageBuildBundle) StreamOpen(
-	r *http.Request,
-	streamID uint64,
-	signals struct {
-		InstanceID string `json:"instance_id"`
-	},
-) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-	p.App.registerStreamLocked(streamID, signals.InstanceID, viewState{})
-
-	// Start the build now that the SSE stream is connected.
-	// This guarantees the client sees the loading state before the build runs.
-	if !p.App.building && p.App.buildDuration == 0 && p.App.buildErr == "" &&
-		len(p.App.changed) > 0 && p.App.canApplyChangesLocked() {
-		p.App.startBuildBundleLocked()
-	}
-	return nil
-}
-
-func (p PageBuildBundle) StreamClose(r *http.Request, streamID uint64) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-	p.App.unregisterStreamLocked(streamID)
-	return nil
-}
-
-func (p PageBuildBundle) OnUpdated(
-	event EventUpdated,
-	sse *datastar.ServerSentEventGenerator,
-	streamID uint64,
-) error {
-	p.App.mu.Lock()
-	defer p.App.mu.Unlock()
-
-	state := p.App.buildBundleStateLocked()
-	return sse.PatchElementTempl(template.PageBuildBundle(state))
-}
-
-func (a *App) buildBundleStateLocked() template.BuildBundleState {
-	return template.BuildBundleState{
-		Building:     a.building,
-		Err:          a.buildErr,
-		Duration:     a.buildDuration,
-		TotalChanges: len(a.changed),
-	}
 }
 
 // startBuildBundleLocked kicks off the bundle build in a background goroutine.
@@ -1947,10 +1171,29 @@ func (a *App) orderTIK(tk *template.TIK) *template.TIK {
 	}
 }
 
+func serializeShownSignal(m map[string]bool) string {
+	if m == nil {
+		return ""
+	}
+	var keys []string
+	for k, v := range m {
+		if v {
+			keys = append(keys, k)
+		}
+	}
+	if len(keys) == 0 {
+		return "-"
+	}
+	return strings.Join(keys, ",")
+}
+
 // parseLocalesParam parses a comma-separated list of shown locales
 // into the map format expected by buildFilteredDataIndex.
 // Empty string means show all (nil map).
 // "none" means show none (empty non-nil map).
+// serializeShownSignal converts a shown map back to the string format
+// used by the shownlocales/showndomains URL signals.
+// nil = "" (show all), empty = "-" (show none), otherwise comma-separated keys.
 func parseLocalesParam(s string) map[string]bool {
 	if s == "" {
 		return nil

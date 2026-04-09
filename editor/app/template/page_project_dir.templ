@@ -7,7 +7,9 @@ import (
 	"github.com/romshark/toki/editor/datapagesgen/action"
 )
 
-templ PageProjectDir(dir string, errMsg string, repairErr string, numChanges int, numCorrupt int) {
+templ PageProjectDir(
+	dir string, errMsg string, repairErr string, numChanges int, numCorrupt int,
+) {
 	@page("page-project-dir") {
 		<div
 			class="page-center"
@@ -53,7 +55,10 @@ templ PageProjectDir(dir string, errMsg string, repairErr string, numChanges int
 										match what should have been generated from source code.
 									</p>
 									if repairErr != "" {
-										<p><strong>Repair failed:</strong> { repairErr }</p>
+										<p>
+											<strong>Repair failed:</strong>
+											{ repairErr }
+										</p>
 									}
 									<a href="/repair/" class="btn-destructive">
 										Repair Bundle
@@ -87,7 +92,11 @@ templ PageProjectDir(dir string, errMsg string, repairErr string, numChanges int
 							}
 						>
 							<span data-show="!$opening">Open Project</span>
-							<span class="btn-loading-label" style="display:none" data-show="$opening">
+							<span
+								class="btn-loading-label"
+								style="display:none"
+								data-show="$opening"
+							>
 								@iconLoader()
 								Opening&hellip;
 							</span>

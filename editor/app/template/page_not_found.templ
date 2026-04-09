@@ -11,6 +11,7 @@ templ PageNotFound(path string) {
 					value={ "Hello, {name}!\n"+
 					"The page \"{text}\" you asked for, doesn''t exist.\n"+
 					"Want to go back, or to the dashboard?" }
+					data-attr:theme={ resolvedThemeExpr() }
 					readonly
 				></toki-editor>
 				<div role="group" class="button-group not-found-actions">
