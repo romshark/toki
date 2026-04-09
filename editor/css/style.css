@@ -152,11 +152,11 @@ body {
 }
 
 /* Responsive: desktop vs mobile navbar parts */
-.navbar-mobile-only { display: none; }
+.navbar-mobile-only { display: none !important; }
 
 @media (max-width: 48rem) {
 	.navbar-desktop-only { display: none !important; }
-	.navbar-mobile-only { display: flex; }
+	.navbar-mobile-only { display: flex !important; }
 }
 
 .btn-icon {

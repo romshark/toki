@@ -148,6 +148,7 @@ templ componentNavbarSearch(
 						class="input"
 						placeholder="Search..."
 						data-bind:searchquery
+						data-on:focus="$_navsearch=true"
 						data-on:input__debounce.300ms={ action.POSTPageTIKsFilter(
 							action.WithBefore("console.log('SEARCH')")) }
 					/>

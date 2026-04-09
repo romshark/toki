@@ -369,7 +369,7 @@ func componentNavbarSearch(
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<input type=\"search\" class=\"input\" placeholder=\"Search...\" data-bind:searchquery data-on:input__debounce.300ms=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<input type=\"search\" class=\"input\" placeholder=\"Search...\" data-bind:searchquery data-on:focus=\"$_navsearch=true\" data-on:input__debounce.300ms=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -377,7 +377,7 @@ func componentNavbarSearch(
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(action.POSTPageTIKsFilter(
 			action.WithBefore("console.log('SEARCH')")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 152, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 153, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 		if templ_7745c5c3_Err != nil {
@@ -423,7 +423,7 @@ func componentNavbarSearch(
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(action.POSTPageTIKsFilter(
 			action.WithBefore("console.log('SEARCH')")))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 183, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 184, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -466,7 +466,7 @@ func componentSidebarHeader() templ.Component {
 		var templ_7745c5c3_Var16 templ.SafeURL
 		templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinURLErrs(href.PageIndex())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 195, Col: 27}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 196, Col: 27}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 		if templ_7745c5c3_Err != nil {
@@ -479,7 +479,7 @@ func componentSidebarHeader() templ.Component {
 		var templ_7745c5c3_Var17 templ.SafeURL
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinURLErrs(href.PageSettings())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 199, Col: 30}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 200, Col: 30}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -529,7 +529,7 @@ func componentFilterRadio(value, label string, count int, selected bool) templ.C
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("$filtertype==='%s'", value))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 211, Col: 71}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 212, Col: 71}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 		if templ_7745c5c3_Err != nil {
@@ -542,7 +542,7 @@ func componentFilterRadio(value, label string, count int, selected bool) templ.C
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 215, Col: 17}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 216, Col: 17}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 		if templ_7745c5c3_Err != nil {
@@ -565,7 +565,7 @@ func componentFilterRadio(value, label string, count int, selected bool) templ.C
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(action.POSTPageTIKsFilter())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 220, Col: 48}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 221, Col: 48}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 		if templ_7745c5c3_Err != nil {
@@ -578,7 +578,7 @@ func componentFilterRadio(value, label string, count int, selected bool) templ.C
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 223, Col: 11}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 224, Col: 11}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -591,7 +591,7 @@ func componentFilterRadio(value, label string, count int, selected bool) templ.C
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(strfmt.Int(count))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 223, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 224, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
@@ -734,7 +734,7 @@ func componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) temp
 			var templ_7745c5c3_Var26 string
 			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Catalog.Locale)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 265, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 266, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
@@ -765,7 +765,7 @@ func componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) temp
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("editor-%s-%s", tikID, msg.Catalog.Locale))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 272, Col: 62}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 273, Col: 62}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
@@ -778,7 +778,7 @@ func componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) temp
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 273, Col: 22}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 274, Col: 22}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
@@ -791,7 +791,7 @@ func componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) temp
 		var templ_7745c5c3_Var29 string
 		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(tikID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 275, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 276, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 		if templ_7745c5c3_Err != nil {
@@ -804,7 +804,7 @@ func componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) temp
 		var templ_7745c5c3_Var30 string
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Catalog.Locale)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 276, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 277, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 		if templ_7745c5c3_Err != nil {
@@ -832,7 +832,7 @@ func componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) temp
 				)),
 			))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 286, Col: 5}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 287, Col: 5}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 			if templ_7745c5c3_Err != nil {
@@ -855,7 +855,7 @@ func componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) temp
 			var templ_7745c5c3_Var32 string
 			templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(msg.MessageOriginal)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 293, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 294, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 			if templ_7745c5c3_Err != nil {
@@ -872,7 +872,7 @@ func componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) temp
 				tikID, msg.Catalog.Locale,
 			))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 304, Col: 6}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 305, Col: 6}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var33))
 			if templ_7745c5c3_Err != nil {
@@ -891,7 +891,7 @@ func componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) temp
 			var templ_7745c5c3_Var34 string
 			templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(msg.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 312, Col: 24}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 313, Col: 24}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 			if templ_7745c5c3_Err != nil {
@@ -911,7 +911,7 @@ func componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) temp
 				var templ_7745c5c3_Var35 string
 				templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.JoinStringErrs(r)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 318, Col: 17}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 319, Col: 17}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var35))
 				if templ_7745c5c3_Err != nil {
@@ -991,7 +991,7 @@ func componentResetModal() templ.Component {
 			action.WithBefore("$resetmodalopen=false"),
 		))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 357, Col: 6}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 358, Col: 6}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 		if templ_7745c5c3_Err != nil {
@@ -1078,7 +1078,7 @@ func componentCopy(text string) templ.Component {
 		var templ_7745c5c3_Var41 string
 		templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 383, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 384, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 		if templ_7745c5c3_Err != nil {
@@ -1178,7 +1178,7 @@ func componentFontOption(signalName, currentValue string, f FontOption) templ.Co
 			"$%s==='%s' ? 'true' : 'false'", signalName, f.Value,
 		))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 418, Col: 3}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 419, Col: 3}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 		if templ_7745c5c3_Err != nil {
@@ -1193,7 +1193,7 @@ func componentFontOption(signalName, currentValue string, f FontOption) templ.Co
 			action.WithBefore(fmt.Sprintf("$%s=%q", signalName, f.Value)),
 		))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 421, Col: 3}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 422, Col: 3}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 		if templ_7745c5c3_Err != nil {
@@ -1211,7 +1211,7 @@ func componentFontOption(signalName, currentValue string, f FontOption) templ.Co
 			var templ_7745c5c3_Var46 string
 			templ_7745c5c3_Var46, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues("font-family:" + f.Family)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 426, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 427, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var46))
 			if templ_7745c5c3_Err != nil {
@@ -1229,7 +1229,7 @@ func componentFontOption(signalName, currentValue string, f FontOption) templ.Co
 		var templ_7745c5c3_Var47 string
 		templ_7745c5c3_Var47, templ_7745c5c3_Err = templ.JoinStringErrs(f.Preview)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 428, Col: 14}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 429, Col: 14}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var47))
 		if templ_7745c5c3_Err != nil {
@@ -1242,7 +1242,7 @@ func componentFontOption(signalName, currentValue string, f FontOption) templ.Co
 		var templ_7745c5c3_Var48 string
 		templ_7745c5c3_Var48, templ_7745c5c3_Err = templ.JoinStringErrs(f.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 429, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 430, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var48))
 		if templ_7745c5c3_Err != nil {
@@ -1298,7 +1298,7 @@ func componentFontSizeBtn(
 			"$%s==='%s' ? 'true' : 'false'", signalName, value,
 		))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 444, Col: 3}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 445, Col: 3}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var50))
 		if templ_7745c5c3_Err != nil {
@@ -1313,7 +1313,7 @@ func componentFontSizeBtn(
 			action.WithBefore(fmt.Sprintf("$%s=%q", signalName, value)),
 		))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 447, Col: 3}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 448, Col: 3}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var51))
 		if templ_7745c5c3_Err != nil {
@@ -1331,7 +1331,7 @@ func componentFontSizeBtn(
 			var templ_7745c5c3_Var52 string
 			templ_7745c5c3_Var52, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues("font-size:" + size + ";font-family:" + fontFamily)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 452, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 453, Col: 62}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var52))
 			if templ_7745c5c3_Err != nil {
@@ -1349,7 +1349,7 @@ func componentFontSizeBtn(
 			var templ_7745c5c3_Var53 string
 			templ_7745c5c3_Var53, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues("font-size:" + size)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 454, Col: 31}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 455, Col: 31}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var53))
 			if templ_7745c5c3_Err != nil {
@@ -1367,7 +1367,7 @@ func componentFontSizeBtn(
 		var templ_7745c5c3_Var54 string
 		templ_7745c5c3_Var54, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 457, Col: 39}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 458, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var54))
 		if templ_7745c5c3_Err != nil {
@@ -1410,7 +1410,7 @@ func componentDashboardCard(title, value, description string) templ.Component {
 		var templ_7745c5c3_Var56 string
 		templ_7745c5c3_Var56, templ_7745c5c3_Err = templ.JoinStringErrs(value)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 465, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 466, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var56))
 		if templ_7745c5c3_Err != nil {
@@ -1423,7 +1423,7 @@ func componentDashboardCard(title, value, description string) templ.Component {
 		var templ_7745c5c3_Var57 string
 		templ_7745c5c3_Var57, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 466, Col: 45}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 467, Col: 45}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var57))
 		if templ_7745c5c3_Err != nil {
@@ -1436,7 +1436,7 @@ func componentDashboardCard(title, value, description string) templ.Component {
 		var templ_7745c5c3_Var58 string
 		templ_7745c5c3_Var58, templ_7745c5c3_Err = templ.JoinStringErrs(description)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 469, Col: 47}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/components.templ`, Line: 470, Col: 47}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var58))
 		if templ_7745c5c3_Err != nil {
