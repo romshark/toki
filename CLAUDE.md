@@ -1,5 +1,7 @@
 # AI Instructions
 
+Toki is an i18n (internationalization) framework for Go. See [README.md](README.md) for more information.
+
 ## General Engineering
 
 - **Avoid unnecessary memory allocations** — prefer avoiding them when it doesn't add significant complexity or code volume (e.g. `strings.Builder` over `+=` in loops). One example where more allocations are fine is using `json.Marshal` over manual serialization because that greatly reduces code volume and code complexity.
