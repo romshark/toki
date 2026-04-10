@@ -89,7 +89,7 @@ func PageProjectDir(
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" data-signals:confirmdiscard=\"false\" data-signals:opening=\"false\"><div class=\"card\"><header><h1>Toki Project Directory</h1></header><section><div class=\"folder-picker\"><label><span>Project Folder</span> <input class=\"input\" type=\"text\" data-bind:folder placeholder=\"/path/to/your/project\"></label> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" data-signals:confirmdiscard=\"false\" data-signals:opening=\"false\"><div class=\"card\"><header><h1>Toki Project Directory</h1></header><section><div class=\"folder-picker\"><label><span>Project Folder</span> <input class=\"input\" type=\"text\" data-bind:folder placeholder=\"/path/to/your/project\" data-on:keydown=\"if(evt.key==='Enter'){evt.preventDefault();evt.target.closest('.folder-picker').querySelector('button.btn-primary:not([style*=none])').click()}\"></label> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -109,7 +109,7 @@ func PageProjectDir(
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(errMsg)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 40, Col: 25}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 41, Col: 25}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -136,7 +136,7 @@ func PageProjectDir(
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(strfmt.Int(numCorrupt))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 49, Col: 34}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 50, Col: 34}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -169,7 +169,7 @@ func PageProjectDir(
 					var templ_7745c5c3_Var8 string
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(repairErr)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 60, Col: 22}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 61, Col: 22}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 					if templ_7745c5c3_Err != nil {
@@ -220,7 +220,7 @@ func PageProjectDir(
 					action.WithBefore("$opening=true"),
 				))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 91, Col: 8}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 92, Col: 8}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 				if templ_7745c5c3_Err != nil {
@@ -251,7 +251,7 @@ func PageProjectDir(
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(strfmt.Int(numChanges))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 119, Col: 41}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 120, Col: 41}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {
@@ -264,7 +264,7 @@ func PageProjectDir(
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(strfmt.ChangeWord(numChanges))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 120, Col: 39}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 121, Col: 39}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -281,7 +281,7 @@ func PageProjectDir(
 					),
 				))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 139, Col: 9}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/page_project_dir.templ`, Line: 140, Col: 9}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {

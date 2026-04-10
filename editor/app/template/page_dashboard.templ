@@ -32,6 +32,7 @@ templ PageDashboard(stats DashboardStats) {
 									<a href="#domains" data-ignore-current>
 										@iconHierarchy()
 										Domains
+										<span class="badge-secondary">{ strfmt.Int(stats.NumDomains) }</span>
 									</a>
 								</li>
 							}
@@ -39,6 +40,7 @@ templ PageDashboard(stats DashboardStats) {
 								<a href="#locales" data-ignore-current>
 									@iconLanguages()
 									Locales
+									<span class="badge-secondary">{ strfmt.Int(stats.NumLocales) }</span>
 								</a>
 							</li>
 						</ul>
@@ -277,6 +279,7 @@ templ PageDashboard(stats DashboardStats) {
 						<h2 id="domains">
 							@iconHierarchy()
 							Domains
+							<span class="badge-secondary">{ strfmt.Int(stats.NumDomains) }</span>
 						</h2>
 						for _, d := range stats.Domains {
 							@dashboardDomainCard(d)
@@ -285,6 +288,7 @@ templ PageDashboard(stats DashboardStats) {
 					<h2 id="locales">
 						@iconLanguages()
 						Locales
+						<span class="badge-secondary">{ strfmt.Int(stats.NumLocales) }</span>
 					</h2>
 					<div class="dashboard-grid">
 						for _, ls := range stats.Locales {

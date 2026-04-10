@@ -32,6 +32,7 @@ templ PageProjectDir(
 								type="text"
 								data-bind:folder
 								placeholder="/path/to/your/project"
+								data-on:keydown="if(evt.key==='Enter'){evt.preventDefault();evt.target.closest('.folder-picker').querySelector('button.btn-primary:not([style*=none])').click()}"
 							/>
 						</label>
 						if errMsg != "" {
