@@ -160,6 +160,7 @@ templ TiksContentList(data DataIndex) {
 	<div id="tiks-list" class="contents">
 		if data.TotalFiltered == 0 {
 			<div class="no-results">
+				@iconCircleSlash()
 				No TIKs found for this filter.
 			</div>
 		} else {
