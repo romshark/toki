@@ -7,6 +7,39 @@
 	font-display: swap;
 }
 
+/* Enable cross-document view transitions on navigation */
+@view-transition {
+	navigation: auto;
+}
+
+/* Only transition the main content area */
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation: none;
+}
+
+main {
+	view-transition-name: main-content;
+}
+
+::view-transition-old(main-content) {
+	animation: 150ms ease-out both slide-out-left;
+}
+
+::view-transition-new(main-content) {
+	animation: 150ms ease-out both slide-in-left;
+}
+
+@keyframes slide-out-left {
+	from { opacity: 1; transform: translateX(0); }
+	to { opacity: 0; transform: translateX(-2rem); }
+}
+
+@keyframes slide-in-left {
+	from { opacity: 0; transform: translateX(2rem); }
+	to { opacity: 1; transform: translateX(0); }
+}
+
 /* page() wrapper content — layout-invisible so sidebar+main-area work */
 .page-content {
 	display: contents;
