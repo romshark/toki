@@ -162,6 +162,10 @@ templ TiksContentList(data DataIndex) {
 			<div class="no-results">
 				@iconCircleSlash()
 				No TIKs found for this filter.
+				<a
+					href={ href.PageTIKs(href.QueryPageTIKs{}) }
+					class="btn-secondary"
+				>Reset All Filters</a>
 			</div>
 		} else {
 			if data.WindowStart > 0 {
