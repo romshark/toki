@@ -153,8 +153,7 @@ templ componentNavbarSearch(
 							requestAnimationFrame(() => document.getElementById(
 								'navsearch-input')?.focus())
 						"
-						data-on:input__debounce.300ms={ action.POSTPageTIKsFilter(
-							action.WithBefore("console.log('SEARCH')")) }
+						data-on:input__debounce.300ms={ action.POSTPageTIKsFilter() }
 					/>
 				</div>
 				<!-- Mobile search button -->
@@ -189,8 +188,7 @@ templ componentNavbarSearch(
 					class="input"
 					placeholder="Search..."
 					data-bind:searchquery
-					data-on:input__debounce.300ms={ action.POSTPageTIKsFilter(
-						action.WithBefore("console.log('SEARCH')")) }
+					data-on:input__debounce.300ms={ action.POSTPageTIKsFilter() }
 				/>
 			</div>
 		</div>
