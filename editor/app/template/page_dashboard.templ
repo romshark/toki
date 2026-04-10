@@ -98,7 +98,8 @@ templ PageDashboard(stats DashboardStats) {
 								</p>
 							</section>
 						</a>
-						<div class="card">
+						<a href="#locales" class="card dashboard-stat-link">
+							<span class="stat-link-arrow">@iconArrowUpRight()</span>
 							<header>
 								<span class="dashboard-stat-value">
 									{ strfmt.Int(stats.NumLocales) }
@@ -111,7 +112,7 @@ templ PageDashboard(stats DashboardStats) {
 							<section>
 								<p class="dashboard-stat-desc">Languages configured</p>
 							</section>
-						</div>
+						</a>
 						<a href="#domains" class="card dashboard-stat-link">
 							<span class="stat-link-arrow">@iconArrowUpRight()</span>
 							<header>
