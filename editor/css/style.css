@@ -1078,6 +1078,10 @@ toki-editor {
 /* --- #page-tik --- */
 
 #page-tik {
+	& .card:not(.tik-card) {
+		gap: 0;
+	}
+
 	& h2 {
 		font-size: 1.5rem;
 		font-weight: 700;

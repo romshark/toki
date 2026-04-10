@@ -267,11 +267,6 @@ templ componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) {
 				@componentICUMessageBadges(msg)
 				@componentCopy(msg.Message)
 			</span>
-		} else {
-			<span class="icu-form-label">
-				ICU Message
-				@componentCopy(msg.Message)
-			</span>
 		}
 		<toki-editor
 			id={ fmt.Sprintf("editor-%s-%s", tikID, msg.Catalog.Locale) }

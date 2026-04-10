@@ -169,8 +169,12 @@ templ tikMainArea(tk *TIK) {
 							<span class="icu-form-label">
 								<strong class="locale-code">
 									{ msg.Catalog.Locale }
-								</strong> — ICU Message
+								</strong>
+								if msg.Catalog.Name != "" {
+									— { msg.Catalog.Name }
+								}
 								@componentICUMessageBadges(msg)
+								@componentCopy(msg.Message)
 							</span>
 						</header>
 						<section>
