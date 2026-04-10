@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/romshark/toki/editor/app/template/strfmt"
 	"github.com/romshark/toki/editor/datapagesgen/action"
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
@@ -153,9 +154,9 @@ templ PageTIKsContent(data DataIndex) {
 	</div>
 }
 
-// TiksContentList renders a bounded window of TIKs with sentinels at both ends.
-// Scrolling triggers a full morph of #tiks-list — morphdom diffs by element ID,
-// preserving items in the overlap. Browser scroll anchoring maintains position.
+// TiksContentList renders the current page of TIKs surrounded by a
+// pagination bar at the top and bottom. The whole list is morphed in
+// place on page or page-size change.
 templ TiksContentList(data DataIndex) {
 	<div id="tiks-list" class="contents">
 		if data.TotalFiltered == 0 {
@@ -168,38 +169,130 @@ templ TiksContentList(data DataIndex) {
 				>Reset All Filters</a>
 			</div>
 		} else {
-			if data.WindowStart > 0 {
-				<div
-					id="tiks-sentinel-up"
-					class="loading-indicator"
-					data-on-intersect__once={ action.POSTPageTIKsScrollUp(
-							action.WithBefore(fmt.Sprintf(
-								"$windowstart=%d",
-								max(0, data.WindowStart-data.WindowSize/2),
-							)),
-						) }
-				>
-					@componentLoadingDots()
-				</div>
-			}
+			@componentPaginationBar(data, "top")
 			for _, tik := range data.TIKs {
 				@TikSectionFull(tik)
 			}
-			if data.WindowStart+len(data.TIKs) < data.TotalFiltered {
-				<div
-					id="tiks-sentinel-down"
-					class="loading-indicator"
-					data-on-intersect__once={ action.POSTPageTIKsScrollDown(
-							action.WithBefore(fmt.Sprintf(
-								"$windowstart=%d", data.WindowStart+data.WindowSize/2,
-							)),
-						) }
-				>
-					@componentLoadingDots()
-				</div>
-			}
+			@componentPaginationBar(data, "bottom")
 		}
 	</div>
+}
+
+// componentPaginationBar groups the per-page selector and the
+// pagination nav into a single bar rendered above and below the list.
+// position is "top" or "bottom" — used purely to keep ids unique.
+templ componentPaginationBar(data DataIndex, position string) {
+	<div class="pagination-bar">
+		@componentPageSizeSelector(data, position)
+		@componentPaginationStatus(data)
+		@componentPagination(data)
+	</div>
+}
+
+// componentPageSizeSelector renders the per-page <select> bound to the
+// $pagesize signal; changes POST to /tiks/set-page-size/.
+templ componentPageSizeSelector(data DataIndex, position string) {
+	<label class="pagination-page-size">
+		<span>Per page</span>
+		<select
+			id={ fmt.Sprintf("pagesize-%s", position) }
+			class="select"
+			data-bind:pagesize
+			data-on:change={ action.POSTPageTIKsSetPageSize() }
+		>
+			for _, opt := range PageSizeOptions {
+				<option
+					value={ strfmt.Int(opt) }
+					if opt == data.PageSize {
+						selected
+					}
+				>{ strfmt.Int(opt) }</option>
+			}
+		</select>
+	</label>
+}
+
+// componentPaginationStatus shows the current item range out of total.
+templ componentPaginationStatus(data DataIndex) {
+	{{ first := data.PageIdx*data.PageSize + 1 }}
+	{{ last := first + len(data.TIKs) - 1 }}
+	<span class="pagination-status">
+		if data.TotalFiltered == 0 {
+			0 of 0
+		} else {
+			{ strfmt.Int(first) }–{ strfmt.Int(last) } of { strfmt.Int(data.TotalFiltered) }
+		}
+	</span>
+}
+
+// componentPagination renders a basecoat-styled pagination nav
+// for the TIKs list page. Page changes POST to /tiks/set-page/.
+templ componentPagination(data DataIndex) {
+	{{ totalPages := data.TotalPages() }}
+	if totalPages > 1 {
+		<nav role="navigation" aria-label="pagination" class="pagination">
+			<ul>
+				{{ prev := data.PageIdx }}
+				<li>
+					<button
+						type="button"
+						class="btn-ghost"
+						if data.PageIdx == 0 {
+							disabled
+						}
+						aria-label="Previous page"
+						data-on:click={ action.POSTPageTIKsSetPage(
+							action.WithBefore(fmt.Sprintf("$page=%d", prev)),
+						) }
+					>
+						@iconChevronLeft()
+						Previous
+					</button>
+				</li>
+				for _, p := range paginationItems(data.PageIdx, totalPages) {
+					if p.IsEllipsis {
+						<li>
+							<div class="pagination-ellipsis" aria-hidden="true">
+								@iconMoreHorizontal()
+							</div>
+						</li>
+					} else {
+						{{ isCurrent := p.Page-1 == data.PageIdx }}
+						<li>
+							<button
+								type="button"
+								class={ paginationPageClass(isCurrent) }
+								if isCurrent {
+									aria-current="page"
+								}
+								aria-label={ fmt.Sprintf("Page %d", p.Page) }
+								data-on:click={ action.POSTPageTIKsSetPage(
+									action.WithBefore(fmt.Sprintf("$page=%d", p.Page)),
+								) }
+							>{ strfmt.Int(p.Page) }</button>
+						</li>
+					}
+				}
+				{{ next := data.PageIdx + 2 }}
+				<li>
+					<button
+						type="button"
+						class="btn-ghost"
+						if data.PageIdx >= totalPages-1 {
+							disabled
+						}
+						aria-label="Next page"
+						data-on:click={ action.POSTPageTIKsSetPage(
+							action.WithBefore(fmt.Sprintf("$page=%d", next)),
+						) }
+					>
+						Next
+						@iconChevronRight()
+					</button>
+				</li>
+			</ul>
+		</nav>
+	}
 }
 
 // TikSectionFull renders the full TIK card with ICU messages and editors.
@@ -310,4 +403,81 @@ func tikChangedCount(tk *TIK) int {
 		}
 	}
 	return n
+}
+
+// PaginationItem represents a single entry in the pagination control —
+// either a 1-based page number or an ellipsis placeholder.
+type PaginationItem struct {
+	Page       int
+	IsEllipsis bool
+}
+
+// paginationPageClass returns the basecoat button class for a numeric
+// pagination entry — outlined for the current page, ghost otherwise.
+func paginationPageClass(isCurrent bool) string {
+	if isCurrent {
+		return "btn-icon-outline"
+	}
+	return "btn-icon-ghost"
+}
+
+// paginationItems builds the list of page numbers and ellipses to display
+// for the given current page (0-based) and total page count. It always
+// shows the first and last page; near the current page it shows a window
+// of neighbors; gaps are collapsed into a single ellipsis.
+func paginationItems(currentPageIdx, totalPages int) []PaginationItem {
+	if totalPages <= 0 {
+		return nil
+	}
+	// For small page counts, list every page.
+	const maxPagesWithoutEllipsis = 7
+	if totalPages <= maxPagesWithoutEllipsis {
+		items := make([]PaginationItem, 0, totalPages)
+		for i := 1; i <= totalPages; i++ {
+			items = append(items, PaginationItem{Page: i})
+		}
+		return items
+	}
+
+	current := currentPageIdx + 1 // 1-based for display
+	if current < 1 {
+		current = 1
+	}
+	if current > totalPages {
+		current = totalPages
+	}
+
+	pages := map[int]bool{
+		1:          true,
+		totalPages: true,
+		current:    true,
+	}
+	if current-1 >= 1 {
+		pages[current-1] = true
+	}
+	if current+1 <= totalPages {
+		pages[current+1] = true
+	}
+
+	sorted := make([]int, 0, len(pages))
+	for p := range pages {
+		sorted = append(sorted, p)
+	}
+	// Insertion sort — at most 5 entries.
+	for i := 1; i < len(sorted); i++ {
+		for j := i; j > 0 && sorted[j-1] > sorted[j]; j-- {
+			sorted[j-1], sorted[j] = sorted[j], sorted[j-1]
+		}
+	}
+
+	items := make([]PaginationItem, 0, len(sorted)+2)
+	prev := 0
+	for _, p := range sorted {
+		if prev != 0 && p-prev > 1 {
+			items = append(items, PaginationItem{IsEllipsis: true})
+		}
+		items = append(items, PaginationItem{Page: p})
+		prev = p
+	}
+	return items
 }

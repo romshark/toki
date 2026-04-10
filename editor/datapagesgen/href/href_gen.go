@@ -7,6 +7,7 @@ package href
 import (
 	"log/slog"
 	"path"
+	"strconv"
 	"strings"
 	"sync/atomic"
 
@@ -75,10 +76,24 @@ func PageTIK(id string) string {
 
 // PageTIKs references /tiks/{$}
 func PageTIKs(query QueryPageTIKs) string {
+	var (
+		pStr  string
+		psStr string
+	)
+
+	if query.Page != 0 {
+		pStr = strconv.FormatInt(int64(query.Page), 10)
+	}
+	if query.PageSize != 0 {
+		psStr = strconv.FormatInt(int64(query.PageSize), 10)
+	}
+
 	anyQuery := query.Filter != "" ||
 		query.Locales != "" ||
 		query.Domains != "" ||
-		query.Search != ""
+		query.Search != "" ||
+		query.Page != 0 ||
+		query.PageSize != 0
 
 	var b strings.Builder
 	l := len("/tiks/")
@@ -116,6 +131,20 @@ func PageTIKs(query QueryPageTIKs) string {
 		}
 		n++
 		l += len("q=") + len(query.Search)
+	}
+	if query.Page != 0 {
+		if n > 0 {
+			l += len("&")
+		}
+		n++
+		l += len("p=") + len(pStr)
+	}
+	if query.PageSize != 0 {
+		if n > 0 {
+			l += len("&")
+		}
+		n++
+		l += len("ps=") + len(psStr)
 	}
 	_ = n
 
@@ -156,8 +185,24 @@ func PageTIKs(query QueryPageTIKs) string {
 		if n > 0 {
 			b.WriteString("&")
 		}
+		n++
 		b.WriteString("q=")
 		b.WriteString(query.Search)
+	}
+	if query.Page != 0 {
+		if n > 0 {
+			b.WriteString("&")
+		}
+		n++
+		b.WriteString("p=")
+		b.WriteString(pStr)
+	}
+	if query.PageSize != 0 {
+		if n > 0 {
+			b.WriteString("&")
+		}
+		b.WriteString("ps=")
+		b.WriteString(psStr)
 	}
 
 	return b.String()
@@ -165,8 +210,10 @@ func PageTIKs(query QueryPageTIKs) string {
 
 // QueryPageTIKs is the query parameters for PageTIKs
 type QueryPageTIKs struct {
-	Filter  string `query:"f"`
-	Locales string `query:"l"`
-	Domains string `query:"d"`
-	Search  string `query:"q"`
+	Filter   string `query:"f"`
+	Locales  string `query:"l"`
+	Domains  string `query:"d"`
+	Search   string `query:"q"`
+	Page     int    `query:"p"`
+	PageSize int    `query:"ps"`
 }

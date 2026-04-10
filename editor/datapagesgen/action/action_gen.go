@@ -259,32 +259,32 @@ func POSTPageTIKsHideAllLocales(options ...option) string {
 	return b.String()
 }
 
-// POSTPageTIKsScrollDown references /tiks/scroll-down/
-func POSTPageTIKsScrollDown(options ...option) string {
+// POSTPageTIKsSetPage references /tiks/set-page/
+func POSTPageTIKsSetPage(options ...option) string {
 	if len(options) == 0 {
-		return "@post('/tiks/scroll-down/')"
+		return "@post('/tiks/set-page/')"
 	}
 	var b strings.Builder
 	bl, al := beforeAfterLen(options)
-	b.Grow(bl + len("@post('/tiks/scroll-down/'") + optionsLen(options) + len(")") + al)
+	b.Grow(bl + len("@post('/tiks/set-page/'") + optionsLen(options) + len(")") + al)
 	writeBefore(&b, options)
-	b.WriteString("@post('/tiks/scroll-down/'")
+	b.WriteString("@post('/tiks/set-page/'")
 	writeOptions(&b, options)
 	b.WriteByte(')')
 	writeAfter(&b, options)
 	return b.String()
 }
 
-// POSTPageTIKsScrollUp references /tiks/scroll-up/
-func POSTPageTIKsScrollUp(options ...option) string {
+// POSTPageTIKsSetPageSize references /tiks/set-page-size/
+func POSTPageTIKsSetPageSize(options ...option) string {
 	if len(options) == 0 {
-		return "@post('/tiks/scroll-up/')"
+		return "@post('/tiks/set-page-size/')"
 	}
 	var b strings.Builder
 	bl, al := beforeAfterLen(options)
-	b.Grow(bl + len("@post('/tiks/scroll-up/'") + optionsLen(options) + len(")") + al)
+	b.Grow(bl + len("@post('/tiks/set-page-size/'") + optionsLen(options) + len(")") + al)
 	writeBefore(&b, options)
-	b.WriteString("@post('/tiks/scroll-up/'")
+	b.WriteString("@post('/tiks/set-page-size/'")
 	writeOptions(&b, options)
 	b.WriteByte(')')
 	writeAfter(&b, options)

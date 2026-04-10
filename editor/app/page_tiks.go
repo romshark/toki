@@ -18,10 +18,12 @@ type PageTIKs struct{ App *App }
 func (p PageTIKs) GET(
 	r *http.Request,
 	query struct {
-		Filter  string `query:"f" reflectsignal:"filtertype"`
-		Locales string `query:"l" reflectsignal:"shownlocales"`
-		Domains string `query:"d" reflectsignal:"showndomains"`
-		Search  string `query:"q" reflectsignal:"searchquery"`
+		Filter   string `query:"f" reflectsignal:"filtertype"`
+		Locales  string `query:"l" reflectsignal:"shownlocales"`
+		Domains  string `query:"d" reflectsignal:"showndomains"`
+		Search   string `query:"q" reflectsignal:"searchquery"`
+		Page     int    `query:"p" reflectsignal:"page"`
+		PageSize int    `query:"ps" reflectsignal:"pagesize"`
 	},
 ) (
 	body templ.Component,
@@ -55,8 +57,12 @@ func (p PageTIKs) GET(
 
 	showLocales := parseLocalesParam(query.Locales)
 	showDomains := parseDomainsParam(query.Domains)
+	pageIdx := query.Page - 1 // URL is 1-based, internal is 0-based
+	if pageIdx < 0 {
+		pageIdx = 0
+	}
 	data := p.App.buildFilteredDataIndex(
-		query.Filter, showLocales, showDomains, 0, query.Search)
+		query.Filter, showLocales, showDomains, pageIdx, query.PageSize, query.Search)
 	body = template.PageTIKs(data)
 	return
 }
@@ -69,16 +75,24 @@ func (p PageTIKs) StreamOpen(
 		ShowLocales map[string]bool `json:"showlocales"`
 		ShowDomains map[string]bool `json:"showdomains"`
 		SearchQuery string          `json:"searchquery"`
+		Page        int             `json:"page"`
+		PageSize    int             `json:"pagesize"`
 		InstanceID  string          `json:"instance_id"`
 	},
 ) error {
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
+	pageIdx := signals.Page - 1 // signal is 1-based, internal is 0-based
+	if pageIdx < 0 {
+		pageIdx = 0
+	}
 	p.App.registerTIKsStreamLocked(streamID, signals.InstanceID, pageTIKsState{
 		filterType:  normalizeFilterType(signals.FilterType),
 		showLocales: signals.ShowLocales,
 		showDomains: normalizeDomainsSignal(signals.ShowDomains),
 		searchQuery: signals.SearchQuery,
+		pageIdx:     pageIdx,
+		pageSize:    template.NormalizePageSize(signals.PageSize),
 	})
 	return nil
 }
@@ -121,9 +135,20 @@ func (p PageTIKs) OnUpdated(
 	}
 
 	data := p.App.buildFilteredDataIndex(
-		vs.filterType, vs.showLocales, vs.showDomains, vs.windowStart, vs.searchQuery)
+		vs.filterType, vs.showLocales, vs.showDomains,
+		vs.pageIdx, vs.pageSize, vs.searchQuery)
 	if err := sse.PatchElementTempl(template.PageTIKsContent(data)); err != nil {
 		return err
+	}
+	// The build call may have clamped the page index — keep state and the
+	// URL/signal in sync if so.
+	if data.PageIdx != vs.pageIdx {
+		vs.pageIdx = data.PageIdx
+		if err := sse.MarshalAndPatchSignals(struct {
+			Page int `json:"page"`
+		}{Page: data.PageIdx + 1}); err != nil {
+			return err
+		}
 	}
 	return sse.ExecuteScript(syncEditorsScript(data.TIKs, exclude))
 }
@@ -156,7 +181,11 @@ func (p PageTIKs) renderFromViewState(
 ) error {
 	data := p.App.buildFilteredDataIndex(
 		vs.filterType, vs.showLocales, vs.showDomains,
-		vs.windowStart, vs.searchQuery)
+		vs.pageIdx, vs.pageSize, vs.searchQuery)
+	// The build call may have clamped the page index or normalized page
+	// size — keep state in sync.
+	vs.pageIdx = data.PageIdx
+	vs.pageSize = data.PageSize
 	if err := sse.PatchElementTempl(template.PageTIKsContent(data)); err != nil {
 		return err
 	}
@@ -176,11 +205,15 @@ func (p PageTIKs) renderFromViewState(
 		ShowDomains  map[string]bool `json:"showdomains"`
 		ShownLocales string          `json:"shownlocales"`
 		ShownDomains string          `json:"showndomains"`
+		Page         int             `json:"page"`
+		PageSize     int             `json:"pagesize"`
 	}{
 		ShowLocales:  localeSignals,
 		ShowDomains:  domainSignals,
 		ShownLocales: serializeShownSignal(vs.showLocales),
 		ShownDomains: serializeShownSignal(vs.showDomains),
+		Page:         data.PageIdx + 1,
+		PageSize:     data.PageSize,
 	}); err != nil {
 		return err
 	}
@@ -213,7 +246,7 @@ func (p PageTIKs) POSTFilter(
 
 	ft := normalizeFilterType(signals.FilterType)
 	if vs.filterType != ft || vs.searchQuery != signals.SearchQuery {
-		vs.windowStart = 0
+		vs.pageIdx = 0
 	}
 	vs.filterType = ft
 	vs.showLocales = signals.ShowLocales
@@ -303,48 +336,14 @@ func (p PageTIKs) POSTHideAllDomains(
 	return p.renderFromViewState(sse, vs)
 }
 
-// POSTScrollDown is /tiks/scroll-down/{$}
-func (p PageTIKs) POSTScrollDown(
+// POSTSetPage is /tiks/set-page/{$}
+func (p PageTIKs) POSTSetPage(
 	r *http.Request,
 	sse *datastar.ServerSentEventGenerator,
 	signals struct {
-		FilterType  string          `json:"filtertype"`
-		ShowLocales map[string]bool `json:"showlocales"`
-		ShowDomains map[string]bool `json:"showdomains"`
-		SearchQuery string          `json:"searchquery"`
-		WindowStart int             `json:"windowstart"`
-		InstanceID  string          `json:"instance_id"`
+		Page       int    `json:"page"`
+		InstanceID string `json:"instance_id"`
 	},
-) error {
-	return p.handleScroll(
-		sse, signals.FilterType, signals.ShowLocales,
-		normalizeDomainsSignal(signals.ShowDomains),
-		signals.SearchQuery, signals.WindowStart, signals.InstanceID, false)
-}
-
-// POSTScrollUp is /tiks/scroll-up/{$}
-func (p PageTIKs) POSTScrollUp(
-	r *http.Request,
-	sse *datastar.ServerSentEventGenerator,
-	signals struct {
-		FilterType  string          `json:"filtertype"`
-		ShowLocales map[string]bool `json:"showlocales"`
-		ShowDomains map[string]bool `json:"showdomains"`
-		SearchQuery string          `json:"searchquery"`
-		WindowStart int             `json:"windowstart"`
-		InstanceID  string          `json:"instance_id"`
-	},
-) error {
-	return p.handleScroll(sse, signals.FilterType, signals.ShowLocales,
-		normalizeDomainsSignal(signals.ShowDomains),
-		signals.SearchQuery, signals.WindowStart, signals.InstanceID, true)
-}
-
-func (p PageTIKs) handleScroll(
-	sse *datastar.ServerSentEventGenerator,
-	filterType string, showLocales, showDomains map[string]bool,
-	searchQuery string, windowStart int, instanceID string,
-	scrollUp bool,
 ) error {
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
@@ -353,47 +352,60 @@ func (p PageTIKs) handleScroll(
 		return httperr.BadRequest
 	}
 
-	ft := normalizeFilterType(filterType)
-	if vs := p.App.tiksViews[instanceID]; vs != nil {
-		vs.windowStart = windowStart
+	vs := p.App.tiksViews[signals.InstanceID]
+	if vs == nil {
+		return httperr.BadRequest
 	}
 
-	data := p.App.buildFilteredDataIndex(
-		ft, showLocales, showDomains, windowStart, searchQuery,
-	)
-
-	if scrollUp {
-		// Before morph: find the first visible card and record its viewport
-		// position so we can restore it after items are inserted above.
-		if err := sse.ExecuteScript(
-			`(function(){
-				var m=document.querySelector('#page-tiks main');
-				var cards=m.querySelectorAll('section.card[id]');
-				for(var i=0;i<cards.length;i++){
-				var r=cards[i].getBoundingClientRect();
-				if(r.bottom>0){window._tikAnchor={id:cards[i].id,top:r.top};return}}
-			})()`,
-		); err != nil {
-			return err
-		}
+	pageIdx := signals.Page - 1 // signal is 1-based, internal is 0-based
+	if pageIdx < 0 {
+		pageIdx = 0
 	}
+	vs.pageIdx = pageIdx
 
-	if err := sse.PatchElementTempl(template.TiksContentList(data)); err != nil {
+	if err := sse.ExecuteScript(
+		`document.querySelector('#page-tiks main')?.scrollTo({top:0})`,
+	); err != nil {
 		return err
 	}
+	return p.renderFromViewState(sse, vs)
+}
 
-	if scrollUp {
-		// After morph: find the same card and scroll so it's at the
-		// same viewport position as before.
-		return sse.ExecuteScript(
-			`if(window._tikAnchor&&window._tikAnchor.id){
-				var el=document.getElementById(window._tikAnchor.id);
-				if(el){
-				var m=document.querySelector('#page-tiks main');
-				m.scrollTop+=el.getBoundingClientRect().top-window._tikAnchor.top
-				}}
-			`,
-		)
+// POSTSetPageSize is /tiks/set-page-size/{$}
+//
+// Changing the per-page count preserves the user's position by mapping
+// the first item of the old page onto the new page that contains it.
+func (p PageTIKs) POSTSetPageSize(
+	r *http.Request,
+	sse *datastar.ServerSentEventGenerator,
+	signals struct {
+		PageSize   int    `json:"pagesize"`
+		InstanceID string `json:"instance_id"`
+	},
+) error {
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
+
+	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
+		return httperr.BadRequest
 	}
-	return nil
+
+	vs := p.App.tiksViews[signals.InstanceID]
+	if vs == nil {
+		return httperr.BadRequest
+	}
+
+	newSize := template.NormalizePageSize(signals.PageSize)
+	if vs.pageSize > 0 && newSize != vs.pageSize {
+		firstItem := vs.pageIdx * vs.pageSize
+		vs.pageIdx = firstItem / newSize
+	}
+	vs.pageSize = newSize
+
+	if err := sse.ExecuteScript(
+		`document.querySelector('#page-tiks main')?.scrollTo({top:0})`,
+	); err != nil {
+		return err
+	}
+	return p.renderFromViewState(sse, vs)
 }

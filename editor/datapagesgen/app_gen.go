@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -596,11 +597,11 @@ func setupHandlers(s *Server) {
 		"POST /tiks/hide-all-domains/{$}",
 		s.handlePageTIKsPOSTHideAllDomains)
 	s.mux.HandleFunc(
-		"POST /tiks/scroll-down/{$}",
-		s.handlePageTIKsPOSTScrollDown)
+		"POST /tiks/set-page/{$}",
+		s.handlePageTIKsPOSTSetPage)
 	s.mux.HandleFunc(
-		"POST /tiks/scroll-up/{$}",
-		s.handlePageTIKsPOSTScrollUp)
+		"POST /tiks/set-page-size/{$}",
+		s.handlePageTIKsPOSTSetPageSize)
 }
 
 func (s *Server) httpErrIntern(
@@ -1159,15 +1160,37 @@ func (s *Server) handlePageTIKsGET(w http.ResponseWriter, r *http.Request) {
 
 	q := r.URL.Query()
 	var query struct {
-		Filter  string `query:"f" reflectsignal:"filtertype"`
-		Locales string `query:"l" reflectsignal:"shownlocales"`
-		Domains string `query:"d" reflectsignal:"showndomains"`
-		Search  string `query:"q" reflectsignal:"searchquery"`
+		Filter   string `query:"f" reflectsignal:"filtertype"`
+		Locales  string `query:"l" reflectsignal:"shownlocales"`
+		Domains  string `query:"d" reflectsignal:"showndomains"`
+		Search   string `query:"q" reflectsignal:"searchquery"`
+		Page     int    `query:"p" reflectsignal:"page"`
+		PageSize int    `query:"ps" reflectsignal:"pagesize"`
 	}
 	query.Filter = q.Get("f")
 	query.Locales = q.Get("l")
 	query.Domains = q.Get("d")
 	query.Search = q.Get("q")
+	{
+		if q := q.Get("p"); q != "" {
+			i, err := strconv.ParseInt(q, 10, 0)
+			if err != nil {
+				s.httpErrBad(w, "unexpected value for query parameter: p", err)
+				return
+			}
+			query.Page = int(i)
+		}
+	}
+	{
+		if q := q.Get("ps"); q != "" {
+			i, err := strconv.ParseInt(q, 10, 0)
+			if err != nil {
+				s.httpErrBad(w, "unexpected value for query parameter: ps", err)
+				return
+			}
+			query.PageSize = int(i)
+		}
+	}
 
 	p := app.PageTIKs{
 		App: s.app,
@@ -1202,6 +1225,14 @@ func (s *Server) handlePageTIKsGET(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.WriteString(w, `data-signals:searchquery="'`)
 		_, _ = io.WriteString(w, query.Search)
 		_, _ = io.WriteString(w, `'"`)
+
+		_, _ = io.WriteString(w, `data-signals:page="`)
+		_, _ = io.WriteString(w, strconv.FormatInt(int64(query.Page), 10))
+		_, _ = io.WriteString(w, `"`)
+
+		_, _ = io.WriteString(w, `data-signals:pagesize="`)
+		_, _ = io.WriteString(w, strconv.FormatInt(int64(query.PageSize), 10))
+		_, _ = io.WriteString(w, `"`)
 	}
 
 	bodySuffix := func(w http.ResponseWriter) {
@@ -1218,6 +1249,8 @@ func (s *Server) handlePageTIKsGET(w http.ResponseWriter, r *http.Request) {
 			if ($shownlocales) params.set('l', $shownlocales);
 			if ($showndomains) params.set('d', $showndomains);
 			if ($searchquery) params.set('q', $searchquery);
+			if ($page) params.set('p', $page);
+			if ($pagesize) params.set('ps', $pagesize);
 			const query = params.toString();
 			window.history.replaceState(null, '', query ? '/tiks?' + query : '/tiks');
 		"`)
@@ -1241,6 +1274,8 @@ func (s *Server) handlePageTIKsGETStream(w http.ResponseWriter, r *http.Request)
 		ShowLocales map[string]bool `json:"showlocales"`
 		ShowDomains map[string]bool `json:"showdomains"`
 		SearchQuery string          `json:"searchquery"`
+		Page        int             `json:"page"`
+		PageSize    int             `json:"pagesize"`
 		InstanceID  string          `json:"instance_id"`
 	}
 	if err := datastar.ReadSignals(r, &signals); err != nil {
@@ -1421,19 +1456,15 @@ func (s *Server) handlePageTIKsPOSTHideAllDomains(
 	}
 }
 
-func (s *Server) handlePageTIKsPOSTScrollDown(
+func (s *Server) handlePageTIKsPOSTSetPage(
 	w http.ResponseWriter, r *http.Request,
 ) {
 	if !s.checkIsDSReq(w, r) {
 		return
 	}
 	var signals struct {
-		FilterType  string          `json:"filtertype"`
-		ShowLocales map[string]bool `json:"showlocales"`
-		ShowDomains map[string]bool `json:"showdomains"`
-		SearchQuery string          `json:"searchquery"`
-		WindowStart int             `json:"windowstart"`
-		InstanceID  string          `json:"instance_id"`
+		Page       int    `json:"page"`
+		InstanceID string `json:"instance_id"`
 	}
 	if err := datastar.ReadSignals(r, &signals); err != nil {
 		s.httpErrBad(w, "reading signals", err)
@@ -1444,26 +1475,22 @@ func (s *Server) handlePageTIKsPOSTScrollDown(
 	p := app.PageTIKs{
 		App: s.app,
 	}
-	err := p.POSTScrollDown(r, sse, signals)
+	err := p.POSTSetPage(r, sse, signals)
 	if err != nil {
-		s.httpErrIntern(w, r, sse, "handling action PageTIKs.ScrollDown", err)
+		s.httpErrIntern(w, r, sse, "handling action PageTIKs.SetPage", err)
 		return
 	}
 }
 
-func (s *Server) handlePageTIKsPOSTScrollUp(
+func (s *Server) handlePageTIKsPOSTSetPageSize(
 	w http.ResponseWriter, r *http.Request,
 ) {
 	if !s.checkIsDSReq(w, r) {
 		return
 	}
 	var signals struct {
-		FilterType  string          `json:"filtertype"`
-		ShowLocales map[string]bool `json:"showlocales"`
-		ShowDomains map[string]bool `json:"showdomains"`
-		SearchQuery string          `json:"searchquery"`
-		WindowStart int             `json:"windowstart"`
-		InstanceID  string          `json:"instance_id"`
+		PageSize   int    `json:"pagesize"`
+		InstanceID string `json:"instance_id"`
 	}
 	if err := datastar.ReadSignals(r, &signals); err != nil {
 		s.httpErrBad(w, "reading signals", err)
@@ -1474,9 +1501,9 @@ func (s *Server) handlePageTIKsPOSTScrollUp(
 	p := app.PageTIKs{
 		App: s.app,
 	}
-	err := p.POSTScrollUp(r, sse, signals)
+	err := p.POSTSetPageSize(r, sse, signals)
 	if err != nil {
-		s.httpErrIntern(w, r, sse, "handling action PageTIKs.ScrollUp", err)
+		s.httpErrIntern(w, r, sse, "handling action PageTIKs.SetPageSize", err)
 		return
 	}
 }

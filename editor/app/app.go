@@ -57,7 +57,8 @@ type pageTIKsState struct {
 	filterType  string
 	showLocales map[string]bool
 	showDomains map[string]bool
-	windowStart int
+	pageIdx     int
+	pageSize    int
 	searchQuery string
 	refCount    int
 }
@@ -600,6 +601,8 @@ func (a *App) registerTIKsStreamLocked(streamID uint64, instanceID string, vs pa
 		existing.showLocales = vs.showLocales
 		existing.showDomains = vs.showDomains
 		existing.searchQuery = vs.searchQuery
+		existing.pageIdx = vs.pageIdx
+		existing.pageSize = vs.pageSize
 		existing.refCount++
 	} else {
 		vs.refCount = 1
@@ -1405,14 +1408,14 @@ func (a *App) buildTIKForDisplay(
 }
 
 // buildFilteredDataIndex builds a DataIndex with server-side filtering
-// and virtual scroll windowing. Only TIKs within the window get full
-// ICU validation; the rest are just counted for filter stats.
+// and pagination. Only TIKs within the current page get full ICU
+// validation; the rest are just counted for filter stats.
 //
 // When searchQuery is non-empty, filter stats are skipped and results
 // are fetched directly from the FTS5 index with LIMIT/OFFSET.
 func (a *App) buildFilteredDataIndex(
 	filterType string, showLocales, showDomains map[string]bool,
-	windowStart int, searchQuery string,
+	pageIdx, pageSize int, searchQuery string,
 ) template.DataIndex {
 	data := template.DataIndex{
 		Dir:             a.dir,
@@ -1421,7 +1424,7 @@ func (a *App) buildFilteredDataIndex(
 		FilterType:      filterType,
 		CanApplyChanges: a.canApplyChangesLocked(),
 		TotalChanges:    len(a.changed),
-		WindowSize:      template.DefaultWindowSize,
+		PageSize:        template.NormalizePageSize(pageSize),
 		SearchQuery:     searchQuery,
 	}
 
@@ -1458,31 +1461,34 @@ func (a *App) buildFilteredDataIndex(
 	}
 
 	if searchQuery != "" && a.indexDB != nil {
-		return a.buildSearchDataIndex(data, showLocales, windowStart, searchQuery)
+		return a.buildSearchDataIndex(data, showLocales, pageIdx, searchQuery)
 	}
-	return a.buildFilterDataIndex(data, showLocales, windowStart, filterType)
+	return a.buildFilterDataIndex(data, showLocales, pageIdx, filterType)
 }
 
 // buildSearchDataIndex handles the FTS search path — paginated DB query,
 // no full iteration over a.tiks, no filter stats.
 func (a *App) buildSearchDataIndex(
 	data template.DataIndex, showLocales map[string]bool,
-	windowStart int, searchQuery string,
+	pageIdx int, searchQuery string,
 ) template.DataIndex {
-	if windowStart < 0 {
-		windowStart = 0
+	if pageIdx < 0 {
+		pageIdx = 0
 	}
 
-	result, err := a.indexDB.SearchTIKs(searchQuery, windowStart, data.WindowSize)
+	result, err := a.indexDB.SearchTIKs(
+		searchQuery, pageIdx*data.PageSize, data.PageSize,
+	)
 	if err != nil {
 		return data
 	}
 
 	data.TotalFiltered = result.Total
-	if windowStart >= result.Total {
-		windowStart = max(0, result.Total-data.WindowSize)
+	totalPages := data.TotalPages()
+	if totalPages > 0 && pageIdx >= totalPages {
+		pageIdx = totalPages - 1
 	}
-	data.WindowStart = windowStart
+	data.PageIdx = pageIdx
 
 	for _, id := range result.TIKIDs {
 		if tk := a.tiksByID[id]; tk != nil {
@@ -1494,10 +1500,10 @@ func (a *App) buildSearchDataIndex(
 }
 
 // buildFilterDataIndex handles the non-search path — full iteration
-// over a.tiks with filter stats and virtual scroll windowing.
+// over a.tiks with filter stats and pagination.
 func (a *App) buildFilterDataIndex(
 	data template.DataIndex, showLocales map[string]bool,
-	windowStart int, filterType string,
+	pageIdx int, filterType string,
 ) template.DataIndex {
 	filtered := make([]int, 0, len(a.tiks))
 	for i, tk := range a.tiks {
@@ -1552,19 +1558,21 @@ func (a *App) buildFilterDataIndex(
 
 	data.TotalFiltered = len(filtered)
 
-	// Clamp window.
-	if windowStart < 0 {
-		windowStart = 0
+	// Clamp page index.
+	if pageIdx < 0 {
+		pageIdx = 0
 	}
-	if windowStart >= len(filtered) {
-		windowStart = max(0, len(filtered)-data.WindowSize)
+	totalPages := data.TotalPages()
+	if totalPages > 0 && pageIdx >= totalPages {
+		pageIdx = totalPages - 1
 	}
-	data.WindowStart = windowStart
+	data.PageIdx = pageIdx
 
-	end := min(windowStart+data.WindowSize, len(filtered))
+	start := pageIdx * data.PageSize
+	end := min(start+data.PageSize, len(filtered))
 
-	// Build full TIKs only for the window.
-	for _, idx := range filtered[windowStart:end] {
+	// Build full TIKs only for the current page.
+	for _, idx := range filtered[start:end] {
 		tk := a.buildTIKForDisplay(a.tiks[idx], showLocales)
 		data.TIKs = append(data.TIKs, tk)
 	}

@@ -72,9 +72,9 @@ type DataIndex struct {
 	// FilterType is "all", "changed", etc.
 	FilterType string
 
-	// Virtual scroll window.
-	WindowStart   int // index of first TIK in the window
-	WindowSize    int // number of TIKs in the window
+	// Pagination.
+	PageIdx       int // 0-based index of the current page
+	PageSize      int // number of TIKs per page
 	TotalFiltered int // total TIKs after filtering
 
 	NumAll          int
@@ -88,7 +88,32 @@ type DataIndex struct {
 	SearchQuery     string
 }
 
-const DefaultWindowSize = 30
+// PageSizeOptions lists the page size choices offered by the
+// per-page selector. The first entry is the default.
+var PageSizeOptions = []int{10, 25, 50, 100}
+
+// DefaultPageSize is the page size used when none is specified or
+// when an invalid value is supplied.
+const DefaultPageSize = 25
+
+// NormalizePageSize clamps n to one of PageSizeOptions, returning
+// DefaultPageSize when n is not one of the allowed values.
+func NormalizePageSize(n int) int {
+	for _, opt := range PageSizeOptions {
+		if n == opt {
+			return n
+		}
+	}
+	return DefaultPageSize
+}
+
+// TotalPages returns the total number of pages for the current filter.
+func (d DataIndex) TotalPages() int {
+	if d.PageSize <= 0 || d.TotalFiltered <= 0 {
+		return 0
+	}
+	return (d.TotalFiltered + d.PageSize - 1) / d.PageSize
+}
 
 type ICUMessage struct {
 	ID                string
