@@ -12,7 +12,7 @@
     "@lezer/highlight": "^1"
   },
   "devDependencies": {
-    "esbuild": "^0.24",
+    "esbuild": "^0.28.0",
     "typescript": "^5"
   }
 }
