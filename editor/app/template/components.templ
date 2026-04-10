@@ -148,7 +148,11 @@ templ componentNavbarSearch(
 						class="input"
 						placeholder="Search..."
 						data-bind:searchquery
-						data-on:focus="$_navsearch=true"
+						data-on:focus="
+							$_navsearch=true;
+							requestAnimationFrame(() => document.getElementById(
+								'navsearch-input')?.focus())
+						"
 						data-on:input__debounce.300ms={ action.POSTPageTIKsFilter(
 							action.WithBefore("console.log('SEARCH')")) }
 					/>
@@ -156,7 +160,11 @@ templ componentNavbarSearch(
 				<!-- Mobile search button -->
 				<button
 					class="btn-secondary btn-icon navbar-mobile-only"
-					data-on:click="$_navsearch=true"
+					data-on:click="
+						$_navsearch=true;
+						requestAnimationFrame(() => document.getElementById(
+							'navsearch-input')?.focus())
+					"
 					aria-label="Search"
 				>
 					@iconSearch()
@@ -176,6 +184,7 @@ templ componentNavbarSearch(
 			<div class="navbar-search" style="flex:1">
 				@iconSearch()
 				<input
+					id="navsearch-input"
 					type="search"
 					class="input"
 					placeholder="Search..."
@@ -462,7 +471,6 @@ templ componentFontSizeBtn(
 }
 
 // --- Dashboard ---
-
 templ componentCompletenessBar(completeness float64) {
 	<div class="locale-stats">
 		<div class="locale-stat-row">
