@@ -24,6 +24,8 @@ func main() {
 	}
 	log.SetWriter(os.Stderr, false)
 
-	_, s := editor.Setup(dir, *bundlePkg, intapp.Version, os.Environ(), intapp.CleanGenerated, intapp.GenerateBundle)
+	_, s := editor.Setup(
+		dir, *bundlePkg, intapp.Version, os.Environ(),
+		intapp.CleanGenerated, intapp.GenerateBundle)
 	os.Exit(editor.RunServer(s, *server))
 }
