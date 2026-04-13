@@ -1,0 +1,447 @@
+package template
+
+import (
+	"fmt"
+
+	"github.com/romshark/toki/editor/app/template/strfmt"
+	"github.com/romshark/toki/editor/datapagesgen/href"
+)
+
+templ PageDashboard(stats DashboardStats) {
+	@page("page-dashboard") {
+		<aside
+			class="sidebar"
+			id="editor-sidebar"
+			data-side="left"
+			data-initial-open="true"
+		>
+			<nav aria-label="Dashboard navigation">
+				@componentSidebarHeader()
+				<section>
+					<div role="group">
+						<h3>Navigation</h3>
+						<ul>
+							<li>
+								<a href="#overview" data-ignore-current>
+									@iconLayoutDashboard()
+									Overview
+								</a>
+							</li>
+							if len(stats.Domains) > 0 {
+								<li>
+									<a href="#domains" data-ignore-current>
+										@iconHierarchy()
+										Domains
+										<span class="badge-secondary">{ strfmt.Int(stats.NumDomains) }</span>
+									</a>
+								</li>
+							}
+							<li>
+								<a href="#locales" data-ignore-current>
+									@iconLanguages()
+									Locales
+									<span class="badge-secondary">{ strfmt.Int(stats.NumLocales) }</span>
+								</a>
+							</li>
+						</ul>
+					</div>
+				</section>
+				<footer>
+					<a href={ href.PageProjectDir() } class="alert sidebar-project-dir">
+						<section>
+							<strong>Project Directory</strong>
+							<p>{ stats.Dir }</p>
+						</section>
+					</a>
+				</footer>
+			</nav>
+		</aside>
+		<div class="main-area">
+			@componentNavbar([]Breadcrumb{
+				{Label: "Dashboard"},
+			}, stats.TotalChanges, stats.CanApplyChanges)
+			<main>
+				<div class="contents">
+					<h2 id="overview">
+						@iconLayoutDashboard()
+						Overview
+					</h2>
+					<div class="dashboard-grid">
+						<a
+							href={ href.PageTIKs(href.QueryPageTIKs{
+								Locales: stats.NativeLocale.Locale,
+							}) }
+							class="card native-locale-cell dashboard-stat-link"
+						>
+							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<header>
+								<span class="dashboard-stat-value locale-code">
+									{ stats.NativeLocale.Locale }
+								</span>
+								if stats.NativeLocale.Name != "" {
+									<span class="dashboard-stat-label">
+										{ stats.NativeLocale.Name }
+									</span>
+								}
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">
+									Native locale
+									<span
+										class="info-icon"
+										data-tooltip="The language used in source code message declarations"
+										data-side="bottom"
+										data-align="start"
+									>
+										@iconInfo()
+									</span>
+								</p>
+							</section>
+						</a>
+						<a href="#locales" class="card dashboard-stat-link">
+							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<header>
+								<span class="dashboard-stat-value">
+									{ strfmt.Int(stats.NumLocales) }
+								</span>
+								<span class="dashboard-stat-label">
+									@iconLanguages()
+									Locales
+								</span>
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">Languages configured</p>
+							</section>
+						</a>
+						<a href="#domains" class="card dashboard-stat-link">
+							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<header>
+								<span class="dashboard-stat-value">
+									{ strfmt.Int(stats.NumDomains) }
+								</span>
+								<span class="dashboard-stat-label">
+									@iconHierarchy()
+									Domains
+								</span>
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">TIK domain scopes</p>
+							</section>
+						</a>
+						<a
+							href={ href.PageTIKs(href.QueryPageTIKs{}) }
+							class="card dashboard-stat-link"
+						>
+							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<header>
+								<span class="dashboard-stat-value">
+									{ strfmt.Int(stats.NumTIKs) }
+								</span>
+								<span class="dashboard-stat-label">
+									@iconList()
+									TIKs
+								</span>
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">Total translation keys</p>
+							</section>
+						</a>
+						<a
+							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "complete"}) }
+							class="card dashboard-stat-link"
+						>
+							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<header>
+								<span class="dashboard-stat-value">
+									{ strfmt.Percent(stats.Completeness) }
+								</span>
+								<span class="dashboard-stat-label">
+									@iconCircleCheck()
+									Complete
+								</span>
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">
+									{ fmt.Sprintf("%d of %d TIKs",
+										stats.NumComplete, stats.NumTIKs) }
+								</p>
+							</section>
+						</a>
+						<a
+							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "changed"}) }
+							class="card dashboard-stat-link"
+						>
+							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<header>
+								<span class="dashboard-stat-value">
+									{ strfmt.Int(stats.TotalChanges) }
+								</span>
+								<span class="dashboard-stat-label">
+									@iconPencil()
+									Unsaved
+								</span>
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">Pending changes</p>
+							</section>
+						</a>
+						<a
+							href={ href.PageTIKs(href.QueryPageTIKs{
+								Filter: "incomplete",
+							}) }
+							class="card dashboard-stat-link"
+						>
+							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<header>
+								<span class="dashboard-stat-value">
+									{ strfmt.Int(stats.NumIncomplete) }
+								</span>
+								<span class="dashboard-stat-label">
+									@iconCircleSlash()
+									Incomplete
+								</span>
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">TIKs with missing translations</p>
+							</section>
+						</a>
+						<a
+							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "empty"}) }
+							class="card dashboard-stat-link"
+						>
+							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<header>
+								<span class="dashboard-stat-value">
+									{ strfmt.Int(stats.NumEmpty) }
+								</span>
+								<span class="dashboard-stat-label">
+									@iconCircleMinus()
+									Empty
+								</span>
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">TIKs with no translation</p>
+							</section>
+						</a>
+						<a
+							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "invalid"}) }
+							class="card dashboard-stat-link"
+						>
+							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<header>
+								<span class="dashboard-stat-value">
+									{ strfmt.Int(stats.NumInvalid) }
+								</span>
+								<span class="dashboard-stat-label">
+									@iconAlertTriangle()
+									Invalid
+								</span>
+							</header>
+							<section>
+								<p class="dashboard-stat-desc">TIKs with ICU errors</p>
+							</section>
+						</a>
+					</div>
+					if stats.TotalChanges > 0 {
+						<div class="card build-bundle-card">
+							<header>
+								<h3>
+									@iconSave()
+									Build Bundle
+								</h3>
+							</header>
+							<section>
+								<p>
+									You have { strfmt.Int(stats.TotalChanges) } unsaved
+									{ strfmt.ChangeWord(stats.TotalChanges) }.
+									Build the bundle to update .arb files and regenerate Go code.
+								</p>
+								<button
+									class="btn-primary"
+									if !stats.CanApplyChanges {
+										disabled
+									}
+									data-on:click="window.location='/build-bundle/'"
+								>
+									@iconSave()
+									Build Bundle
+								</button>
+								if !stats.CanApplyChanges {
+									<div class="alert alert-destructive">
+										<section>
+											Fix all invalid ICU messages before building.
+										</section>
+									</div>
+								}
+							</section>
+						</div>
+					}
+					if len(stats.Domains) > 0 {
+						<h2 id="domains">
+							@iconHierarchy()
+							Domains
+							<span class="badge-secondary">{ strfmt.Int(stats.NumDomains) }</span>
+						</h2>
+						for _, d := range stats.Domains {
+							@dashboardDomainCard(d)
+						}
+					}
+					<h2 id="locales">
+						@iconLanguages()
+						Locales
+						<span class="badge-secondary">{ strfmt.Int(stats.NumLocales) }</span>
+					</h2>
+					<div class="dashboard-grid">
+						for _, ls := range stats.Locales {
+							<a
+								href={ href.PageTIKs(href.QueryPageTIKs{
+									Locales: ls.Locale,
+								}) }
+								class="card locale-card dashboard-stat-link"
+							>
+								<span class="stat-link-arrow">@iconArrowUpRight()</span>
+								<header>
+									<span class="dashboard-stat-value">
+										<strong class="locale-code">{ ls.Locale }</strong>
+										if ls.Name != "" {
+											<span class="locale-name">– { ls.Name }</span>
+										}
+									</span>
+								</header>
+								<section>
+									@componentCompletenessBar(ls.Completeness)
+									<div class="locale-stats">
+										<div class="locale-stat-row">
+											<span>Complete</span>
+											<span>{ strfmt.Int(ls.Complete) }</span>
+										</div>
+										<div class="locale-stat-row">
+											<span>Incomplete</span>
+											<span>{ strfmt.Int(ls.Incomplete) }</span>
+										</div>
+										if ls.Empty > 0 {
+											<div class="locale-stat-row">
+												<span>Empty</span>
+												<span>{ strfmt.Int(ls.Empty) }</span>
+											</div>
+										}
+										if ls.Invalid > 0 {
+											<div class="locale-stat-row">
+												<span>Invalid</span>
+												<span class="badge-destructive">
+													{ strfmt.Int(ls.Invalid) }
+												</span>
+											</div>
+										}
+										if ls.Changed > 0 {
+											<div class="locale-stat-row">
+												<span>Unsaved</span>
+												<span class="badge badge-changed">
+													{ strfmt.Int(ls.Changed) }
+												</span>
+											</div>
+										}
+									</div>
+								</section>
+							</a>
+						}
+					</div>
+				</div>
+			</main>
+		</div>
+	}
+}
+
+templ dashboardDomainCard(d DomainInfo) {
+	<div class="card domain-card">
+		<header>
+			<h2>{ d.Name }</h2>
+		</header>
+		<section>
+			<div class="field">
+				<label>Directory</label>
+				<p class="domain-dir-path"><bdi>{ d.Dir }</bdi></p>
+			</div>
+			@componentCompletenessBar(d.Completeness)
+			<div class="domain-stats-grid">
+				<a
+					href={ href.PageTIKs(href.QueryPageTIKs{Domains: d.FullName}) }
+					class="domain-stat"
+				>
+					<span class="stat-link-arrow">@iconArrowUpRight()</span>
+					<span class="domain-stat-value">{ strfmt.Int(d.NumTIKs) }</span>
+					<span class="domain-stat-label">
+						@iconList()
+						TIKs
+					</span>
+				</a>
+				<a
+					href={ href.PageTIKs(href.QueryPageTIKs{Domains: d.FullName, Filter: "complete"}) }
+					class="domain-stat"
+				>
+					<span class="stat-link-arrow">@iconArrowUpRight()</span>
+					<span class="domain-stat-value">{ strfmt.Int(d.NumComplete) }</span>
+					<span class="domain-stat-label">
+						@iconCircleCheck()
+						Complete
+					</span>
+				</a>
+				if d.NumIncomplete > 0 {
+					<a
+						href={ href.PageTIKs(href.QueryPageTIKs{Domains: d.FullName, Filter: "incomplete"}) }
+						class="domain-stat"
+					>
+						<span class="stat-link-arrow">@iconArrowUpRight()</span>
+						<span class="domain-stat-value">{ strfmt.Int(d.NumIncomplete) }</span>
+						<span class="domain-stat-label">
+							@iconCircleSlash()
+							Incomplete
+						</span>
+					</a>
+				}
+				if d.NumEmpty > 0 {
+					<a
+						href={ href.PageTIKs(href.QueryPageTIKs{Domains: d.FullName, Filter: "empty"}) }
+						class="domain-stat"
+					>
+						<span class="stat-link-arrow">@iconArrowUpRight()</span>
+						<span class="domain-stat-value">{ strfmt.Int(d.NumEmpty) }</span>
+						<span class="domain-stat-label">
+							@iconCircleMinus()
+							Empty
+						</span>
+					</a>
+				}
+				if d.NumInvalid > 0 {
+					<a
+						href={ href.PageTIKs(href.QueryPageTIKs{Domains: d.FullName, Filter: "invalid"}) }
+						class="domain-stat"
+					>
+						<span class="stat-link-arrow">@iconArrowUpRight()</span>
+						<span class="domain-stat-value">{ strfmt.Int(d.NumInvalid) }</span>
+						<span class="domain-stat-label">
+							@iconAlertTriangle()
+							Invalid
+						</span>
+					</a>
+				}
+				if d.NumChanged > 0 {
+					<a
+						href={ href.PageTIKs(href.QueryPageTIKs{Domains: d.FullName, Filter: "changed"}) }
+						class="domain-stat"
+					>
+						<span class="stat-link-arrow">@iconArrowUpRight()</span>
+						<span class="domain-stat-value">{ strfmt.Int(d.NumChanged) }</span>
+						<span class="domain-stat-label">
+							@iconPencil()
+							Unsaved
+						</span>
+					</a>
+				}
+			</div>
+		</section>
+	</div>
+	for _, sub := range d.SubDomains {
+		@dashboardDomainCard(sub)
+	}
+}

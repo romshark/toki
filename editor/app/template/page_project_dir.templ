@@ -1,0 +1,158 @@
+package template
+
+import (
+	"fmt"
+
+	"github.com/romshark/toki/editor/app/template/strfmt"
+	"github.com/romshark/toki/editor/datapagesgen/action"
+)
+
+templ PageProjectDir(
+	dir string, errMsg string, repairErr string, numChanges int, numCorrupt int,
+) {
+	@page("page-project-dir") {
+		<div
+			class="page-center"
+			data-signals:folder={ fmt.Sprintf("'%s'", dir) }
+			data-signals:origfolder={ fmt.Sprintf("'%s'", dir) }
+			data-signals:haserror={ strfmt.Bool(errMsg != "") }
+			data-signals:confirmdiscard="false"
+			data-signals:opening="false"
+		>
+			<div class="card">
+				<header>
+					<h1>Toki Project Directory</h1>
+				</header>
+				<section>
+					<div class="folder-picker">
+						<label>
+							<span>Project Folder</span>
+							<input
+								class="input"
+								type="text"
+								data-bind:folder
+								placeholder="/path/to/your/project"
+								data-on:keydown="if(evt.key==='Enter'){evt.preventDefault();evt.target.closest('.folder-picker').querySelector('button.btn-primary:not([style*=none])').click()}"
+							/>
+						</label>
+						if errMsg != "" {
+							<div class="alert alert-destructive">
+								@iconAlertCircle()
+								<section>{ errMsg }</section>
+							</div>
+						}
+						if numCorrupt > 0 {
+							<div class="alert alert-destructive">
+								@iconAlertTriangle()
+								<section>
+									<strong>Corrupted Bundle</strong>
+									<p>
+										{ strfmt.Int(numCorrupt) } native locale
+										if numCorrupt == 1 {
+											message doesn't
+										} else {
+											messages don't
+										}
+										match what should have been generated from source code.
+									</p>
+									if repairErr != "" {
+										<p>
+											<strong>Repair failed:</strong>
+											{ repairErr }
+										</p>
+									}
+									<a href="/repair/" class="btn-destructive">
+										Repair Bundle
+									</a>
+								</section>
+							</div>
+						}
+						if dir != "" && errMsg == "" && numCorrupt == 0 {
+							<button
+								class="btn-primary"
+								data-on:click="window.location='/'"
+								data-show="$folder===$origfolder"
+							>
+								Continue
+							</button>
+						}
+						<button
+							class="btn-primary"
+							if dir != "" && errMsg == "" && numCorrupt == 0 {
+								style="display:none"
+							}
+							data-show="$folder!==$origfolder || $origfolder==='' || $haserror"
+							data-attr:disabled="$folder==='' || $opening"
+							data-class:btn-loading="$opening"
+							if numChanges > 0 {
+								data-on:click="$confirmdiscard=true"
+							} else {
+								data-on:click={ action.POSTPageProjectDirOpen(
+								action.WithBefore("$opening=true"),
+							) }
+							}
+						>
+							<span data-show="!$opening">Open Project</span>
+							<span
+								class="btn-loading-label"
+								style="display:none"
+								data-show="$opening"
+							>
+								@iconLoader()
+								Opening&hellip;
+							</span>
+						</button>
+					</div>
+				</section>
+			</div>
+			if numChanges > 0 {
+				<div
+					class="modal-overlay"
+					style="display:none"
+					data-show="$confirmdiscard==='true'"
+				>
+					<div class="modal-card card">
+						<header>
+							<h3>Unsaved Changes</h3>
+						</header>
+						<section>
+							<p>
+								You have { strfmt.Int(numChanges) } unsaved
+								{ strfmt.ChangeWord(numChanges) }.
+								Opening a new project will irreversibly discard them.
+							</p>
+						</section>
+						<footer class="modal-actions">
+							<button
+								class="btn-ghost"
+								data-on:click="$confirmdiscard=false"
+							>
+								Cancel
+							</button>
+							<button
+								class="btn-destructive"
+								data-attr:disabled="$opening"
+								data-class:btn-loading="$opening"
+								data-on:click={ action.POSTPageProjectDirOpen(
+									action.WithBefore(
+										"$confirmdiscard=false;$opening=true",
+									),
+								) }
+							>
+								<span data-show="!$opening">Discard Changes</span>
+								<span
+									class="btn-loading-label"
+									style="display:none"
+									data-show="$opening"
+								>
+									@iconLoader()
+									Opening&hellip;
+								</span>
+							</button>
+						</footer>
+					</div>
+				</div>
+			}
+		</div>
+	}
+}

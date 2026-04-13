@@ -1,0 +1,32 @@
+app: editor/app
+gen:
+  package: editor/datapagesgen
+  prometheus: false
+cmd: cmd/editor-server
+assets:
+  url-prefix: /static/
+  dir: ./editor/app/static/
+watch:
+  flags: "--server=localhost:8080 --dir=./examples/simple"
+  exclude:
+    - ".git/**"
+    - ".*"
+    - "*~"
+    - "examples/**"
+  custom-watchers:
+    - name: js
+      cmd: cd editor/js && node build.mjs js
+      include:
+        - "editor/js/**/*.ts"
+      exclude:
+        - "editor/js/node_modules/**"
+      debounce: 200ms
+      fail-on-error: true
+      requires: reload
+    - name: css
+      cmd: cd editor/js && node build.mjs css
+      include:
+        - "editor/css/**/*.css"
+      debounce: 200ms
+      fail-on-error: true
+      requires: reload

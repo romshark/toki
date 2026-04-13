@@ -1,0 +1,217 @@
+package template
+
+import (
+	"fmt"
+
+	"github.com/romshark/toki/editor/datapagesgen/href"
+)
+
+templ PageTIK(tk *TIK) {
+	@page("page-tik") {
+		<div
+			style="display:contents"
+			data-signals:icumsg="''"
+			data-signals:settikid="''"
+			data-signals:setlocale="''"
+			data-signals:resettikid="''"
+			data-signals:resetlocale="''"
+			data-signals:resetmodalopen="false"
+			data-signals:resetdonetikid="''"
+			data-signals:resetdonelocale="''"
+			data-signals:instance_id="getOrCreateInstanceID('toki-editor-instance-id')"
+		>
+			<aside
+				class="sidebar"
+				id="editor-sidebar"
+				data-side="left"
+				data-initial-open="true"
+			>
+				@tikSidebarNav(tk)
+			</aside>
+			@tikMainArea(tk)
+			@componentEditorModals()
+		</div>
+	}
+}
+
+// TIKContent is the morph target for PageTIK.OnUpdated SSE patches.
+// Excludes the <aside> wrapper so sidebar open/closed state is preserved.
+templ TIKContent(tk *TIK) {
+	@tikSidebarNav(tk)
+	@tikMainArea(tk)
+}
+
+templ tikSidebarNav(tk *TIK) {
+	<nav id="tik-sidebar-content" aria-label="TIK navigation">
+		@componentSidebarHeader()
+		<section>
+			<ul>
+				<li>
+					<a href="#tik-card" data-ignore-current>
+						TIK
+					</a>
+				</li>
+			</ul>
+			<div role="group" aria-labelledby="tik-nav-label">
+				<h3 id="tik-nav-label">ICU Messages</h3>
+				<ul>
+					for _, msg := range tk.ICU {
+						<li>
+							<a
+								href={ templ.SafeURL(fmt.Sprintf("#icu-%s-%s",
+									tk.ID, msg.Catalog.Locale,
+								)) }
+								data-ignore-current
+							>
+								<span class="locale-link-name">
+									<strong class="locale-code">
+										{ msg.Catalog.Locale }
+									</strong>
+									if msg.Catalog.Name != "" {
+										– { msg.Catalog.Name }
+									}
+								</span>
+								if msg.Catalog.Default {
+									<span class="badge-secondary" title="Default locale">
+										@iconCode()
+									</span>
+								}
+								if msg.Changed {
+									<span
+										class="badge badge-changed"
+										title="Unsaved change"
+									>
+										@iconPencil()
+									</span>
+								}
+								if msg.Message == "" {
+									<span
+										class="badge-secondary"
+										title="Missing Translation"
+									>
+										@iconCircleMinus()
+									</span>
+								}
+								if msg.Error != "" || len(msg.IncompleteReports) > 0 {
+									<span
+										class="badge-destructive"
+										title="Invalid ICU message"
+									>
+										@iconAlertTriangle()
+									</span>
+								}
+							</a>
+						</li>
+					}
+				</ul>
+			</div>
+			if len(tk.Occurrences) > 0 {
+				<ul>
+					<li>
+						<a href="#source-occurrences" data-ignore-current>
+							Source Occurrences
+						</a>
+					</li>
+				</ul>
+			}
+		</section>
+	</nav>
+}
+
+templ tikMainArea(tk *TIK) {
+	<div id="tik-main-area" class="main-area">
+		@componentNavbar([]Breadcrumb{
+			{Label: "Dashboard", Href: href.PageIndex()},
+			{Label: "Messages", Href: href.PageTIKs(href.QueryPageTIKs{})},
+			{Label: tk.ID},
+		}, tikChangedCount(tk), true)
+		<main>
+			<div class="contents">
+				<div class="card tik-card" id="tik-card">
+					<header>
+						<span class="tik-breadcrumb">
+							if tk.Domain != "" {
+								<span class="tik-domain">{ tk.Domain }</span>
+								<span class="tik-breadcrumb-sep">/</span>
+							}
+							<span class="msg-id">{ tk.ID }</span>
+						</span>
+					</header>
+					<section>
+						<div class="field">
+							<label class="label">
+								TIK
+								@componentCopy(tk.TIK)
+							</label>
+							<toki-editor
+								value={ tk.TIK }
+								readonly
+							></toki-editor>
+						</div>
+						if tk.Description != "" {
+							<div class="field">
+								<label class="label">Description</label>
+								<p>{ tk.Description }</p>
+							</div>
+						}
+					</section>
+				</div>
+				<h2 id="icu-messages">
+					@iconLanguages()
+					ICU Messages
+				</h2>
+				for _, msg := range tk.ICU {
+					<div
+						class="card"
+						id={ fmt.Sprintf("icu-%s-%s", tk.ID, msg.Catalog.Locale) }
+					>
+						<header>
+							<span class="icu-form-label">
+								<strong class="locale-code">
+									{ msg.Catalog.Locale }
+								</strong>
+								if msg.Catalog.Name != "" {
+									— { msg.Catalog.Name }
+								}
+								@componentICUMessageBadges(msg)
+								@componentCopy(msg.Message)
+							</span>
+						</header>
+						<section>
+							@componentICUMessageForm(tk.ID, msg, false)
+						</section>
+					</div>
+				}
+				if len(tk.Occurrences) > 0 {
+					<h2 id="source-occurrences">
+						@iconCode()
+						Source Occurrences
+					</h2>
+					<div class="card">
+						<section>
+							<ul class="occurrence-list">
+								for _, occ := range tk.Occurrences {
+									<li
+										class="occurrence-item"
+										title={ fmt.Sprintf("%s:%d:%d",
+											occ.File, occ.Line, occ.Column) }
+									>
+										<code class="occurrence-file">
+											{ occ.DisplayFile }
+											<span class="occurrence-pos">
+												{ occ.Pos() }
+											</span>
+										</code>
+										@componentCopy(fmt.Sprintf(
+											"%s:%d:%d", occ.File, occ.Line, occ.Column,
+										))
+									</li>
+								}
+							</ul>
+						</section>
+					</div>
+				}
+			</div>
+		</main>
+	</div>
+}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"tokiexample/greatings"
 	"tokiexample/tokibundle"
 
 	"golang.org/x/text/language"
@@ -28,8 +29,10 @@ func main() {
 	fmt.Println(reader.String("It was finished on {date-full} at {time-full}",
 		time.Now(), time.Now()))
 
-	fmt.Println(reader.String("{# projects were} finished on {date-full} at {time-full} by {name}",
-		4, time.Now(), time.Now(), tokibundle.String{Value: "Rafael", Gender: tokibundle.GenderMale}))
+	fmt.Println(reader.String(
+		"{# projects were} finished on {date-full} at {time-full} by {name}",
+		4, time.Now(), time.Now(),
+		tokibundle.String{Value: "Rafael", Gender: tokibundle.GenderMale}))
 
 	fmt.Println(reader.String("searched {# files} in {# folders}", 56, 21))
 
@@ -57,4 +60,8 @@ Praesent auctor aliquet sem auctor cursus. Phasellus vehicula, augue vel fringil
 Cras gravida vulputate elit, sit amet facilisis est consectetur vitae. Aliquam erat volutpat. Aliquam in tortor in erat aliquet aliquet. Praesent at justo sed tortor pellentesque imperdiet. Phasellus enim dolor, consequat vel bibendum eu, laoreet interdum dui. Morbi sed vehicula lectus. Nam malesuada lorem consectetur luctus rutrum. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Proin eget libero in odio vestibulum euismod. Pellentesque eget viverra ex, quis sagittis massa. Quisque consectetur, odio eget posuere dictum, lorem velit pellentesque purus, eget suscipit turpis orci a augue. Morbi et ante leo. Nam pulvinar arcu vel nulla efficitur pharetra. Nunc condimentum elementum metus vitae aliquet. Vestibulum molestie molestie leo, in vulputate nulla interdum sit amet. Nam porttitor dui enim.
 
 Nulla eget sodales sem, dignissim elementum nulla. Sed sed elit feugiat, fringilla leo sit amet, vestibulum purus. Mauris suscipit felis id ante vestibulum, ut scelerisque felis faucibus. Cras tempus est non scelerisque rutrum. Vivamus augue libero, auctor eget mi sit amet, varius volutpat dolor. Praesent est tortor, gravida ut justo ut, pellentesque sollicitudin metus. Nullam scelerisque velit vitae suscipit elementum. Ut mattis diam et consectetur aliquet. Morbi consequat urna nisl. Duis dolor tellus, faucibus in hendrerit vitae, egestas vel ipsum. Sed sem lacus, rhoncus in purus ut, consequat fringilla tortor. Integer velit nisl, egestas blandit dui id, vulputate mollis velit. Nullam metus lectus, pharetra lobortis sem vel, accumsan mollis nisl.`)
+
+	greatings.Casual(reader, tokibundle.String{Value: "Bob"})
+	greatings.Formal(reader, tokibundle.String{Value: "Alice"})
+	greatings.Farewell(reader, tokibundle.String{Value: "Joe"})
 }

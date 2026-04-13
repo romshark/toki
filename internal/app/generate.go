@@ -21,6 +21,7 @@ import (
 	"github.com/romshark/toki/internal/icu"
 	"github.com/romshark/toki/internal/log"
 	"github.com/romshark/toki/internal/sync"
+	tikutil "github.com/romshark/toki/internal/tik"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/romshark/icumsg"
@@ -117,7 +118,7 @@ func (g *Generate) Run(
 
 	// Parse source code and bundle.
 	result.Scan, result.Err = parser.Parse(
-		env, conf.ModPath, conf.BundlePkgPath, conf.TrimPath,
+		env, "", conf.ModPath, conf.BundlePkgPath, conf.TrimPath,
 	)
 	if result.Err != nil {
 		result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, result.Err)
@@ -185,11 +186,11 @@ func (g *Generate) Run(
 		scan.Catalogs.Append(nativeCatalog)
 	}
 
-	// Check for new messages.
+	// Check for new messages and repair corrupt native messages.
 	for id, index := range scan.TextIndexByID.SeqRead() {
+		text := scan.Texts.At(index)
 		if _, ok := nativeARB.Messages[id]; !ok {
-			// Text not in native catalog.
-			text := scan.Texts.At(index)
+			// Text not in native catalog. Add it.
 			result.NewTexts = append(result.NewTexts, text)
 			newMsg, err := g.newARBMsg(scan.DefaultLocale, text)
 			if err != nil {
@@ -205,22 +206,34 @@ func (g *Generate) Run(
 			); incomplete {
 				nativeCatalog.MessagesIncomplete.Add(1)
 			}
-			continue
+		} else {
+			// Repair corrupt native locale messages:
+			//  1. Empty - always repopulate from TIK.
+			//  2. Locked mismatch - ProducesCompleteICU is true but ICU differs.
+			msg := nativeARB.Messages[id]
+			expectedICU := g.tikICUTranslator.TIK2ICU(text.TIK)
+			needsRepair := msg.ICUMessage == "" ||
+				(tikutil.ProducesCompleteICU(scan.DefaultLocale, text.TIK) &&
+					msg.ICUMessage != expectedICU)
+			if needsRepair {
+				newMsg, err := g.newARBMsg(scan.DefaultLocale, text)
+				if err != nil {
+					result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
+					return result
+				}
+				nativeARB.Messages[id] = newMsg
+			}
 		}
+
+		// Ensure the message exists in all non-native catalogs.
 		for catalog := range scan.Catalogs.SeqRead() {
-			// Check in all other catalogs.
 			if catalog.ARB.Locale == scan.DefaultLocale {
-				// Skip native catalog. It was already handled above.
 				continue
 			}
 			if _, ok := catalog.ARB.Messages[id]; ok {
 				continue
 			}
-			log.Warn("message missing in catalog",
-				slog.String("catalog", catalog.ARB.Locale.String()),
-				slog.String("id", id))
 			// Message missing in this catalog.
-			text := scan.Texts.At(index)
 			newMsg, err := g.newARBMsg(scan.DefaultLocale, text)
 			if err != nil {
 				result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
@@ -493,6 +506,41 @@ func prepareBundlePackageDir(bundlePkgPath string) error {
 		return fmt.Errorf("mkdir: bundle package path: %w", err)
 	}
 	return nil
+}
+
+// CleanGenerated deletes stale generated Go files and creates a minimal
+// empty bundle so the package compiles for codeparse. This handles the case
+// where existing generated code has compile errors.
+//
+// defaultLocale must be the actual default locale of the bundle
+// (not guessed from ARB file order).
+func CleanGenerated(bundlePkgPath string, defaultLocale language.Tag) error {
+	if err := deleteAllTokiGeneratedFiles(bundlePkgPath); err != nil {
+		return fmt.Errorf("deleting stale generated files: %w", err)
+	}
+
+	emptyScan := codeparse.NewScan(defaultLocale, Version)
+	if err := generateGoBundle(bundlePkgPath, emptyScan, nil); err != nil {
+		return fmt.Errorf("generating empty bundle: %w", err)
+	}
+	return nil
+}
+
+// GenerateBundle generates Go code from the scan data.
+// It reads head.txt from the bundle directory and generates the Go bundle
+// and per-locale catalog files.
+func GenerateBundle(bundlePkgPath string, scan *codeparse.Scan) error {
+	headTxtPath := filepath.Join(bundlePkgPath, "head.txt")
+	var headTxtLines []string
+	if fc, err := os.ReadFile(headTxtPath); err == nil && len(fc) > 0 {
+		headTxtLines = strings.Split(string(fc), "\n")
+	}
+	return generateGoBundle(bundlePkgPath, scan, headTxtLines)
+}
+
+// WriteARBFiles writes all catalog .arb files to disk.
+func WriteARBFiles(bundlePkgPath string, catalogs *sync.Slice[*codeparse.Catalog]) error {
+	return writeARBFiles(bundlePkgPath, catalogs)
 }
 
 func generateGoBundle(

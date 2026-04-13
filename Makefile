@@ -1,5 +1,8 @@
 vulncheck:
-	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+	CGO_ENABLED=0 go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+fmt:
+	go run mvdan.cc/gofumpt@latest -w .
 
 fmtcheck:
 	@unformatted=$$(go run mvdan.cc/gofumpt@latest -l .); \
@@ -9,8 +12,17 @@ fmtcheck:
 		exit 1; \
 	fi
 
-test: fmtcheck
+lint:
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest run ./...
+
+test: fmtcheck lint
 	go test -coverpkg=./... -v .
 
 templ:
-	go run github.com/a-h/templ/cmd/templ@v0.3.924 generate
+	go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
+
+dev-editor:
+	datapages watch
+
+gen-example-large:
+	go run ./cmd/genexamplelarge

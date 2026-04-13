@@ -1,0 +1,483 @@
+package template
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/romshark/toki/editor/app/template/strfmt"
+	"github.com/romshark/toki/editor/datapagesgen/action"
+	"github.com/romshark/toki/editor/datapagesgen/href"
+)
+
+// Breadcrumb represents a single breadcrumb entry.
+type Breadcrumb struct {
+	Label string
+	Href  string // empty for the current (last) item
+}
+
+templ sidebarContent(data DataIndex) {
+	<nav id="sidebar-content" class="sidebar-index" aria-label="Editor navigation">
+		@componentSidebarHeader()
+		<section class="sidebar-filters">
+			if len(data.Domains) > 0 {
+				<div role="group" aria-labelledby="domains-label">
+					<h3 id="domains-label">Domains</h3>
+					<div role="group" class="button-group">
+						<button
+							class="btn-secondary btn-sm"
+							if allDomainsInitial(data, false) {
+								disabled
+							}
+							data-on:click={ action.POSTPageTIKsHideAllDomains() }
+						>Hide All</button>
+						<button
+							class="btn-secondary btn-sm"
+							if allDomainsInitial(data, true) {
+								disabled
+							}
+							data-on:click={ action.POSTPageTIKsShowAllDomains() }
+						>Show All</button>
+					</div>
+					<ul>
+						for _, domain := range data.Domains {
+							<li>
+								<label class="switch-label" data-keep-mobile-sidebar-open>
+									<input
+										type="checkbox"
+										role="switch"
+										class="input"
+										if data.ShownDomains == nil || data.ShownDomains[domain.FullName] {
+											checked
+										}
+										data-bind={ fmt.Sprintf("showdomains.%s", domain.SignalKey) }
+										data-on:change={ action.POSTPageTIKsFilter() }
+									/>
+									<span>
+										<strong>{ domain.Name }</strong>
+									</span>
+								</label>
+							</li>
+						}
+					</ul>
+				</div>
+				<div role="separator"></div>
+			}
+			<div role="group" aria-labelledby="locales-label">
+				<h3 id="locales-label">Locales</h3>
+				<div role="group" class="button-group">
+					<button
+						class="btn-secondary btn-sm"
+						if allLocalesInitial(data, false) {
+							disabled
+						}
+						data-on:click={ action.POSTPageTIKsHideAllLocales() }
+					>Hide All</button>
+					<button
+						class="btn-secondary btn-sm"
+						if allLocalesInitial(data, true) {
+							disabled
+						}
+						data-on:click={ action.POSTPageTIKsShowAllLocales() }
+					>Show All</button>
+				</div>
+				<ul>
+					for _, catalog := range data.Catalogs {
+						<li>
+							<label class="switch-label" data-keep-mobile-sidebar-open>
+								<input
+									type="checkbox"
+									role="switch"
+									class="input"
+									if data.ShownLocales == nil || data.ShownLocales[catalog.Locale] {
+										checked
+									}
+									data-bind={ fmt.Sprintf("showlocales.%s", catalog.Locale) }
+									data-on:change={ action.POSTPageTIKsFilter() }
+								/>
+								<span>
+									<strong class="locale-code">{ catalog.Locale }</strong>
+									if catalog.Name != "" {
+										– { catalog.Name }
+									}
+									if catalog.Default {
+										<span class="badge-secondary" title="Default locale">
+											@iconCode()
+										</span>
+									}
+								</span>
+							</label>
+						</li>
+					}
+				</ul>
+			</div>
+			<div role="separator"></div>
+			<div role="group" aria-labelledby="filter-label">
+				<h3 id="filter-label">Filter</h3>
+				<ul>
+					@componentFilterRadio("", "All",
+						data.NumAll, data.FilterType == "" || data.FilterType == "all")
+					@componentFilterRadio("changed", "Changed",
+						data.NumChanged, data.FilterType == "changed")
+					@componentFilterRadio("complete", "Complete",
+						data.NumComplete, data.FilterType == "complete")
+					@componentFilterRadio("incomplete", "Incomplete",
+						data.NumIncomplete, data.FilterType == "incomplete")
+					@componentFilterRadio("empty", "Empty",
+						data.NumEmpty, data.FilterType == "empty")
+					@componentFilterRadio("invalid", "Invalid",
+						data.NumInvalid, data.FilterType == "invalid")
+				</ul>
+			</div>
+		</section>
+		<footer>
+			<a href={ href.PageProjectDir() } class="alert sidebar-project-dir">
+				<section>
+					<strong>Project Directory</strong>
+					<p>{ data.Dir }</p>
+				</section>
+			</a>
+		</footer>
+	</nav>
+}
+
+// PageTIKsContent is the morph target for OnUpdated SSE patches.
+templ PageTIKsContent(data DataIndex) {
+	@sidebarContent(data)
+	<div id="main-area" class="main-area">
+		@componentNavbarSearch([]Breadcrumb{
+			{Label: "Dashboard", Href: href.PageIndex()},
+			{Label: "Messages"},
+		}, data.TotalChanges, data.CanApplyChanges)
+		<main>
+			@TiksContentList(data)
+		</main>
+	</div>
+}
+
+// TiksContentList renders the current page of TIKs surrounded by a
+// pagination bar at the top and bottom. The whole list is morphed in
+// place on page or page-size change.
+templ TiksContentList(data DataIndex) {
+	<div id="tiks-list" class="contents">
+		if data.TotalFiltered == 0 {
+			<div class="no-results">
+				@iconCircleSlash()
+				No TIKs found for this filter.
+				<a
+					href={ href.PageTIKs(href.QueryPageTIKs{}) }
+					class="btn-secondary"
+				>Reset All Filters</a>
+			</div>
+		} else {
+			@componentPaginationBar(data, "top")
+			for _, tik := range data.TIKs {
+				@TikSectionFull(tik)
+			}
+			@componentPaginationBar(data, "bottom")
+		}
+	</div>
+}
+
+// componentPaginationBar groups the per-page selector and the
+// pagination nav into a single bar rendered above and below the list.
+// position is "top" or "bottom" — used purely to keep ids unique.
+templ componentPaginationBar(data DataIndex, position string) {
+	<div class="pagination-bar">
+		@componentPageSizeSelector(data, position)
+		@componentPaginationStatus(data)
+		@componentPagination(data)
+	</div>
+}
+
+// componentPageSizeSelector renders the per-page <select> bound to the
+// $pagesize signal; changes POST to /tiks/set-page-size/.
+templ componentPageSizeSelector(data DataIndex, position string) {
+	<label class="pagination-page-size">
+		<span>Per page</span>
+		<select
+			id={ fmt.Sprintf("pagesize-%s", position) }
+			class="select"
+			data-bind:pagesize
+			data-on:change={ action.POSTPageTIKsSetPageSize() }
+		>
+			for _, opt := range PageSizeOptions {
+				<option
+					value={ strfmt.Int(opt) }
+					if opt == data.PageSize {
+						selected
+					}
+				>{ strfmt.Int(opt) }</option>
+			}
+		</select>
+	</label>
+}
+
+// componentPaginationStatus shows the current item range out of total.
+templ componentPaginationStatus(data DataIndex) {
+	{{ first := data.PageIdx*data.PageSize + 1 }}
+	{{ last := first + len(data.TIKs) - 1 }}
+	<span class="pagination-status">
+		if data.TotalFiltered == 0 {
+			0 of 0
+		} else {
+			{ strfmt.Int(first) }–{ strfmt.Int(last) } of { strfmt.Int(data.TotalFiltered) }
+		}
+	</span>
+}
+
+// componentPagination renders a basecoat-styled pagination nav
+// for the TIKs list page. Page changes POST to /tiks/set-page/.
+templ componentPagination(data DataIndex) {
+	{{ totalPages := data.TotalPages() }}
+	if totalPages > 1 {
+		<nav role="navigation" aria-label="pagination" class="pagination">
+			<ul>
+				{{ prev := data.PageIdx }}
+				<li>
+					<button
+						type="button"
+						class="btn-ghost"
+						if data.PageIdx == 0 {
+							disabled
+						}
+						aria-label="Previous page"
+						data-on:click={ action.POSTPageTIKsSetPage(
+							action.WithBefore(fmt.Sprintf("$page=%d", prev)),
+						) }
+					>
+						@iconChevronLeft()
+						Previous
+					</button>
+				</li>
+				for _, p := range paginationItems(data.PageIdx, totalPages) {
+					if p.IsEllipsis {
+						<li>
+							<div class="pagination-ellipsis" aria-hidden="true">
+								@iconMoreHorizontal()
+							</div>
+						</li>
+					} else {
+						{{ isCurrent := p.Page-1 == data.PageIdx }}
+						<li>
+							<button
+								type="button"
+								class={ paginationPageClass(isCurrent) }
+								if isCurrent {
+									aria-current="page"
+								}
+								aria-label={ fmt.Sprintf("Page %d", p.Page) }
+								data-on:click={ action.POSTPageTIKsSetPage(
+									action.WithBefore(fmt.Sprintf("$page=%d", p.Page)),
+								) }
+							>{ strfmt.Int(p.Page) }</button>
+						</li>
+					}
+				}
+				{{ next := data.PageIdx + 2 }}
+				<li>
+					<button
+						type="button"
+						class="btn-ghost"
+						if data.PageIdx >= totalPages-1 {
+							disabled
+						}
+						aria-label="Next page"
+						data-on:click={ action.POSTPageTIKsSetPage(
+							action.WithBefore(fmt.Sprintf("$page=%d", next)),
+						) }
+					>
+						Next
+						@iconChevronRight()
+					</button>
+				</li>
+			</ul>
+		</nav>
+	}
+}
+
+// TikSectionFull renders the full TIK card with ICU messages and editors.
+// The id must match the skeleton so PatchElementTempl can morph it in place.
+templ TikSectionFull(tik TIK) {
+	<section class="card" id={ fmt.Sprintf("tik-%s", tik.ID) }>
+		<header>
+			<span class="tik-breadcrumb">
+				if tik.Domain != "" {
+					<span class="tik-domain">{ tik.Domain }</span>
+					<span class="tik-breadcrumb-sep">/</span>
+				}
+				<a
+					href={ href.PageTIK(tik.ID) }
+					class="msg-id"
+				>{ tik.ID }</a>
+				if tik.IsChanged {
+					<span class="badge badge-changed">Changed</span>
+				}
+				if tik.IsInvalid {
+					<span class="badge-destructive">Invalid</span>
+				}
+			</span>
+		</header>
+		<section>
+			<div class="field">
+				<label class="label">
+					TIK
+					@componentCopy(tik.TIK)
+				</label>
+				<toki-editor
+					value={ tik.TIK }
+					data-attr:theme={ resolvedThemeExpr() }
+					readonly
+				></toki-editor>
+			</div>
+			if tik.Description != "" {
+				<div class="field">
+					<label class="label">Description</label>
+					<p>{ tik.Description }</p>
+				</div>
+			}
+		</section>
+		if len(tik.ICU) > 0 {
+			<section>
+				<ol class="icu-list">
+					for _, msg := range tik.ICU {
+						<li class="icu-message">
+							@componentICUMessageForm(tik.ID, msg, true)
+						</li>
+					}
+				</ol>
+			</section>
+		}
+	</section>
+}
+
+func initShowLocalesSignal(data DataIndex) string {
+	m := make(map[string]bool, len(data.Catalogs))
+	for _, c := range data.Catalogs {
+		m[c.Locale] = data.ShownLocales == nil || data.ShownLocales[c.Locale]
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		panic("unexpected marshaling error")
+	}
+	return string(b)
+}
+
+func initShowDomainsSignal(data DataIndex) string {
+	m := make(map[string]bool, len(data.Domains))
+	for _, d := range data.Domains {
+		m[d.SignalKey] = data.ShownDomains == nil || data.ShownDomains[d.FullName]
+	}
+	b, _ := json.Marshal(m)
+	return string(b)
+}
+
+// allLocalesInitial evaluates the initial server-side state for the locale
+// Hide All / Show All buttons so the disabled attribute matches before Datastar runs.
+func allLocalesInitial(data DataIndex, enabled bool) bool {
+	for _, c := range data.Catalogs {
+		shown := data.ShownLocales == nil || data.ShownLocales[c.Locale]
+		if shown != enabled {
+			return false
+		}
+	}
+	return true
+}
+
+// allDomainsInitial evaluates the initial server-side state for the domain
+// Hide All / Show All buttons so the disabled attribute matches before Datastar runs.
+func allDomainsInitial(data DataIndex, enabled bool) bool {
+	for _, d := range data.Domains {
+		shown := data.ShownDomains == nil || data.ShownDomains[d.FullName]
+		if shown != enabled {
+			return false
+		}
+	}
+	return true
+}
+
+func tikChangedCount(tk *TIK) int {
+	n := 0
+	for _, m := range tk.ICU {
+		if m.Changed {
+			n++
+		}
+	}
+	return n
+}
+
+// PaginationItem represents a single entry in the pagination control —
+// either a 1-based page number or an ellipsis placeholder.
+type PaginationItem struct {
+	Page       int
+	IsEllipsis bool
+}
+
+// paginationPageClass returns the basecoat button class for a numeric
+// pagination entry — outlined for the current page, ghost otherwise.
+func paginationPageClass(isCurrent bool) string {
+	if isCurrent {
+		return "btn-icon-outline"
+	}
+	return "btn-icon-ghost"
+}
+
+// paginationItems builds the list of page numbers and ellipses to display
+// for the given current page (0-based) and total page count. It always
+// shows the first and last page; near the current page it shows a window
+// of neighbors; gaps are collapsed into a single ellipsis.
+func paginationItems(currentPageIdx, totalPages int) []PaginationItem {
+	if totalPages <= 0 {
+		return nil
+	}
+	// For small page counts, list every page.
+	const maxPagesWithoutEllipsis = 7
+	if totalPages <= maxPagesWithoutEllipsis {
+		items := make([]PaginationItem, 0, totalPages)
+		for i := 1; i <= totalPages; i++ {
+			items = append(items, PaginationItem{Page: i})
+		}
+		return items
+	}
+
+	current := currentPageIdx + 1 // 1-based for display
+	if current < 1 {
+		current = 1
+	}
+	if current > totalPages {
+		current = totalPages
+	}
+
+	pages := map[int]bool{
+		1:          true,
+		totalPages: true,
+		current:    true,
+	}
+	if current-1 >= 1 {
+		pages[current-1] = true
+	}
+	if current+1 <= totalPages {
+		pages[current+1] = true
+	}
+
+	sorted := make([]int, 0, len(pages))
+	for p := range pages {
+		sorted = append(sorted, p)
+	}
+	// Insertion sort — at most 5 entries.
+	for i := 1; i < len(sorted); i++ {
+		for j := i; j > 0 && sorted[j-1] > sorted[j]; j-- {
+			sorted[j-1], sorted[j] = sorted[j], sorted[j-1]
+		}
+	}
+
+	items := make([]PaginationItem, 0, len(sorted)+2)
+	prev := 0
+	for _, p := range sorted {
+		if prev != 0 && p-prev > 1 {
+			items = append(items, PaginationItem{IsEllipsis: true})
+		}
+		items = append(items, PaginationItem{Page: p})
+		prev = p
+	}
+	return items
+}

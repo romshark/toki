@@ -25,14 +25,59 @@ var (
 type catalog_ru struct{}
 
 var writers_ru = map[string]func(w io.Writer, args ...any) (int, error){
-	msg62489e1e07578e6e: nil,
-	msg6aa44c2f549ae5e8: func(w io.Writer, args ...any) (written int, err error) {
-		return wrs(w, "переведённый текст")
+	msg40298b0dfa835a18: func(w io.Writer, args ...any) (written int, err error) {
+		var n int
+		n, err = wrs(w, "В папке ")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		{
+			s, _ := sv(args[0])
+			n, err = wrs(w, s)
+		}
+		if err != nil {
+			return written, err
+		}
+		written += n
+		n, err = wrs(w, " ничего не найдено")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		return written, nil
 	},
-	msgd2497314df5ae7e6: nil,
-	msgdc0a1830b671625c: nil,
-	msgf5b4499f95971294: nil,
-	msgfb968a4dc3768ccd: nil,
+	msg73df838e3688e65c: nil,
+	msg7b4460496c4dc063: nil,
+	msg7ba5e4f7ff9e557f: nil,
+	msga386be7d32b02521: nil,
+	msgba9076fe8292afb0: nil,
+	msgbcdb3dde88d7bbb2: nil,
+	msgca9572938a754c86: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Добрый день, {var0}. Добро пожаловать.")
+	},
+	msgd402b253f75c3b74: func(w io.Writer, args ...any) (written int, err error) {
+		var n int
+		n, err = wrs(w, "Увидимся позже, ")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		{
+			s, _ := sv(args[0])
+			n, err = wrs(w, s)
+		}
+		if err != nil {
+			return written, err
+		}
+		written += n
+		n, err = wrs(w, "!")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		return written, nil
+	},
 }
 
 func (catalog_ru) Locale() language.Tag { return loc_ru }
