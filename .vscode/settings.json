@@ -2,10 +2,8 @@
   "markdown.extension.toc.levels": "2..6",
   "files.exclude": {
     "**/*_templ.go": true,
-    "**/*_gen.go": true
   },
   "search.exclude": {
     "**/*_templ.go": true,
-    "**/*_gen.go": true
   }
 }
