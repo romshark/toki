@@ -2,7 +2,6 @@ package editor
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -20,22 +19,25 @@ import (
 	"golang.org/x/text/language"
 )
 
-type noopMetrics struct{}
-
-func (noopMetrics) OnPublish(string)   {}
-func (noopMetrics) OnDeliveryDropped() {}
-
 // CleanGeneratedFunc deletes stale generated Go files and creates a minimal bundle.
 type CleanGeneratedFunc func(bundlePkgPath string, defaultLocale language.Tag) error
 
 // GenerateBundleFunc generates Go code from a scan.
 type GenerateBundleFunc func(bundlePkgPath string, scan *codeparse.Scan) error
 
+// ApplyChangesAndBuildFunc persists the supplied ARB edits and regenerates
+// the Go bundle, returning the post-build scan.
+type ApplyChangesAndBuildFunc func(
+	env []string, modDir, bundlePkgPath string, defaultLocale language.Tag,
+	edits []app.BundleEdit,
+) (*codeparse.Scan, error)
+
 // Setup creates the App and datapages Server for the given directory.
 func Setup(
 	dir, bundlePkgPath, version string, env []string,
 	cleanGenerated CleanGeneratedFunc,
 	generateBundle GenerateBundleFunc,
+	applyChangesAndBuild ApplyChangesAndBuildFunc,
 ) (*app.App, *datapagesgen.Server) {
 	// Extract the custom sqinn binary (built with FTS5 support).
 	sqinnPath, err := tokisqinn.Path()
@@ -59,20 +61,7 @@ func Setup(
 	a.SqinnPath = sqinnPath
 	a.CleanGenerated = cleanGenerated
 	a.GenerateGoBundle = generateBundle
-
-	msgBroker := inmem.New(8)
-
-	// Let the App publish EventUpdated so background builds
-	// can notify SSE streams without holding an HTTP request.
-	a.NotifyUpdated = func() {
-		j, _ := json.Marshal(app.EventUpdated{})
-		_ = msgBroker.Publish(
-			context.Background(),
-			noopMetrics{},
-			datapagesgen.EvSubjUpdated,
-			j,
-		)
-	}
+	a.ApplyChangesAndBuild = applyChangesAndBuild
 
 	// Start initialization asynchronously so the server can show
 	// a loading screen while the index DB is being rebuilt.
@@ -82,7 +71,7 @@ func Setup(
 		_ = a.TryInit()
 	}()
 
-	s := datapagesgen.NewServer(a, msgBroker,
+	s := datapagesgen.NewServer(a, inmem.New(8),
 		datapagesgen.WithAssets(app.StaticFS),
 	)
 	s.UseContextCanceledFilter()

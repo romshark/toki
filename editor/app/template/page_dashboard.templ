@@ -206,17 +206,17 @@ templ PageDashboard(stats DashboardStats) {
 							</section>
 						</a>
 						<a
-							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "empty"}) }
+							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "untranslated"}) }
 							class="card dashboard-stat-link"
 						>
 							<span class="stat-link-arrow">@iconArrowUpRight()</span>
 							<header>
 								<span class="dashboard-stat-value">
-									{ strfmt.Int(stats.NumEmpty) }
+									{ strfmt.Int(stats.NumUntranslated) }
 								</span>
 								<span class="dashboard-stat-label">
 									@iconCircleMinus()
-									Empty
+									Untranslated
 								</span>
 							</header>
 							<section>
@@ -319,10 +319,10 @@ templ PageDashboard(stats DashboardStats) {
 											<span>Incomplete</span>
 											<span>{ strfmt.Int(ls.Incomplete) }</span>
 										</div>
-										if ls.Empty > 0 {
+										if ls.Untranslated > 0 {
 											<div class="locale-stat-row">
-												<span>Empty</span>
-												<span>{ strfmt.Int(ls.Empty) }</span>
+												<span>Untranslated</span>
+												<span>{ strfmt.Int(ls.Untranslated) }</span>
 											</div>
 										}
 										if ls.Invalid > 0 {
@@ -399,16 +399,16 @@ templ dashboardDomainCard(d DomainInfo) {
 						</span>
 					</a>
 				}
-				if d.NumEmpty > 0 {
+				if d.NumUntranslated > 0 {
 					<a
-						href={ href.PageTIKs(href.QueryPageTIKs{Domains: d.FullName, Filter: "empty"}) }
+						href={ href.PageTIKs(href.QueryPageTIKs{Domains: d.FullName, Filter: "untranslated"}) }
 						class="domain-stat"
 					>
 						<span class="stat-link-arrow">@iconArrowUpRight()</span>
-						<span class="domain-stat-value">{ strfmt.Int(d.NumEmpty) }</span>
+						<span class="domain-stat-value">{ strfmt.Int(d.NumUntranslated) }</span>
 						<span class="domain-stat-label">
 							@iconCircleMinus()
-							Empty
+							Untranslated
 						</span>
 					</a>
 				}

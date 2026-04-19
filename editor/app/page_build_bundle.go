@@ -62,6 +62,7 @@ func (p PageBuildBundle) StreamOpen(
 	signals struct {
 		InstanceID string `json:"instance_id"`
 	},
+	dispatch func(EventUpdated) error,
 ) error {
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
@@ -69,7 +70,7 @@ func (p PageBuildBundle) StreamOpen(
 	// This guarantees the client sees the loading state before the build runs.
 	if !p.App.building && p.App.buildDuration == 0 && p.App.buildErr == "" &&
 		len(p.App.changed) > 0 && p.App.canApplyChangesLocked() {
-		p.App.startBuildBundleLocked()
+		p.App.startBuildBundleLocked(dispatch)
 	}
 	return nil
 }

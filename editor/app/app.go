@@ -69,6 +69,20 @@ type pageTIKState struct {
 	refCount int
 }
 
+// BundleEdit describes a pending in-memory edit to an ARB message.
+// The editor collects these from user input and hands them to the
+// bundle-build orchestrator, which persists them and regenerates Go code.
+type BundleEdit struct {
+	Locale  string // BCP 47 locale tag (matches ARB locale).
+	TIKID   string // TIK message ID.
+	Message string // Updated ICU message.
+}
+
+// domainStats aggregates per-domain TIK status counts.
+type domainStats struct {
+	numTIKs, complete, incomplete, untranslated, invalid, changed int
+}
+
 type App struct {
 	lock             sync.Mutex
 	env              []string
@@ -80,6 +94,7 @@ type App struct {
 	tikParser        *tik.Parser
 	tikICUTranslator *tik.ICUTranslator
 	scan             *codeparse.Scan
+	defaultLocale    language.Tag
 	domains          *codeparse.DomainTree
 	tiks             []*template.TIK
 	tiksByID         map[string]*template.TIK
@@ -99,7 +114,7 @@ type App struct {
 	// SqinnPath is the path to the sqinn binary (with FTS5). Set by editor.Setup.
 	SqinnPath string
 
-	// Build bundle state (protected by mu).
+	// Build bundle state (protected by lock).
 	building      bool
 	buildErr      string
 	buildDuration time.Duration
@@ -117,16 +132,22 @@ type App struct {
 	Version string
 
 	// CleanGenerated deletes stale generated Go files and creates a minimal
-	// bundle so codeparse can succeed. Set by editor.Setup.
+	// bundle so codeparse can succeed. Set by editor.Setup. Used by the
+	// repair flow; the build flow goes through ApplyChangesAndBuild.
 	CleanGenerated func(bundlePkgPath string, defaultLocale language.Tag) error
 
-	// GenerateGoBundle generates the full Go bundle from a scan.
-	// Set by editor.Setup.
-	GenerateGoBundle func(bundlePkgPath string, scan *codeparse.Scan) error
+	// ApplyChangesAndBuild persists the supplied ARB edits and regenerates
+	// the Go bundle. Set by editor.Setup. Returns the post-build scan so
+	// the editor can refresh its in-memory state. See internal/app for
+	// the actual implementation.
+	ApplyChangesAndBuild func(
+		env []string, modDir, bundlePkgPath string, defaultLocale language.Tag,
+		edits []BundleEdit,
+	) (*codeparse.Scan, error)
 
-	// NotifyUpdated publishes an EventUpdated through the message broker
-	// so SSE streams get notified. Set by editor.Setup after server creation.
-	NotifyUpdated func()
+	// GenerateGoBundle regenerates the Go bundle from a scan produced by
+	// a prior parse. Set by editor.Setup. Used by the repair flow only.
+	GenerateGoBundle func(bundlePkgPath string, scan *codeparse.Scan) error
 }
 
 func NewApp(dir, bundlePkgPath string, env []string, db *indexdb.DB) *App {
@@ -181,6 +202,7 @@ func (a *App) tryInitLocked() error {
 	a.catalogs = nil
 	a.localeTags = nil
 	a.scan = nil
+	a.defaultLocale = language.Tag{}
 	a.domains = nil
 
 	if a.dir == "" {
@@ -255,6 +277,7 @@ func (a *App) fullRebuildLocked() error {
 	}
 
 	a.scan = scan
+	a.defaultLocale = scan.DefaultLocale
 	a.ensureNativeCatalogExists(scan)
 	a.buildTemplateDataFromScanLocked()
 	a.numCorrupt = a.nativeCatalogCorruptCount()
@@ -503,6 +526,7 @@ func (a *App) loadFromDBLocked() error {
 		}
 		if dc.IsDefault {
 			a.numCorrupt = dc.MessagesCorrupt
+			a.defaultLocale = tag
 		}
 		a.catalogs = append(a.catalogs, c)
 		a.localeTags = append(a.localeTags, tag)
@@ -896,7 +920,7 @@ func (a *App) buildDashboardStats() template.DashboardStats {
 	}
 
 	for _, tk := range a.tiks {
-		_, hasEmpty, hasIncomplete, hasInvalid := a.tikStatusFlags(tk, nil)
+		_, hasUntranslated, hasIncomplete, hasInvalid := a.tikStatusFlags(tk, nil)
 
 		for _, m := range tk.ICU {
 			for li := range localeStats {
@@ -907,46 +931,48 @@ func (a *App) buildDashboardStats() template.DashboardStats {
 					localeStats[li].Changed++
 				}
 				if m.Message == "" {
-					localeStats[li].Empty++
-					localeStats[li].Incomplete++
+					localeStats[li].Untranslated++
 				} else {
-					// Check for ICU errors.
 					locTag := a.localeTagByLocale(m.Catalog.Locale)
 					var icuErr error
 					a.icuTokBuffer = a.icuTokBuffer[:0]
 					a.icuTokBuffer, icuErr = a.icuTokenizer.Tokenize(
 						locTag, a.icuTokBuffer, m.Message,
 					)
-					hasErr := icuErr != nil ||
-						m.Error != "" ||
-						len(icu.AnalysisReport(
-							locTag, m.Message, a.icuTokBuffer,
-							codeparse.ICUSelectOptions,
-						)) > 0
-					if hasErr {
+					switch {
+					case icuErr != nil || m.Error != "":
 						localeStats[li].Invalid++
-					} else {
+					case len(icu.AnalysisReport(
+						locTag, m.Message, a.icuTokBuffer,
+						codeparse.ICUSelectOptions,
+					)) > 0:
+						localeStats[li].Incomplete++
+					default:
 						localeStats[li].Complete++
 					}
 				}
 				break
 			}
 		}
-		if hasEmpty {
-			s.NumEmpty++
+		if hasUntranslated {
+			s.NumUntranslated++
 		}
 		if hasIncomplete {
 			s.NumIncomplete++
-		} else {
-			s.NumComplete++
 		}
 		if hasInvalid {
 			s.NumInvalid++
 		}
+		if !hasUntranslated && !hasIncomplete && !hasInvalid {
+			s.NumComplete++
+		}
 	}
 
 	for i := range localeStats {
-		total := localeStats[i].Complete + localeStats[i].Empty + localeStats[i].Invalid
+		total := localeStats[i].Complete +
+			localeStats[i].Incomplete +
+			localeStats[i].Untranslated +
+			localeStats[i].Invalid
 		if total > 0 {
 			localeStats[i].Completeness = float64(localeStats[i].Complete) / float64(total)
 		}
@@ -1021,8 +1047,12 @@ func (PageError404) GET(r *http.Request) (body templ.Component, err error) {
 }
 
 // startBuildBundleLocked kicks off the bundle build in a background goroutine.
-// Must be called with mu held. The goroutine acquires mu itself for the heavy work.
-func (a *App) startBuildBundleLocked() {
+// Must be called with lock held. The goroutine acquires lock itself for the heavy work.
+// dispatch is captured from StreamOpen and used to notify SSE streams when the
+// build starts and completes; the build goroutine outlives the triggering
+// request, so the dispatch's request context may be canceled before the final
+// event is emitted — the in-memory broker tolerates this.
+func (a *App) startBuildBundleLocked(dispatch func(EventUpdated) error) {
 	a.building = true
 	a.buildErr = ""
 	a.buildDuration = 0
@@ -1033,14 +1063,14 @@ func (a *App) startBuildBundleLocked() {
 
 	// Notify all SSE streams so clients on other pages redirect
 	// to the build-bundle page.
-	if a.NotifyUpdated != nil {
-		a.NotifyUpdated()
-	}
+	_ = dispatch(EventUpdated{})
 
-	go a.runBuildBundle(changed)
+	go a.runBuildBundle(changed, dispatch)
 }
 
-func (a *App) runBuildBundle(changed []*template.ICUMessage) {
+func (a *App) runBuildBundle(
+	changed []*template.ICUMessage, dispatch func(EventUpdated) error,
+) {
 	start := time.Now()
 
 	a.lock.Lock()
@@ -1049,9 +1079,7 @@ func (a *App) runBuildBundle(changed []*template.ICUMessage) {
 		a.building = false
 		a.buildDuration = time.Since(start)
 		// Notify SSE streams so the build-bundle page updates.
-		if a.NotifyUpdated != nil {
-			a.NotifyUpdated()
-		}
+		_ = dispatch(EventUpdated{})
 	}()
 
 	if err := a.doBuildBundleLocked(changed); err != nil {
@@ -1059,73 +1087,29 @@ func (a *App) runBuildBundle(changed []*template.ICUMessage) {
 	}
 }
 
-// doBuildBundleLocked performs the actual build. Caller holds mu.
+// doBuildBundleLocked persists pending edits and rebuilds the bundle
+// via the ApplyChangesAndBuild callback, then refreshes the editor's
+// in-memory state from the returned scan. Caller holds lock.
 func (a *App) doBuildBundleLocked(changed []*template.ICUMessage) error {
-	absBundlePkg := filepath.Join(a.dir, a.bundlePkgPath)
-
-	// Step 1: Clean stale generated Go files so codeparse can succeed.
-	if a.CleanGenerated != nil {
-		if err := a.CleanGenerated(absBundlePkg, a.scan.DefaultLocale); err != nil {
-			return fmt.Errorf("cleaning generated files: %w", err)
+	edits := make([]BundleEdit, len(changed))
+	for i, c := range changed {
+		edits[i] = BundleEdit{
+			Locale:  c.Catalog.Locale,
+			TIKID:   c.ID,
+			Message: c.Message,
 		}
 	}
-
-	// Step 2: Run codeparse (reads current .arb files from disk).
-	parser := codeparse.NewParser(a.hasher, a.tikParser, a.tikICUTranslator)
-	scan, err := parser.Parse(a.env, a.dir, "./...", a.bundlePkgPath, false)
+	scan, err := a.ApplyChangesAndBuild(
+		a.env, a.dir, a.bundlePkgPath, a.defaultLocale, edits,
+	)
 	if err != nil {
-		return fmt.Errorf("analyzing source: %w", err)
+		return err
 	}
 
-	// Step 3: Apply changed messages to the scan's ARB data.
-	type arbFileEntry struct {
-		*arb.File
-		AbsolutePath string
-		Changed      bool
-	}
-	arbFiles := make(map[string]arbFileEntry, scan.Catalogs.Len())
-	for c := range scan.Catalogs.Seq() {
-		arbFiles[c.ARB.Locale.String()] = arbFileEntry{
-			File:         c.ARB,
-			AbsolutePath: c.ARBFilePath,
-		}
-	}
-	for _, c := range changed {
-		af := arbFiles[c.Catalog.Locale]
-		af.Changed = true
-		msg := af.Messages[c.ID]
-		msg.ICUMessage = c.Message
-		af.Messages[c.ID] = msg
-		arbFiles[c.Catalog.Locale] = af
-	}
-
-	// Step 4: Write updated .arb files.
-	for _, af := range arbFiles {
-		if !af.Changed {
-			continue
-		}
-		f, err := os.OpenFile(af.AbsolutePath, os.O_WRONLY|os.O_TRUNC, 0o644)
-		if err != nil {
-			return fmt.Errorf("opening arb file: %w", err)
-		}
-		err = arb.Encode(f, af.File, "\t")
-		_ = f.Close()
-		if err != nil {
-			return fmt.Errorf("encoding arb file: %w", err)
-		}
-	}
-
-	// Step 5: Generate Go code from the scan (which has the updated messages).
-	if a.GenerateGoBundle != nil {
-		if err := a.GenerateGoBundle(absBundlePkg, scan); err != nil {
-			return fmt.Errorf("generating Go bundle: %w", err)
-		}
-	}
-
-	// Step 6: Rebuild in-memory state from the scan.
 	a.initErr = ""
 	a.changed = nil
 	a.scan = scan
+	a.defaultLocale = scan.DefaultLocale
 	a.buildTemplateDataFromScanLocked()
 	a.numCorrupt = a.nativeCatalogCorruptCount()
 
@@ -1134,11 +1118,10 @@ func (a *App) doBuildBundleLocked(changed []*template.ICUMessage) error {
 			return fmt.Errorf("populating index DB: %w", err)
 		}
 	}
-
 	return nil
 }
 
-// Helper methods on App (must be called with mu held).
+// Helper methods on App (must be called with lock held).
 
 // orderTIK returns a copy of the TIK with ICU messages reordered (default locale first).
 func (a *App) orderTIK(tk *template.TIK) *template.TIK {
@@ -1268,7 +1251,7 @@ func (a *App) repairCorruptLocked() error {
 	// Clean stale generated Go files so codeparse can succeed.
 	absBundlePkg := filepath.Join(a.dir, a.bundlePkgPath)
 	if a.CleanGenerated != nil {
-		if err := a.CleanGenerated(absBundlePkg, a.scan.DefaultLocale); err != nil {
+		if err := a.CleanGenerated(absBundlePkg, a.defaultLocale); err != nil {
 			return fmt.Errorf("cleaning generated files: %w", err)
 		}
 	}
@@ -1319,6 +1302,7 @@ func (a *App) repairCorruptLocked() error {
 
 	// Rebuild in-memory state from the repaired scan.
 	a.scan = scan
+	a.defaultLocale = scan.DefaultLocale
 	a.changed = nil
 	a.buildTemplateDataFromScanLocked()
 	a.numCorrupt = a.nativeCatalogCorruptCount()
@@ -1386,15 +1370,14 @@ func (a *App) buildTIKForDisplay(
 			if msg.Catalog != c {
 				continue
 			}
-			if msg.Error != "" || len(msg.IncompleteReports) > 0 {
+			if msg.Error != "" {
 				tmplTIK.IsInvalid = true
 			}
 			if len(msg.IncompleteReports) > 0 {
 				tmplTIK.IsIncomplete = true
 			}
 			if msg.Message == "" {
-				tmplTIK.IsEmpty = true
-				tmplTIK.IsIncomplete = true
+				tmplTIK.IsUntranslated = true
 			}
 			if msg.Changed {
 				tmplTIK.IsChanged = true
@@ -1403,7 +1386,9 @@ func (a *App) buildTIKForDisplay(
 			break
 		}
 	}
-	tmplTIK.IsComplete = !tmplTIK.IsIncomplete
+	tmplTIK.IsComplete = !tmplTIK.IsIncomplete &&
+		!tmplTIK.IsUntranslated &&
+		!tmplTIK.IsInvalid
 	return tmplTIK
 }
 
@@ -1511,8 +1496,8 @@ func (a *App) buildFilterDataIndex(
 		if data.ShownDomains != nil && !data.ShownDomains[tk.Domain] {
 			continue
 		}
-		hasChanged, hasEmpty, hasIncomplete, hasInvalid := a.tikStatusFlags(tk, showLocales)
-		isComplete := !hasIncomplete
+		hasChanged, hasUntranslated, hasIncomplete, hasInvalid := a.tikStatusFlags(tk, showLocales)
+		isComplete := !hasIncomplete && !hasUntranslated && !hasInvalid
 
 		data.NumAll++
 		if isComplete {
@@ -1521,8 +1506,8 @@ func (a *App) buildFilterDataIndex(
 		if hasIncomplete {
 			data.NumIncomplete++
 		}
-		if hasEmpty {
-			data.NumEmpty++
+		if hasUntranslated {
+			data.NumUntranslated++
 		}
 		if hasInvalid {
 			data.NumInvalid++
@@ -1536,8 +1521,8 @@ func (a *App) buildFilterDataIndex(
 			if !hasChanged {
 				continue
 			}
-		case "empty":
-			if !hasEmpty {
+		case "untranslated":
+			if !hasUntranslated {
 				continue
 			}
 		case "complete":
@@ -1584,7 +1569,7 @@ func (a *App) buildFilterDataIndex(
 // full display data. Used for fast counting in the first pass.
 func (a *App) tikStatusFlags(
 	tk *template.TIK, showLocales map[string]bool,
-) (hasChanged, hasEmpty, hasIncomplete, hasInvalid bool) {
+) (hasChanged, hasUntranslated, hasIncomplete, hasInvalid bool) {
 	for _, m := range tk.ICU {
 		if showLocales != nil {
 			if shown, ok := showLocales[m.Catalog.Locale]; !ok || !shown {
@@ -1592,8 +1577,7 @@ func (a *App) tikStatusFlags(
 			}
 		}
 		if m.Message == "" {
-			hasEmpty = true
-			hasIncomplete = true
+			hasUntranslated = true
 		}
 		if m.Changed {
 			hasChanged = true
@@ -1615,7 +1599,6 @@ func (a *App) tikStatusFlags(
 				codeparse.ICUSelectOptions,
 			)) > 0 {
 				hasIncomplete = true
-				hasInvalid = true
 			}
 		}
 	}
@@ -1642,10 +1625,6 @@ func (a *App) buildDomainData() template.DataDomains {
 		return data
 	}
 
-	// Build per-domain stats from template TIKs, keyed by domain full name.
-	type domainStats struct {
-		numTIKs, complete, incomplete, empty, invalid, changed int
-	}
 	statsByName := make(map[string]*domainStats)
 
 	for _, tk := range a.tiks {
@@ -1658,74 +1637,75 @@ func (a *App) buildDomainData() template.DataDomains {
 			statsByName[tk.Domain] = ds
 		}
 		ds.numTIKs++
-		hasChanged, hasEmpty, hasIncomplete, hasInvalid := a.tikStatusFlags(tk, nil)
+		hasChanged, hasUntranslated, hasIncomplete, hasInvalid := a.tikStatusFlags(tk, nil)
 		if hasChanged {
 			ds.changed++
 		}
-		if !hasIncomplete {
+		if !hasIncomplete && !hasUntranslated && !hasInvalid {
 			ds.complete++
 		}
 		if hasIncomplete {
 			ds.incomplete++
 		}
-		if hasEmpty {
-			ds.empty++
+		if hasUntranslated {
+			ds.untranslated++
 		}
 		if hasInvalid {
 			ds.invalid++
 		}
 	}
 
-	// Build domain info tree from the DomainTree roots.
-	var buildInfo func(d *codeparse.Domain) template.DomainInfo
-	buildInfo = func(d *codeparse.Domain) template.DomainInfo {
-		// Build full name from path iterator.
-		var names []string
-		for p := range d.Path() {
-			names = append(names, p.Name)
-		}
-		slices.Reverse(names)
-		fullName := strings.Join(names, ".")
-
-		info := template.DomainInfo{
-			Name:        d.Name,
-			Description: d.Description,
-			Dir:         d.Dir,
-			FullName:    fullName,
-		}
-		if d.Parent != nil {
-			info.ParentName = d.Parent.Name
-			var parentNames []string
-			for p := range d.Parent.Path() {
-				parentNames = append(parentNames, p.Name)
-			}
-			slices.Reverse(parentNames)
-			info.ParentFullName = strings.Join(parentNames, ".")
-		}
-		if ds := statsByName[fullName]; ds != nil {
-			info.NumTIKs = ds.numTIKs
-			info.NumComplete = ds.complete
-			info.NumIncomplete = ds.incomplete
-			info.NumEmpty = ds.empty
-			info.NumInvalid = ds.invalid
-			info.NumChanged = ds.changed
-			if ds.numTIKs > 0 {
-				info.Completeness = float64(ds.complete) / float64(ds.numTIKs)
-			}
-		}
-		for _, sub := range d.SubDomains {
-			info.SubDomains = append(info.SubDomains, buildInfo(sub))
-		}
-		return info
-	}
-
 	// Find root domains (no parent).
 	for d := range a.domains.All() {
 		if d.Parent == nil {
-			data.Domains = append(data.Domains, buildInfo(d))
+			data.Domains = append(data.Domains, a.buildDomainInfo(d, statsByName))
 		}
 	}
 
 	data.TotalDomains = a.domains.Len()
 	return data
+}
+
+// buildDomainInfo recursively builds a DomainInfo tree for d, pulling
+// counts from stats keyed by each domain's fully-qualified name.
+func (a *App) buildDomainInfo(
+	d *codeparse.Domain, stats map[string]*domainStats,
+) template.DomainInfo {
+	var names []string
+	for p := range d.Path() {
+		names = append(names, p.Name)
+	}
+	slices.Reverse(names)
+	fullName := strings.Join(names, ".")
+
+	info := template.DomainInfo{
+		Name:        d.Name,
+		Description: d.Description,
+		Dir:         d.Dir,
+		FullName:    fullName,
+	}
+	if d.Parent != nil {
+		info.ParentName = d.Parent.Name
+		var parentNames []string
+		for p := range d.Parent.Path() {
+			parentNames = append(parentNames, p.Name)
+		}
+		slices.Reverse(parentNames)
+		info.ParentFullName = strings.Join(parentNames, ".")
+	}
+	if ds := stats[fullName]; ds != nil {
+		info.NumTIKs = ds.numTIKs
+		info.NumComplete = ds.complete
+		info.NumIncomplete = ds.incomplete
+		info.NumUntranslated = ds.untranslated
+		info.NumInvalid = ds.invalid
+		info.NumChanged = ds.changed
+		if ds.numTIKs > 0 {
+			info.Completeness = float64(ds.complete) / float64(ds.numTIKs)
+		}
+	}
+	for _, sub := range d.SubDomains {
+		info.SubDomains = append(info.SubDomains, a.buildDomainInfo(sub, stats))
+	}
+	return info
 }

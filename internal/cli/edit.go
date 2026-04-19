@@ -1,4 +1,4 @@
-package app
+package cli
 
 import (
 	"flag"
@@ -33,7 +33,8 @@ func (e *Edit) Run(osArgs, env []string, stderr io.Writer) error {
 		return fmt.Errorf("resolving working directory: %w", err)
 	}
 
-	_, s := editor.Setup(dir, *bundlePkg, Version, env, CleanGenerated, GenerateBundle)
+	_, s := editor.Setup(dir, *bundlePkg, Version, env,
+		CleanGenerated, GenerateBundle, ApplyChangesAndBuild)
 
 	if *server != "" {
 		os.Exit(editor.RunServer(s, *server))

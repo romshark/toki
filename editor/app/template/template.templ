@@ -122,8 +122,8 @@ templ sidebarContent(data DataIndex) {
 						data.NumComplete, data.FilterType == "complete")
 					@componentFilterRadio("incomplete", "Incomplete",
 						data.NumIncomplete, data.FilterType == "incomplete")
-					@componentFilterRadio("empty", "Empty",
-						data.NumEmpty, data.FilterType == "empty")
+					@componentFilterRadio("untranslated", "Untranslated",
+						data.NumUntranslated, data.FilterType == "untranslated")
 					@componentFilterRadio("invalid", "Invalid",
 						data.NumInvalid, data.FilterType == "invalid")
 				</ul>

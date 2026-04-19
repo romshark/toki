@@ -32,7 +32,7 @@ type DashboardStats struct {
 	CanApplyChanges bool
 	NumComplete     int
 	NumIncomplete   int
-	NumEmpty        int
+	NumUntranslated int
 	NumInvalid      int
 	Completeness    float64 // 0.0–1.0
 }
@@ -43,8 +43,8 @@ type LocaleStats struct {
 	Name         string // e.g. "German", "English"
 	Default      bool
 	Complete     int     // TIKs fully translated and valid for this locale
-	Incomplete   int     // TIKs with empty message for this locale
-	Empty        int     // TIKs with empty message for this locale
+	Incomplete   int     // TIKs whose translation is missing required ICU options
+	Untranslated int     // TIKs with no translation for this locale
 	Invalid      int     // TIKs with ICU errors for this locale
 	Changed      int     // messages with unsaved edits
 	Completeness float64 // 0.0–1.0
@@ -79,7 +79,7 @@ type DataIndex struct {
 
 	NumAll          int
 	NumChanged      int
-	NumEmpty        int
+	NumUntranslated int
 	NumComplete     int
 	NumIncomplete   int
 	NumInvalid      int
@@ -147,11 +147,11 @@ type TIK struct {
 	ICU         []*ICUMessage
 	Occurrences []SourceOccurrence
 	// Status flags for client-side filtering.
-	IsChanged    bool
-	IsEmpty      bool
-	IsComplete   bool
-	IsIncomplete bool
-	IsInvalid    bool
+	IsChanged      bool
+	IsUntranslated bool
+	IsComplete     bool
+	IsIncomplete   bool
+	IsInvalid      bool
 }
 
 type Catalog struct {
@@ -184,12 +184,12 @@ type DomainInfo struct {
 	FullName       string // Dot-separated path (e.g. "myapp.storefront.checkout").
 	ParentName     string // Display name of parent domain (empty if root).
 	ParentFullName string // FullName of parent domain (empty if root).
-	NumTIKs        int    // TIKs directly in this domain.
-	NumComplete    int
-	NumIncomplete  int
-	NumEmpty       int
-	NumInvalid     int
-	NumChanged     int
+	NumTIKs         int // TIKs directly in this domain.
+	NumComplete     int
+	NumIncomplete   int
+	NumUntranslated int
+	NumInvalid      int
+	NumChanged      int
 	Completeness   float64 // 0.0–1.0
 	SubDomains     []DomainInfo
 }

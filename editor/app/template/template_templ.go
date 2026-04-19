@@ -333,8 +333,8 @@ func sidebarContent(data DataIndex) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = componentFilterRadio("empty", "Empty",
-			data.NumEmpty, data.FilterType == "empty").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = componentFilterRadio("untranslated", "Untranslated",
+			data.NumUntranslated, data.FilterType == "untranslated").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

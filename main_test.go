@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/romshark/toki/internal/app"
 	"github.com/romshark/toki/internal/arb"
+	"github.com/romshark/toki/internal/cli"
 
 	"github.com/romshark/tik/tik-go"
 	"github.com/stretchr/testify/require"
@@ -23,14 +23,14 @@ import (
 func TestVersion(t *testing.T) {
 	var stderr, stdout bytes.Buffer
 
-	res, exitCode := app.Run(
+	res, exitCode := cli.Run(
 		[]string{"toki", "version"}, osEnv(), &stderr, &stdout, TimeNow,
 	)
 	require.Equal(t, 0, exitCode)
 	require.Zero(t, res)
 
 	require.Zero(t, stderr.String())
-	require.Contains(t, stdout.String(), "Toki v"+app.Version)
+	require.Contains(t, stdout.String(), "Toki v"+cli.Version)
 }
 
 func TestGenerateAndRun(t *testing.T) {
@@ -91,7 +91,7 @@ func TestGenerateAndRun(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en"}
-		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -170,14 +170,14 @@ func TestGenerateAndRunFallback(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en", "-t=de"}
-		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate"}
-		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -222,14 +222,14 @@ func TestGenerateAndRunNoTranslationFallback(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en", "-t=de"}
-		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate"}
-		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -277,7 +277,7 @@ func TestGenerate(t *testing.T) {
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339), app.Version,
+					TimeNow.Format(time.RFC3339), cli.Version,
 				),
 				".tokidomain.yml": "# The TIK domain for this directory tree.\n" +
 					"# The description provides context for translators working on this domain.\n" +
@@ -305,7 +305,7 @@ func TestGenerate(t *testing.T) {
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339), app.Version),
+					TimeNow.Format(time.RFC3339), cli.Version),
 			},
 		},
 		{
@@ -322,7 +322,7 @@ func TestGenerate(t *testing.T) {
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339), app.Version),
+					TimeNow.Format(time.RFC3339), cli.Version),
 			},
 		},
 		{
@@ -344,21 +344,21 @@ func TestGenerate(t *testing.T) {
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339), app.Version),
+					TimeNow.Format(time.RFC3339), cli.Version),
 				"pkg/i18n/toki/catalog_de.arb": fmt.Sprintf(`{
 					"@@locale": "de",
 					"@@last_modified": %q,
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339), app.Version),
+					TimeNow.Format(time.RFC3339), cli.Version),
 				"pkg/i18n/toki/catalog_en_us.arb": fmt.Sprintf(`{
 					"@@locale": "en-US",
 					"@@last_modified": %q,
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339), app.Version),
+					TimeNow.Format(time.RFC3339), cli.Version),
 			},
 		},
 		{
@@ -438,7 +438,7 @@ func TestGenerateDomainFileNotOverwritten(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en"}
-		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -480,7 +480,7 @@ func TestGenerateSameTIKDifferentDomains(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en"}
-		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 		// The same TIK in different domains must produce distinct message IDs.
@@ -528,13 +528,13 @@ func TestGenerateErr(t *testing.T) {
 				InitGoMod: true,
 				FilesAfterInit: map[string]string{
 					"main.go":                            "this file is broken",
-					"tokibundle/" + app.MainBundleFileGo: "this file is broken",
+					"tokibundle/" + cli.MainBundleFileGo: "this file is broken",
 				},
 			},
 			args:           []string{"-l=en"},
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrAnalyzingSource)
+				require.ErrorIs(tt, err, cli.ErrAnalyzingSource)
 				require.ErrorContains(t, err, "analyzing sources: errors in package")
 				require.ErrorContains(t, err, "expected 'package'")
 			},
@@ -561,7 +561,7 @@ func TestGenerateErr(t *testing.T) {
 			args:           []string{"-l=en"},
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrAnalyzingSource)
+				require.ErrorIs(tt, err, cli.ErrAnalyzingSource)
 				require.ErrorContains(t, err,
 					`analyzing sources: errors in package "main"`)
 			},
@@ -573,7 +573,7 @@ func TestGenerateErr(t *testing.T) {
 			},
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrMissingLocaleParam)
+				require.ErrorIs(tt, err, cli.ErrMissingLocaleParam)
 				require.Equal(t, "please provide a valid non-und BCP 47 locale for the "+
 					"default language of your original code base "+
 					"using the 'l' parameter", err.Error())
@@ -587,7 +587,7 @@ func TestGenerateErr(t *testing.T) {
 			expectExitCode: 2,
 			args:           []string{"-l=invalid"},
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrInvalidCLIArgs)
+				require.ErrorIs(tt, err, cli.ErrInvalidCLIArgs)
 				require.Equal(t, `invalid arguments: argument l="invalid": `+
 					"must be a valid non-und BCP 47 locale: "+
 					"language: tag is not well-formed", err.Error())
@@ -601,7 +601,7 @@ func TestGenerateErr(t *testing.T) {
 			expectExitCode: 2,
 			args:           []string{"-l=und"},
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrInvalidCLIArgs)
+				require.ErrorIs(tt, err, cli.ErrInvalidCLIArgs)
 				require.Equal(t, `invalid arguments: argument l="und": `+
 					"must be a valid non-und BCP 47 locale: is und", err.Error())
 			},
@@ -614,7 +614,7 @@ func TestGenerateErr(t *testing.T) {
 			expectExitCode: 2,
 			args:           []string{"-l=en", "-t=invalid"},
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrInvalidCLIArgs)
+				require.ErrorIs(tt, err, cli.ErrInvalidCLIArgs)
 				require.Equal(t, `invalid arguments: argument t="invalid": `+
 					"must be a valid non-und BCP 47 locale: "+
 					"language: tag is not well-formed", err.Error())
@@ -628,7 +628,7 @@ func TestGenerateErr(t *testing.T) {
 			expectExitCode: 2,
 			args:           []string{"-l=en", "-t=und"},
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrInvalidCLIArgs)
+				require.ErrorIs(tt, err, cli.ErrInvalidCLIArgs)
 				require.Equal(t, `invalid arguments: argument t="und": `+
 					"must be a valid non-und BCP 47 locale: is und", err.Error())
 			},
@@ -660,13 +660,13 @@ func TestGenerateErr(t *testing.T) {
 								"type": "text"
 							}
 						}
-					`, app.Version),
+					`, cli.Version),
 				},
 			},
 			args:           []string{"-l=en"},
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrAnalyzingSource)
+				require.ErrorIs(tt, err, cli.ErrAnalyzingSource)
 				require.Equal(t, "analyzing sources: searching .arb files: "+
 					"locale in ARB file (en) differs from file name (de): "+
 					"catalog_de.arb", err.Error())
@@ -690,7 +690,7 @@ func TestGenerateErr(t *testing.T) {
 			args:           []string{"-require-complete"},
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrBundleIncomplete)
+				require.ErrorIs(tt, err, cli.ErrBundleIncomplete)
 				require.Equal(t, "bundle contains incomplete catalogs", err.Error())
 			},
 		},
@@ -815,7 +815,7 @@ func TestGenerateErrSource(t *testing.T) {
 			_, resLint, resGenerate := tt.setup.generate(t, TimeNow, tt.args...)
 			check := func(t *testing.T, res RunResult) {
 				t.Helper()
-				require.ErrorIs(t, res.Err, app.ErrSourceErrors)
+				require.ErrorIs(t, res.Err, cli.ErrSourceErrors)
 				require.Equal(t, 1, res.ExitCode)
 				index := 0
 				for err := range res.Scan.SourceErrors.SeqRead() {
@@ -849,7 +849,7 @@ func BenchmarkOKGenerate(b *testing.B) {
 
 	args := []string{"toki", "generate", "-l=en", "-q"}
 	for b.Loop() {
-		res, exitCode := app.Run(args, osEnv(), os.Stderr, os.Stdout, TimeNow)
+		res, exitCode := cli.Run(args, osEnv(), os.Stderr, os.Stdout, TimeNow)
 		if res.Err != nil {
 			b.Fatalf("unexpected error: %v", res.Err)
 		}
@@ -882,12 +882,12 @@ func runInDir(t testing.TB, dir string, fn func()) {
 func initBundle(
 	tb testing.TB, dir string, locale language.Tag, bundlePkg string,
 	stderr, stdout io.Writer,
-) (result app.Result) {
+) (result cli.Result) {
 	tb.Helper()
 
 	runInDir(tb, dir, func() {
 		var exitCode int
-		result, exitCode = app.Run([]string{
+		result, exitCode = cli.Run([]string{
 			"toki", "generate", "-l", locale.String(), "-b", bundlePkg,
 		}, osEnv(), stderr, stdout, TimeNow)
 		require.Zero(tb, exitCode)
@@ -917,7 +917,7 @@ type Setup struct {
 }
 
 type RunResult struct {
-	app.Result
+	cli.Result
 	ExitCode int
 }
 
@@ -948,13 +948,13 @@ func (s Setup) generate(
 
 	runInDir(tb, dir, func() {
 		a := append([]string{"toki", "generate"}, args...)
-		generateResult.Result, generateResult.ExitCode = app.Run(
+		generateResult.Result, generateResult.ExitCode = cli.Run(
 			a, osEnv(), stderr, stdout, now,
 		)
 
 		ss := snapshotFiles(tb, dir)
 		a = append([]string{"toki", "lint"}, args...)
-		lintResult.Result, lintResult.ExitCode = app.Run(
+		lintResult.Result, lintResult.ExitCode = cli.Run(
 			a, osEnv(), stderr, stdout, now,
 		)
 		ss.RequireUnchanged(tb, dir)

@@ -1,4 +1,4 @@
-package app
+package cli
 
 import (
 	"bufio"
@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	editorapp "github.com/romshark/toki/editor/app"
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/config"
@@ -541,6 +542,82 @@ func GenerateBundle(bundlePkgPath string, scan *codeparse.Scan) error {
 // WriteARBFiles writes all catalog .arb files to disk.
 func WriteARBFiles(bundlePkgPath string, catalogs *sync.Slice[*codeparse.Catalog]) error {
 	return writeARBFiles(bundlePkgPath, catalogs)
+}
+
+// ApplyChangesAndBuild applies in-memory ARB message edits, writes the
+// updated .arb files to disk, cleans stale generated Go, re-parses the
+// source (picking up the new ARB content), and regenerates the Go bundle.
+// Returns the post-build scan so callers (the editor) can refresh their
+// in-memory state.
+//
+// modDir is the absolute path to the Go module root.
+// bundlePkgPath is the bundle package path relative to modDir (e.g. "tokibundle").
+// defaultLocale is used by CleanGenerated to produce a minimal valid bundle.
+func ApplyChangesAndBuild(
+	env []string, modDir, bundlePkgPath string, defaultLocale language.Tag,
+	edits []editorapp.BundleEdit,
+) (*codeparse.Scan, error) {
+	absBundlePkg := filepath.Join(modDir, bundlePkgPath)
+
+	// Clean stale generated Go so codeparse can succeed.
+	if err := CleanGenerated(absBundlePkg, defaultLocale); err != nil {
+		return nil, fmt.Errorf("cleaning generated files: %w", err)
+	}
+
+	// Parse source (reads current .arb files from disk).
+	parser := codeparse.NewParser(
+		xxhash.New(),
+		tik.NewParser(tik.DefaultConfig),
+		tik.NewICUTranslator(tik.DefaultConfig),
+	)
+	scan, err := parser.Parse(env, modDir, "./...", bundlePkgPath, false)
+	if err != nil {
+		return nil, fmt.Errorf("analyzing source: %w", err)
+	}
+
+	// Index ARB files by locale so edits can be applied in-place.
+	type arbFileEntry struct {
+		*arb.File
+		AbsolutePath string
+		Changed      bool
+	}
+	arbFiles := make(map[string]arbFileEntry, scan.Catalogs.Len())
+	for c := range scan.Catalogs.Seq() {
+		arbFiles[c.ARB.Locale.String()] = arbFileEntry{
+			File:         c.ARB,
+			AbsolutePath: c.ARBFilePath,
+		}
+	}
+	for _, e := range edits {
+		af := arbFiles[e.Locale]
+		af.Changed = true
+		msg := af.Messages[e.TIKID]
+		msg.ICUMessage = e.Message
+		af.Messages[e.TIKID] = msg
+		arbFiles[e.Locale] = af
+	}
+
+	// Persist edited .arb files.
+	for _, af := range arbFiles {
+		if !af.Changed {
+			continue
+		}
+		f, err := os.OpenFile(af.AbsolutePath, os.O_WRONLY|os.O_TRUNC, 0o644)
+		if err != nil {
+			return nil, fmt.Errorf("opening arb file: %w", err)
+		}
+		err = arb.Encode(f, af.File, "\t")
+		_ = f.Close()
+		if err != nil {
+			return nil, fmt.Errorf("encoding arb file: %w", err)
+		}
+	}
+
+	// Generate Go from the updated scan.
+	if err := GenerateBundle(absBundlePkg, scan); err != nil {
+		return nil, fmt.Errorf("generating Go bundle: %w", err)
+	}
+	return scan, nil
 }
 
 func generateGoBundle(

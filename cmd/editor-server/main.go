@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/romshark/toki/editor"
-	intapp "github.com/romshark/toki/internal/app"
+	"github.com/romshark/toki/internal/cli"
 	"github.com/romshark/toki/internal/log"
 )
 
@@ -25,7 +25,8 @@ func main() {
 	log.SetWriter(os.Stderr, false)
 
 	_, s := editor.Setup(
-		dir, *bundlePkg, intapp.Version, os.Environ(),
-		intapp.CleanGenerated, intapp.GenerateBundle)
+		dir, *bundlePkg, cli.Version, os.Environ(),
+		cli.CleanGenerated, cli.GenerateBundle,
+		cli.ApplyChangesAndBuild)
 	os.Exit(editor.RunServer(s, *server))
 }

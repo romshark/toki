@@ -21,7 +21,7 @@ The following instructions apply to the Toki editor under `editor/`.
 There are a few general rules:
 
 - **Never run `templ generate`**: The user will use `datapages watch` which automatically runs Templ generation. Running this command will cause irrecoverable race errors that will force the user to restart watch mode.
-- **Run `datapages gen`** to check for compilation errors and lint feedback.
+- **Run `datapages gen`** to check for compilation errors and lint feedback. Don't use `datapages lint`.
 
 ### Framework
 

@@ -817,6 +817,22 @@ func (s *Server) handlePageBuildBundleGETStream(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	dispatchOpen := func(
+		e1 app.EventUpdated,
+	) error {
+		{
+			j, err := json.Marshal(e1)
+			if err != nil {
+				return fmt.Errorf("marshaling EventUpdated JSON: %w", err)
+			}
+			err = s.messageBroker.Publish(context.WithoutCancel(r.Context()), s.messageBrokerMetrics, EvSubjUpdated, j)
+			if err != nil {
+				return fmt.Errorf("publishing subject %q: %w", EvSubjUpdated, err)
+			}
+		}
+		return nil
+	}
+
 	p := app.PageBuildBundle{
 		App: s.app,
 	}
@@ -825,7 +841,7 @@ func (s *Server) handlePageBuildBundleGETStream(w http.ResponseWriter, r *http.R
 			streamID uint64,
 			sse *datastar.ServerSentEventGenerator,
 		) error {
-			return p.StreamOpen(r, streamID, signals)
+			return p.StreamOpen(r, streamID, signals, dispatchOpen)
 		},
 		func(streamID uint64) {
 			if err := p.StreamClose(r, streamID); err != nil {
