@@ -32,7 +32,9 @@ templ PageDashboard(stats DashboardStats) {
 									<a href="#domains" data-ignore-current>
 										@iconHierarchy()
 										Domains
-										<span class="badge-secondary">{ strfmt.Int(stats.NumDomains) }</span>
+										<span class="badge-secondary">
+											{ strfmt.Int(stats.NumDomains) }
+										</span>
 									</a>
 								</li>
 							}
@@ -40,7 +42,9 @@ templ PageDashboard(stats DashboardStats) {
 								<a href="#locales" data-ignore-current>
 									@iconLanguages()
 									Locales
-									<span class="badge-secondary">{ strfmt.Int(stats.NumLocales) }</span>
+									<span class="badge-secondary">
+										{ strfmt.Int(stats.NumLocales) }
+									</span>
 								</a>
 							</li>
 						</ul>
@@ -73,7 +77,9 @@ templ PageDashboard(stats DashboardStats) {
 							}) }
 							class="card native-locale-cell dashboard-stat-link"
 						>
-							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<span class="stat-link-arrow">
+								@iconArrowUpRight()
+							</span>
 							<header>
 								<span class="dashboard-stat-value locale-code">
 									{ stats.NativeLocale.Locale }
@@ -99,7 +105,9 @@ templ PageDashboard(stats DashboardStats) {
 							</section>
 						</a>
 						<a href="#locales" class="card dashboard-stat-link">
-							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<span class="stat-link-arrow">
+								@iconArrowUpRight()
+							</span>
 							<header>
 								<span class="dashboard-stat-value">
 									{ strfmt.Int(stats.NumLocales) }
@@ -114,7 +122,9 @@ templ PageDashboard(stats DashboardStats) {
 							</section>
 						</a>
 						<a href="#domains" class="card dashboard-stat-link">
-							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<span class="stat-link-arrow">
+								@iconArrowUpRight()
+							</span>
 							<header>
 								<span class="dashboard-stat-value">
 									{ strfmt.Int(stats.NumDomains) }
@@ -132,7 +142,9 @@ templ PageDashboard(stats DashboardStats) {
 							href={ href.PageTIKs(href.QueryPageTIKs{}) }
 							class="card dashboard-stat-link"
 						>
-							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<span class="stat-link-arrow">
+								@iconArrowUpRight()
+							</span>
 							<header>
 								<span class="dashboard-stat-value">
 									{ strfmt.Int(stats.NumTIKs) }
@@ -150,7 +162,9 @@ templ PageDashboard(stats DashboardStats) {
 							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "complete"}) }
 							class="card dashboard-stat-link"
 						>
-							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<span class="stat-link-arrow">
+								@iconArrowUpRight()
+							</span>
 							<header>
 								<span class="dashboard-stat-value">
 									{ strfmt.Percent(stats.Completeness) }
@@ -162,8 +176,9 @@ templ PageDashboard(stats DashboardStats) {
 							</header>
 							<section>
 								<p class="dashboard-stat-desc">
-									{ fmt.Sprintf("%d of %d TIKs",
-										stats.NumComplete, stats.NumTIKs) }
+									{ fmt.Sprintf("%s of %s TIKs",
+										strfmt.Int(stats.NumComplete),
+										strfmt.Int(stats.NumTIKs)) }
 								</p>
 							</section>
 						</a>
@@ -171,7 +186,9 @@ templ PageDashboard(stats DashboardStats) {
 							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "changed"}) }
 							class="card dashboard-stat-link"
 						>
-							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<span class="stat-link-arrow">
+								@iconArrowUpRight()
+							</span>
 							<header>
 								<span class="dashboard-stat-value">
 									{ strfmt.Int(stats.TotalChanges) }
@@ -191,7 +208,9 @@ templ PageDashboard(stats DashboardStats) {
 							}) }
 							class="card dashboard-stat-link"
 						>
-							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<span class="stat-link-arrow">
+								@iconArrowUpRight()
+							</span>
 							<header>
 								<span class="dashboard-stat-value">
 									{ strfmt.Int(stats.NumIncomplete) }
@@ -202,14 +221,19 @@ templ PageDashboard(stats DashboardStats) {
 								</span>
 							</header>
 							<section>
-								<p class="dashboard-stat-desc">TIKs with missing translations</p>
+								<p class="dashboard-stat-desc">
+									TIKs with missing translations
+								</p>
 							</section>
 						</a>
 						<a
-							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "untranslated"}) }
+							href={ href.PageTIKs(href.QueryPageTIKs{
+								Filter: "untranslated"}) }
 							class="card dashboard-stat-link"
 						>
-							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<span class="stat-link-arrow">
+								@iconArrowUpRight()
+							</span>
 							<header>
 								<span class="dashboard-stat-value">
 									{ strfmt.Int(stats.NumUntranslated) }
@@ -227,7 +251,9 @@ templ PageDashboard(stats DashboardStats) {
 							href={ href.PageTIKs(href.QueryPageTIKs{Filter: "invalid"}) }
 							class="card dashboard-stat-link"
 						>
-							<span class="stat-link-arrow">@iconArrowUpRight()</span>
+							<span class="stat-link-arrow">
+								@iconArrowUpRight()
+							</span>
 							<header>
 								<span class="dashboard-stat-value">
 									{ strfmt.Int(stats.NumInvalid) }
@@ -280,7 +306,9 @@ templ PageDashboard(stats DashboardStats) {
 						<h2 id="domains">
 							@iconHierarchy()
 							Domains
-							<span class="badge-secondary">{ strfmt.Int(stats.NumDomains) }</span>
+							<span class="badge-secondary">
+								{ strfmt.Int(stats.NumDomains) }
+							</span>
 						</h2>
 						for _, d := range stats.Domains {
 							@dashboardDomainCard(d)
@@ -289,7 +317,9 @@ templ PageDashboard(stats DashboardStats) {
 					<h2 id="locales">
 						@iconLanguages()
 						Locales
-						<span class="badge-secondary">{ strfmt.Int(stats.NumLocales) }</span>
+						<span class="badge-secondary">
+							{ strfmt.Int(stats.NumLocales) }
+						</span>
 					</h2>
 					<div class="dashboard-grid">
 						for _, ls := range stats.Locales {
@@ -299,7 +329,9 @@ templ PageDashboard(stats DashboardStats) {
 								}) }
 								class="card locale-card dashboard-stat-link"
 							>
-								<span class="stat-link-arrow">@iconArrowUpRight()</span>
+								<span class="stat-link-arrow">
+									@iconArrowUpRight()
+								</span>
 								<header>
 									<span class="dashboard-stat-value">
 										<strong class="locale-code">{ ls.Locale }</strong>
@@ -368,7 +400,9 @@ templ dashboardDomainCard(d DomainInfo) {
 					href={ href.PageTIKs(href.QueryPageTIKs{Domains: d.FullName}) }
 					class="domain-stat"
 				>
-					<span class="stat-link-arrow">@iconArrowUpRight()</span>
+					<span class="stat-link-arrow">
+						@iconArrowUpRight()
+					</span>
 					<span class="domain-stat-value">{ strfmt.Int(d.NumTIKs) }</span>
 					<span class="domain-stat-label">
 						@iconList()
@@ -379,7 +413,9 @@ templ dashboardDomainCard(d DomainInfo) {
 					href={ href.PageTIKs(href.QueryPageTIKs{Domains: d.FullName, Filter: "complete"}) }
 					class="domain-stat"
 				>
-					<span class="stat-link-arrow">@iconArrowUpRight()</span>
+					<span class="stat-link-arrow">
+						@iconArrowUpRight()
+					</span>
 					<span class="domain-stat-value">{ strfmt.Int(d.NumComplete) }</span>
 					<span class="domain-stat-label">
 						@iconCircleCheck()
@@ -391,8 +427,12 @@ templ dashboardDomainCard(d DomainInfo) {
 						href={ href.PageTIKs(href.QueryPageTIKs{Domains: d.FullName, Filter: "incomplete"}) }
 						class="domain-stat"
 					>
-						<span class="stat-link-arrow">@iconArrowUpRight()</span>
-						<span class="domain-stat-value">{ strfmt.Int(d.NumIncomplete) }</span>
+						<span class="stat-link-arrow">
+							@iconArrowUpRight()
+						</span>
+						<span class="domain-stat-value">
+							{ strfmt.Int(d.NumIncomplete) }
+						</span>
 						<span class="domain-stat-label">
 							@iconCircleSlash()
 							Incomplete
@@ -404,8 +444,12 @@ templ dashboardDomainCard(d DomainInfo) {
 						href={ href.PageTIKs(href.QueryPageTIKs{Domains: d.FullName, Filter: "untranslated"}) }
 						class="domain-stat"
 					>
-						<span class="stat-link-arrow">@iconArrowUpRight()</span>
-						<span class="domain-stat-value">{ strfmt.Int(d.NumUntranslated) }</span>
+						<span class="stat-link-arrow">
+							@iconArrowUpRight()
+						</span>
+						<span class="domain-stat-value">
+							{ strfmt.Int(d.NumUntranslated) }
+						</span>
 						<span class="domain-stat-label">
 							@iconCircleMinus()
 							Untranslated
@@ -417,8 +461,12 @@ templ dashboardDomainCard(d DomainInfo) {
 						href={ href.PageTIKs(href.QueryPageTIKs{Domains: d.FullName, Filter: "invalid"}) }
 						class="domain-stat"
 					>
-						<span class="stat-link-arrow">@iconArrowUpRight()</span>
-						<span class="domain-stat-value">{ strfmt.Int(d.NumInvalid) }</span>
+						<span class="stat-link-arrow">
+							@iconArrowUpRight()
+						</span>
+						<span class="domain-stat-value">
+							{ strfmt.Int(d.NumInvalid) }
+						</span>
 						<span class="domain-stat-label">
 							@iconAlertTriangle()
 							Invalid
@@ -430,8 +478,12 @@ templ dashboardDomainCard(d DomainInfo) {
 						href={ href.PageTIKs(href.QueryPageTIKs{Domains: d.FullName, Filter: "changed"}) }
 						class="domain-stat"
 					>
-						<span class="stat-link-arrow">@iconArrowUpRight()</span>
-						<span class="domain-stat-value">{ strfmt.Int(d.NumChanged) }</span>
+						<span class="stat-link-arrow">
+							@iconArrowUpRight()
+						</span>
+						<span class="domain-stat-value">
+							{ strfmt.Int(d.NumChanged) }
+						</span>
 						<span class="domain-stat-label">
 							@iconPencil()
 							Unsaved

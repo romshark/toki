@@ -49,7 +49,8 @@ templ sidebarContent(data DataIndex) {
 										if data.ShownDomains == nil || data.ShownDomains[domain.FullName] {
 											checked
 										}
-										data-bind={ fmt.Sprintf("showdomains.%s", domain.SignalKey) }
+										data-bind={ fmt.Sprintf("showdomains.%s",
+											domain.SignalKey) }
 										data-on:change={ action.POSTPageTIKsFilter() }
 									/>
 									<span>
@@ -91,7 +92,8 @@ templ sidebarContent(data DataIndex) {
 									if data.ShownLocales == nil || data.ShownLocales[catalog.Locale] {
 										checked
 									}
-									data-bind={ fmt.Sprintf("showlocales.%s", catalog.Locale) }
+									data-bind={ fmt.Sprintf("showlocales.%s",
+										catalog.Locale) }
 									data-on:change={ action.POSTPageTIKsFilter() }
 								/>
 								<span>
@@ -100,7 +102,10 @@ templ sidebarContent(data DataIndex) {
 										– { catalog.Name }
 									}
 									if catalog.Default {
-										<span class="badge-secondary" title="Default locale">
+										<span
+											class="badge-secondary"
+											title="Default locale"
+										>
 											@iconCode()
 										</span>
 									}

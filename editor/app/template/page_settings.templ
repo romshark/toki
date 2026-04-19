@@ -97,14 +97,20 @@ templ PageSettings(version string, data DataSettingsPreview) {
 				}, 0, false)
 				<main>
 					<div class="contents">
-						<h2 id="appearance">@iconPalette() Appearance</h2>
+						<h2 id="appearance">
+							@iconPalette()
+							Appearance
+						</h2>
 						<div class="theme-picker">
 							@themeCard(data.Prefs, "light", "Light", "Bright theme")
 							@themeCard(data.Prefs, "dark", "Dark", "Dark theme")
 							@themeCard(data.Prefs, "system", "System", "Match OS setting")
 						</div>
 						<!-- Interface Font -->
-						<h2 id="ui-font">@iconType() Interface Font</h2>
+						<h2 id="ui-font">
+							@iconType()
+							Interface Font
+						</h2>
 						<div class="font-section">
 							<div class="font-section-controls">
 								@componentList() {
@@ -204,7 +210,10 @@ templ PageSettings(version string, data DataSettingsPreview) {
 							</div>
 						</div>
 						<!-- Editor Font -->
-						<h2 id="editor-font">@iconType() Editor Font</h2>
+						<h2 id="editor-font">
+							@iconType()
+							Editor Font
+						</h2>
 						<div class="font-section">
 							<div class="font-section-controls">
 								@componentList() {

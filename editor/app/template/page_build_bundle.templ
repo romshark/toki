@@ -1,8 +1,6 @@
 package template
 
 import (
-	"fmt"
-
 	"github.com/romshark/toki/editor/app/template/strfmt"
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
@@ -89,7 +87,7 @@ templ PageBuildBundle(state BuildBundleState) {
 									<p>No unsaved changes to build.</p>
 								} else {
 									<p>
-										{ fmt.Sprintf("%d", state.TotalChanges) } unsaved
+										{ strfmt.Int(state.TotalChanges) } unsaved
 										{ strfmt.ChangeWord(state.TotalChanges) } ready to build.
 									</p>
 								}

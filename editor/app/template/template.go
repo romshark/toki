@@ -2,6 +2,7 @@ package template
 
 import (
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -99,10 +100,8 @@ const DefaultPageSize = 25
 // NormalizePageSize clamps n to one of PageSizeOptions, returning
 // DefaultPageSize when n is not one of the allowed values.
 func NormalizePageSize(n int) int {
-	for _, opt := range PageSizeOptions {
-		if n == opt {
-			return n
-		}
+	if slices.Contains(PageSizeOptions, n) {
+		return n
 	}
 	return DefaultPageSize
 }
@@ -178,20 +177,20 @@ func FmtDuration(d time.Duration) string {
 
 // DomainInfo holds display data for a single TIK domain.
 type DomainInfo struct {
-	Name           string
-	Description    string
-	Dir            string // Absolute path.
-	FullName       string // Dot-separated path (e.g. "myapp.storefront.checkout").
-	ParentName     string // Display name of parent domain (empty if root).
-	ParentFullName string // FullName of parent domain (empty if root).
-	NumTIKs         int // TIKs directly in this domain.
+	Name            string
+	Description     string
+	Dir             string // Absolute path.
+	FullName        string // Dot-separated path (e.g. "myapp.storefront.checkout").
+	ParentName      string // Display name of parent domain (empty if root).
+	ParentFullName  string // FullName of parent domain (empty if root).
+	NumTIKs         int    // TIKs directly in this domain.
 	NumComplete     int
 	NumIncomplete   int
 	NumUntranslated int
 	NumInvalid      int
 	NumChanged      int
-	Completeness   float64 // 0.0–1.0
-	SubDomains     []DomainInfo
+	Completeness    float64 // 0.0–1.0
+	SubDomains      []DomainInfo
 }
 
 // DataDomains holds data for the /domains/ page.

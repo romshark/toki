@@ -57,10 +57,9 @@ func (p PageTIKs) GET(
 
 	showLocales := parseLocalesParam(query.Locales)
 	showDomains := parseDomainsParam(query.Domains)
-	pageIdx := query.Page - 1 // URL is 1-based, internal is 0-based
-	if pageIdx < 0 {
-		pageIdx = 0
-	}
+	pageIdx := max(
+		// URL is 1-based, internal is 0-based
+		query.Page-1, 0)
 	data := p.App.buildFilteredDataIndex(
 		query.Filter, showLocales, showDomains, pageIdx, query.PageSize, query.Search)
 	body = template.PageTIKs(data)
@@ -82,10 +81,9 @@ func (p PageTIKs) StreamOpen(
 ) error {
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
-	pageIdx := signals.Page - 1 // signal is 1-based, internal is 0-based
-	if pageIdx < 0 {
-		pageIdx = 0
-	}
+	pageIdx := max(
+		// signal is 1-based, internal is 0-based
+		signals.Page-1, 0)
 	p.App.registerTIKsStreamLocked(streamID, signals.InstanceID, pageTIKsState{
 		filterType:  normalizeFilterType(signals.FilterType),
 		showLocales: signals.ShowLocales,
@@ -357,10 +355,9 @@ func (p PageTIKs) POSTSetPage(
 		return httperr.BadRequest
 	}
 
-	pageIdx := signals.Page - 1 // signal is 1-based, internal is 0-based
-	if pageIdx < 0 {
-		pageIdx = 0
-	}
+	pageIdx := max(
+		// signal is 1-based, internal is 0-based
+		signals.Page-1, 0)
 	vs.pageIdx = pageIdx
 
 	if err := sse.ExecuteScript(
