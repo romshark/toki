@@ -47,7 +47,7 @@ type ResultJSON struct {
 }
 
 func (r Result) mustPrintJSON() {
-	enc := json.NewEncoder(os.Stderr)
+	enc := json.NewEncoder(os.Stdout)
 	var errMsg string
 	if r.Err != nil {
 		errMsg = r.Err.Error()
@@ -87,7 +87,7 @@ func (r Result) mustPrintJSON() {
 	})
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(data); err != nil {
-		panic(fmt.Errorf("encoding JSON to stderr: %w", err))
+		panic(fmt.Errorf("encoding JSON to stdout: %w", err))
 	}
 }
 
