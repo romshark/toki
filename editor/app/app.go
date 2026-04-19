@@ -977,13 +977,13 @@ func (a *App) buildDashboardStats() template.DashboardStats {
 			localeStats[i].Completeness = float64(localeStats[i].Complete) / float64(total)
 		}
 	}
-	// Separate native (default) locale from the rest.
+	// Record the native (default) locale separately for the Overview card,
+	// but include every locale (native included) in the full Locales grid.
 	for _, ls := range localeStats {
 		if ls.Default {
 			s.NativeLocale = ls
-		} else {
-			s.Locales = append(s.Locales, ls)
 		}
+		s.Locales = append(s.Locales, ls)
 	}
 
 	if s.NumTIKs > 0 {
