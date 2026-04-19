@@ -18,6 +18,10 @@ import (
 // RunHybridApp launches the editor as a native Wails desktop app backed by
 // a local HTTP server on an ephemeral 127.0.0.1 port. Returns when the
 // webview window closes or the server fails to start.
+//
+// This file is compiled only when cgo is enabled (the `import "C"` above
+// acts as an implicit build constraint); edit_nocgo.go provides a stub
+// used under CGO_ENABLED=0 (e.g. the govulncheck CI job).
 func RunHybridApp(a *app.App, s *datapagesgen.Server) error {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
