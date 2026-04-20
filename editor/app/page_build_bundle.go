@@ -33,7 +33,7 @@ func (p PageBuildBundle) GET(
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
 
-	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
+	if p.App.mustRedirectToProjectDir() {
 		redirect = href.PageProjectDir()
 		return
 	}

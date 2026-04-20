@@ -21,7 +21,8 @@ test: fmtcheck lint
 templ:
 	go run github.com/a-h/templ/cmd/templ@v0.3.1001 generate
 
-dev-editor:
+dev-editor: templ
+	cd editor/js && npm install
 	datapages watch
 
 gen-example-large:

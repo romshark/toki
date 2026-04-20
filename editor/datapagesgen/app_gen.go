@@ -576,6 +576,12 @@ func setupHandlers(s *Server) {
 		"POST /apply-changes/{$}",
 		s.handlePOSTApplyChanges)
 	s.mux.HandleFunc(
+		"POST /repair/{$}",
+		s.handlePOSTRepair)
+	s.mux.HandleFunc(
+		"POST /regenerate/{$}",
+		s.handlePOSTRegenerate)
+	s.mux.HandleFunc(
 		"POST /project-dir/open/{$}",
 		s.handlePageProjectDirPOSTOpen)
 	s.mux.HandleFunc(
@@ -762,6 +768,60 @@ func (s *Server) handlePOSTApplyChanges(w http.ResponseWriter, r *http.Request) 
 	err := s.app.POSTApplyChanges(r, dispatch, signals)
 	if err != nil {
 		s.httpErrIntern(w, r, nil, "handling action App.ApplyChanges", err)
+		return
+	}
+}
+
+func (s *Server) handlePOSTRepair(w http.ResponseWriter, r *http.Request) {
+
+	dispatch := func(
+		e1 app.EventUpdated,
+	) error {
+		{
+			j, err := json.Marshal(e1)
+			if err != nil {
+				return fmt.Errorf("marshaling EventUpdated JSON: %w", err)
+			}
+			err = s.messageBroker.Publish(r.Context(), s.messageBrokerMetrics, EvSubjUpdated, j)
+			if err != nil {
+				return fmt.Errorf("publishing subject %q: %w", EvSubjUpdated, err)
+			}
+		}
+		return nil
+	}
+	redirect, err := s.app.POSTRepair(r, dispatch)
+	if err != nil {
+		s.httpErrIntern(w, r, nil, "handling action App.Repair", err)
+		return
+	}
+	if httpRedirect(w, r, redirect, 0) {
+		return
+	}
+}
+
+func (s *Server) handlePOSTRegenerate(w http.ResponseWriter, r *http.Request) {
+
+	dispatch := func(
+		e1 app.EventUpdated,
+	) error {
+		{
+			j, err := json.Marshal(e1)
+			if err != nil {
+				return fmt.Errorf("marshaling EventUpdated JSON: %w", err)
+			}
+			err = s.messageBroker.Publish(r.Context(), s.messageBrokerMetrics, EvSubjUpdated, j)
+			if err != nil {
+				return fmt.Errorf("publishing subject %q: %w", EvSubjUpdated, err)
+			}
+		}
+		return nil
+	}
+	redirect, err := s.app.POSTRegenerate(r, dispatch)
+	if err != nil {
+		s.httpErrIntern(w, r, nil, "handling action App.Regenerate", err)
+		return
+	}
+	if httpRedirect(w, r, redirect, 0) {
 		return
 	}
 }

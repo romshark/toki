@@ -19,10 +19,10 @@ import (
 	"github.com/romshark/icumsg"
 	"github.com/romshark/tik/tik-go"
 	"github.com/romshark/toki/editor/app/template"
+	"github.com/romshark/toki/editor/datapagesgen/href"
 	"github.com/romshark/toki/editor/datapagesgen/httperr"
 	"github.com/romshark/toki/editor/indexdb"
 	"github.com/romshark/toki/internal/arb"
-	"github.com/romshark/toki/internal/bundlerepair"
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/icu"
 	tikutil "github.com/romshark/toki/internal/tik"
@@ -93,17 +93,25 @@ type App struct {
 	icuTokBuffer     []icumsg.Token
 	tikParser        *tik.Parser
 	tikICUTranslator *tik.ICUTranslator
-	scan             *codeparse.Scan
-	defaultLocale    language.Tag
-	domains          *codeparse.DomainTree
-	tiks             []*template.TIK
-	tiksByID         map[string]*template.TIK
-	catalogs         []*template.Catalog
-	localeTags       []language.Tag
-	changed          []*template.ICUMessage
-	numCorrupt       int // corrupt native locale messages (from scan or DB)
-	repairErr        string
-	initErr          string
+
+	scan       *codeparse.Scan
+	domains    *codeparse.DomainTree
+	tiks       []*template.TIK
+	tiksByID   map[string]*template.TIK
+	catalogs   []*template.Catalog
+	localeTags []language.Tag
+	changed    []*template.ICUMessage
+	// numCorrupt is the number of native-locale messages that
+	// disagree with the TIK (needs `toki repair`)
+	numCorrupt int
+	// numMissing is the number of native-locale messages missing
+	// from ARB (needs `toki generate`)
+	numMissing int
+	repairErr  string
+	initErr    string
+
+	// sourceErrors are populated when initErr is a source-error summary
+	sourceErrors []template.SourceError
 
 	// loading is true while the index DB is being rebuilt in the background.
 	loading atomic.Bool
@@ -148,6 +156,16 @@ type App struct {
 	// GenerateGoBundle regenerates the Go bundle from a scan produced by
 	// a prior parse. Set by editor.Setup. Used by the repair flow only.
 	GenerateGoBundle func(bundlePkgPath string, scan *codeparse.Scan) error
+
+	// RepairBundle fixes corrupt native-locale entries by regenerating them
+	// from TIK source. Set by editor.Setup. Returns the number of messages
+	// repaired (0 if nothing was corrupt).
+	RepairBundle func(env []string, modDir, bundlePkgPath string) (int, error)
+
+	// RegenerateBundle runs `toki generate`'s logic programmatically to
+	// bring the bundle back in sync with source code (adds missing native
+	// ARB entries and regenerates Go). Set by editor.Setup.
+	RegenerateBundle func(env []string, modDir, bundlePkgPath string) error
 }
 
 func NewApp(dir, bundlePkgPath string, env []string, db *indexdb.DB) *App {
@@ -188,21 +206,56 @@ func (a *App) InitErr() string {
 	return a.initErr
 }
 
+// TryInit loads the bundle for the configured project directory into the
+// App's in-memory state. Takes the App lock, then delegates to
+// [App.tryInitLocked]. On success the editor is ready to serve pages; on
+// failure the reason is stored in initErr (plus optionally sourceErrors /
+// numCorrupt / numMissing) so the project-dir page can surface it.
 func (a *App) TryInit() error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 	return a.tryInitLocked()
 }
 
+// mustRedirectToProjectDir reports whether the editor should redirect the user
+// to the project-dir page instead of letting them edit translations.
+// True when the bundle is missing, out-of-sync with source, or corrupt.
+func (a *App) mustRedirectToProjectDir() bool {
+	return a.dir == "" || a.initErr != "" || a.numCorrupt > 0 || a.numMissing > 0
+}
+
+// defaultLocaleLocked returns the bundle's native locale. Prefers the
+// authoritative value from a.scan when the slow/full-rebuild path
+// populated it; falls back to the Default catalog on the fast-path (DB)
+// init where no scan exists. Returns language.Und if the bundle isn't
+// loaded yet. Caller must hold a.lock.
+func (a *App) defaultLocaleLocked() language.Tag {
+	if a.scan != nil {
+		return a.scan.DefaultLocale
+	}
+	for i, c := range a.catalogs {
+		if c.Default {
+			return a.localeTags[i]
+		}
+	}
+	return language.Tag{}
+}
+
+// tryInitLocked resets all derived state and then tries to load the bundle:
+// the fast path restores catalogs/TIKs/messages from the index DB when the
+// ARB checksum + schema + toki version all match; otherwise it falls back
+// to a full codeparse-driven rebuild. Domain discovery runs in both paths.
+// Must be called with a.lock held.
 func (a *App) tryInitLocked() error {
 	a.initErr = ""
+	a.sourceErrors = nil
 	a.changed = nil
 	a.numCorrupt = 0
+	a.numMissing = 0
 	a.tiks = nil
 	a.catalogs = nil
 	a.localeTags = nil
 	a.scan = nil
-	a.defaultLocale = language.Tag{}
 	a.domains = nil
 
 	if a.dir == "" {
@@ -273,14 +326,25 @@ func (a *App) fullRebuildLocked() error {
 	}
 	if scan.SourceErrors.Len() > 0 {
 		a.initErr = "Source code contains errors"
+		_ = scan.SourceErrors.Access(func(s []codeparse.SourceError) error {
+			a.sourceErrors = make([]template.SourceError, len(s))
+			for i, se := range s {
+				a.sourceErrors[i] = template.SourceError{
+					File: se.Filename,
+					Line: se.Line,
+					Col:  se.Column,
+					Err:  se.Err.Error(),
+				}
+			}
+			return nil
+		})
 		return errors.New(a.initErr)
 	}
 
 	a.scan = scan
-	a.defaultLocale = scan.DefaultLocale
 	a.ensureNativeCatalogExists(scan)
 	a.buildTemplateDataFromScanLocked()
-	a.numCorrupt = a.nativeCatalogCorruptCount()
+	a.numCorrupt, a.numMissing = a.nativeCatalogStatusCounts()
 
 	// Populate the index DB from the scan results.
 	if a.indexDB != nil {
@@ -526,7 +590,6 @@ func (a *App) loadFromDBLocked() error {
 		}
 		if dc.IsDefault {
 			a.numCorrupt = dc.MessagesCorrupt
-			a.defaultLocale = tag
 		}
 		a.catalogs = append(a.catalogs, c)
 		a.localeTags = append(a.localeTags, tag)
@@ -618,7 +681,9 @@ func (a *App) SetDir(dir string) error {
 	return a.tryInitLocked()
 }
 
-func (a *App) registerTIKsStreamLocked(streamID uint64, instanceID string, vs pageTIKsState) {
+func (a *App) registerTIKsStreamLocked(
+	streamID uint64, instanceID string, vs pageTIKsState,
+) {
 	a.streamInst[streamID] = instanceID
 	if existing, ok := a.tiksViews[instanceID]; ok {
 		existing.filterType = vs.filterType
@@ -887,6 +952,62 @@ func (a *App) POSTApplyChanges(
 	return dispatch(EventUpdated{})
 }
 
+// POSTRepair is /repair/{$}
+func (a *App) POSTRepair(
+	r *http.Request,
+	dispatch func(EventUpdated) error,
+) (
+	redirect string,
+	err error,
+) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	a.repairErr = ""
+
+	if a.numCorrupt == 0 {
+		return href.PageIndex(), nil
+	}
+
+	if err := a.repairCorruptLocked(); err != nil {
+		a.repairErr = err.Error()
+		return href.PageIndex(), nil
+	}
+
+	if err := dispatch(EventUpdated{}); err != nil {
+		return "", err
+	}
+	return href.PageIndex(), nil
+}
+
+// POSTRegenerate is /regenerate/{$}
+func (a *App) POSTRegenerate(
+	r *http.Request,
+	dispatch func(EventUpdated) error,
+) (
+	redirect string,
+	err error,
+) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	a.repairErr = ""
+
+	if a.numMissing == 0 {
+		return href.PageIndex(), nil
+	}
+
+	if err := a.regenerateLocked(); err != nil {
+		a.repairErr = err.Error()
+		return href.PageIndex(), nil
+	}
+
+	if err := dispatch(EventUpdated{}); err != nil {
+		return "", err
+	}
+	return href.PageIndex(), nil
+}
+
 // clearBuildResultLocked clears stale build results so the build-bundle
 // page doesn't show an old result when revisited later.
 func (a *App) clearBuildResultLocked() {
@@ -1000,18 +1121,20 @@ func (a *App) buildDashboardStats() template.DashboardStats {
 	return s
 }
 
-// nativeCatalogCorruptCount returns the MessagesCorrupt count from the scan's
-// native catalog. Returns 0 if scan is nil or no native catalog exists.
-func (a *App) nativeCatalogCorruptCount() int {
+// nativeCatalogStatusCounts returns (corrupt, missing) counts from the
+// scan's native catalog. Zero for both when scan is nil or no native
+// catalog exists. "Corrupt" means ARB entries disagree with the TIK;
+// "missing" means TIKs exist in source but have no ARB entry.
+func (a *App) nativeCatalogStatusCounts() (corrupt, missing int) {
 	if a.scan == nil {
-		return 0
+		return 0, 0
 	}
 	for c := range a.scan.Catalogs.SeqRead() {
 		if c.ARB.Locale == a.scan.DefaultLocale {
-			return int(c.MessagesCorrupt.Load())
+			return int(c.MessagesCorrupt.Load()), int(c.MessagesMissing.Load())
 		}
 	}
-	return 0
+	return 0, 0
 }
 
 // ensureNativeCatalogExists creates an empty native catalog in the scan
@@ -1033,10 +1156,6 @@ func (a *App) ensureNativeCatalogExists(scan *codeparse.Scan) {
 			fmt.Sprintf("catalog_%s.arb", scan.DefaultLocale),
 		),
 	})
-}
-
-func navigate(url string) string {
-	return "window.location='" + url + "'"
 }
 
 // PageError404 is /error404/
@@ -1100,7 +1219,7 @@ func (a *App) doBuildBundleLocked(changed []*template.ICUMessage) error {
 		}
 	}
 	scan, err := a.ApplyChangesAndBuild(
-		a.env, a.dir, a.bundlePkgPath, a.defaultLocale, edits,
+		a.env, a.dir, a.bundlePkgPath, a.defaultLocaleLocked(), edits,
 	)
 	if err != nil {
 		return err
@@ -1109,9 +1228,8 @@ func (a *App) doBuildBundleLocked(changed []*template.ICUMessage) error {
 	a.initErr = ""
 	a.changed = nil
 	a.scan = scan
-	a.defaultLocale = scan.DefaultLocale
 	a.buildTemplateDataFromScanLocked()
-	a.numCorrupt = a.nativeCatalogCorruptCount()
+	a.numCorrupt, a.numMissing = a.nativeCatalogStatusCounts()
 
 	if a.indexDB != nil {
 		if err := a.populateDBFromScanLocked(); err != nil {
@@ -1215,23 +1333,31 @@ func normalizeFilterType(filterType string) string {
 	return filterType
 }
 
-// RepairCorrupt repairs corrupt native locale messages by populating them
-// from the TIK, writing the repaired ARB, and regenerating Go code.
-// Existing unsaved user changes on other messages are preserved.
-// On failure, the error is stored in repairErr for display on the project-dir page.
-func (a *App) RepairCorrupt() {
-	a.lock.Lock()
-	defer a.lock.Unlock()
-
-	a.repairErr = ""
-
-	if a.numCorrupt == 0 {
-		return
+func (a *App) regenerateLocked() error {
+	if a.RegenerateBundle == nil {
+		return errors.New("regenerate is not available: no RegenerateBundle callback configured")
+	}
+	if err := a.RegenerateBundle(a.env, a.dir, a.bundlePkgPath); err != nil {
+		return err
 	}
 
-	if err := a.repairCorruptLocked(); err != nil {
-		a.repairErr = err.Error()
+	// Re-parse to rebuild in-memory state from the regenerated bundle.
+	parser := codeparse.NewParser(a.hasher, a.tikParser, a.tikICUTranslator)
+	scan, err := parser.Parse(a.env, a.dir, "./...", a.bundlePkgPath, false)
+	if err != nil {
+		return fmt.Errorf("re-parsing after regenerate: %w", err)
 	}
+	a.scan = scan
+	a.changed = nil
+	a.buildTemplateDataFromScanLocked()
+	a.numCorrupt, a.numMissing = a.nativeCatalogStatusCounts()
+
+	if a.indexDB != nil {
+		if err := a.populateDBFromScanLocked(); err != nil {
+			return fmt.Errorf("populating index DB: %w", err)
+		}
+	}
+	return nil
 }
 
 func (a *App) repairCorruptLocked() error {
@@ -1248,64 +1374,23 @@ func (a *App) repairCorruptLocked() error {
 		})
 	}
 
-	// Clean stale generated Go files so codeparse can succeed.
-	absBundlePkg := filepath.Join(a.dir, a.bundlePkgPath)
-	if a.CleanGenerated != nil {
-		if err := a.CleanGenerated(absBundlePkg, a.defaultLocale); err != nil {
-			return fmt.Errorf("cleaning generated files: %w", err)
-		}
+	if a.RepairBundle == nil {
+		return errors.New("repair is not available: no RepairBundle callback configured")
+	}
+	if _, err := a.RepairBundle(a.env, a.dir, a.bundlePkgPath); err != nil {
+		return err
 	}
 
-	// Parse source to get a scan (needed for repair).
+	// Re-parse to rebuild in-memory state from the on-disk bundle.
 	parser := codeparse.NewParser(a.hasher, a.tikParser, a.tikICUTranslator)
 	scan, err := parser.Parse(a.env, a.dir, "./...", a.bundlePkgPath, false)
 	if err != nil {
-		return fmt.Errorf("parsing source: %w", err)
-	}
-	a.ensureNativeCatalogExists(scan)
-
-	// Fix corrupt messages in memory.
-	repaired := bundlerepair.Repair(scan, a.tikICUTranslator, a.icuTokenizer)
-	if len(repaired) == 0 {
-		return nil
-	}
-
-	// Write the repaired native ARB to disk.
-	for c := range scan.Catalogs.SeqRead() {
-		if c.ARB.Locale != scan.DefaultLocale {
-			continue
-		}
-		f, err := os.OpenFile(c.ARBFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
-		if err != nil {
-			return fmt.Errorf("writing ARB: %w", err)
-		}
-		err = arb.Encode(f, c.ARB, "\t")
-		_ = f.Close()
-		if err != nil {
-			return fmt.Errorf("encoding ARB: %w", err)
-		}
-		break
-	}
-
-	// Regenerate Go code from the repaired scan.
-	if a.GenerateGoBundle != nil {
-		if err := a.GenerateGoBundle(absBundlePkg, scan); err != nil {
-			return fmt.Errorf("generating Go bundle: %w", err)
-		}
-	}
-
-	// Re-parse to get a clean scan (with correct checksums, tokens, etc.).
-	scan, err = parser.Parse(a.env, a.dir, "./...", a.bundlePkgPath, false)
-	if err != nil {
 		return fmt.Errorf("re-parsing after repair: %w", err)
 	}
-
-	// Rebuild in-memory state from the repaired scan.
 	a.scan = scan
-	a.defaultLocale = scan.DefaultLocale
 	a.changed = nil
 	a.buildTemplateDataFromScanLocked()
-	a.numCorrupt = a.nativeCatalogCorruptCount()
+	a.numCorrupt, a.numMissing = a.nativeCatalogStatusCounts()
 
 	if a.indexDB != nil {
 		if err := a.populateDBFromScanLocked(); err != nil {

@@ -50,7 +50,7 @@ func (p PageTIKs) GET(
 
 	p.App.clearBuildResultLocked()
 
-	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
+	if p.App.mustRedirectToProjectDir() {
 		redirect = href.PageProjectDir()
 		return
 	}
@@ -111,10 +111,10 @@ func (p PageTIKs) OnUpdated(
 	defer p.App.lock.Unlock()
 
 	if p.App.building {
-		return sse.ExecuteScript(navigate(href.PageBuildBundle()))
+		return sse.Redirect(href.PageBuildBundle())
 	}
 
-	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
+	if p.App.mustRedirectToProjectDir() {
 		return nil
 	}
 
@@ -233,7 +233,7 @@ func (p PageTIKs) POSTFilter(
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
 
-	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
+	if p.App.mustRedirectToProjectDir() {
 		return httperr.BadRequest
 	}
 
@@ -346,7 +346,7 @@ func (p PageTIKs) POSTSetPage(
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
 
-	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
+	if p.App.mustRedirectToProjectDir() {
 		return httperr.BadRequest
 	}
 
@@ -383,7 +383,7 @@ func (p PageTIKs) POSTSetPageSize(
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
 
-	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
+	if p.App.mustRedirectToProjectDir() {
 		return httperr.BadRequest
 	}
 

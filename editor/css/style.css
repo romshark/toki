@@ -309,12 +309,66 @@ body {
 	color: var(--color-foreground, var(--foreground));
 }
 
+.sidebar-server-link {
+	display: flex;
+	flex-direction: column;
+	gap: 0.2rem;
+	inline-size: 100%;
+	margin-block-start: 0.5rem;
+
+	& .sidebar-server-label {
+		font-size: 0.7rem;
+		opacity: 0.7;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+	}
+
+	& .sidebar-server-row {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		inline-size: 100%;
+		font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+		font-size: 0.75rem;
+	}
+
+	& .sidebar-server-url {
+		flex: 1;
+		min-inline-size: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+}
+
 .switch-label {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
 	padding-block: 0.25rem;
 	cursor: pointer;
+}
+
+.source-error-list {
+	list-style: none;
+	margin: 0.5rem 0 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	font-size: 0.85rem;
+
+	& li {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+	}
+
+	& .source-error-pos {
+		font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+		font-size: 0.75rem;
+		opacity: 0.75;
+	}
 }
 
 #page-not-found {

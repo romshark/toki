@@ -5,10 +5,13 @@ import (
 
 	"github.com/romshark/toki/editor/app/template/strfmt"
 	"github.com/romshark/toki/editor/datapagesgen/action"
+	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
 templ PageProjectDir(
-	dir string, errMsg string, repairErr string, numChanges int, numCorrupt int,
+	dir string, errMsg string, repairErr string,
+	numChanges int, numCorrupt int, numMissing int,
+	sourceErrors []SourceError,
 ) {
 	@page("page-project-dir") {
 		<div
@@ -32,13 +35,27 @@ templ PageProjectDir(
 								type="text"
 								data-bind:folder
 								placeholder="/path/to/your/project"
-								data-on:keydown="if(evt.key==='Enter'){evt.preventDefault();evt.target.closest('.folder-picker').querySelector('button.btn-primary:not([style*=none])').click()}"
+								data-on:keydown="if(evt.key==='Enter'){evt.preventDefault();evt.target.closest('.folder-picker').querySelector('button[data-open-project-trigger]:not([style*=none])').click()}"
 							/>
 						</label>
 						if errMsg != "" {
 							<div class="alert alert-destructive">
 								@iconAlertCircle()
-								<section>{ errMsg }</section>
+								<section>
+									<strong>{ errMsg }</strong>
+									if len(sourceErrors) > 0 {
+										<ul class="source-error-list">
+											for _, se := range sourceErrors {
+												<li>
+													<code class="source-error-pos">
+														{ se.File }:{ strfmt.Int(se.Line) }:{ strfmt.Int(se.Col) }
+													</code>
+													<span class="source-error-msg">{ se.Err }</span>
+												</li>
+											}
+										</ul>
+									}
+								</section>
 							</div>
 						}
 						if numCorrupt > 0 {
@@ -47,13 +64,12 @@ templ PageProjectDir(
 								<section>
 									<strong>Corrupted Bundle</strong>
 									<p>
-										{ strfmt.Int(numCorrupt) } native locale
-										if numCorrupt == 1 {
-											message doesn't
-										} else {
-											messages don't
-										}
-										match what should have been generated from source code.
+										{ strfmt.Int(numCorrupt) }
+										native-locale message(s) disagree(s)
+										with the source-code TIK
+										(locked-ICU or placeholder mismatch).
+										Run <code>toki repair</code> or click
+										the button below to repair the bundle.
 									</p>
 									if repairErr != "" {
 										<p>
@@ -61,24 +77,63 @@ templ PageProjectDir(
 											{ repairErr }
 										</p>
 									}
-									<a href="/repair/" class="btn-destructive">
-										Repair Bundle
-									</a>
 								</section>
 							</div>
 						}
-						if dir != "" && errMsg == "" && numCorrupt == 0 {
+						if numMissing > 0 && numCorrupt == 0 {
+							<div class="alert">
+								@iconAlertCircle()
+								<section>
+									<strong>Bundle Out of Date</strong>
+									<p>
+										Source code declares
+										{ strfmt.Int(numMissing) } TIK(s)
+										that have no entry in the native-locale catalog yet.
+										Click Regenerate (or run <code>toki generate</code>)
+										to update the bundle.
+									</p>
+									if repairErr != "" {
+										<p>
+											<strong>Regenerate failed:</strong>
+											{ repairErr }
+										</p>
+									}
+								</section>
+							</div>
+						}
+						if dir != "" && errMsg == "" && numCorrupt == 0 && numMissing == 0 {
 							<button
 								class="btn-primary"
-								data-on:click="window.location='/'"
+								data-open-project-trigger
+								data-on:click={ fmt.Sprintf(
+									"window.location='%s'",
+									href.PageIndex(),
+								) }
 								data-show="$folder===$origfolder"
 							>
 								Continue
 							</button>
 						}
+						if numMissing > 0 && numCorrupt == 0 {
+							<button
+								class="btn-primary"
+								data-on:click={ action.POSTAppRegenerate() }
+							>
+								Regenerate Bundle
+							</button>
+						}
+						if numCorrupt > 0 {
+							<button
+								class="btn-destructive"
+								data-on:click={ action.POSTAppRepair() }
+							>
+								Repair Bundle
+							</button>
+						}
 						<button
 							class="btn-primary"
-							if dir != "" && errMsg == "" && numCorrupt == 0 {
+							data-open-project-trigger
+							if dir != "" && errMsg == "" && numCorrupt == 0 && numMissing == 0 {
 								style="display:none"
 							}
 							data-show="$folder!==$origfolder || $origfolder==='' || $haserror"

@@ -6,9 +6,6 @@ import (
 	"net/http"
 )
 
-// Mux returns the server's HTTP mux for registering custom routes.
-func (s *Server) Mux() *http.ServeMux { return s.mux }
-
 // SetAssetsDir overrides the static assets directory with an absolute path.
 func (s *Server) SetAssetsDir(dir string) {
 	s.assetsFS = http.Dir(dir)

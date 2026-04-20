@@ -287,7 +287,10 @@ templ PageDashboard(stats DashboardStats) {
 									if !stats.CanApplyChanges {
 										disabled
 									}
-									data-on:click="window.location='/build-bundle/'"
+									data-on:click={ fmt.Sprintf(
+										"window.location='%s'",
+										href.PageBuildBundle(),
+									) }
 								>
 									@iconSave()
 									Build Bundle

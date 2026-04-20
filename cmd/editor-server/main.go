@@ -27,6 +27,7 @@ func main() {
 	_, s := editor.Setup(
 		dir, *bundlePkg, cli.Version, os.Environ(),
 		cli.CleanGenerated, cli.GenerateBundle,
-		cli.ApplyChangesAndBuild)
+		cli.ApplyChangesAndBuild, cli.RepairBundle,
+		cli.RegenerateBundle)
 	os.Exit(editor.RunServer(s, *server))
 }

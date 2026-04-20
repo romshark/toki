@@ -104,14 +104,17 @@ type CatalogStatistics struct {
 	// MessagesIncomplete counts non-empty messages that fail
 	// [IsMsgIncomplete] (e.g. missing required plural/select options).
 	MessagesIncomplete atomic.Int64
-	// MessagesCorrupt counts native locale messages with auto-repairable
-	// corruption. A native locale message is corrupt when:
-	//  1. Empty — the TIK always generates an ICU for the native locale,
-	//     so an empty message means generation was skipped or failed.
-	//  2. Locked mismatch — [tikutil.ProducesCompleteICU] returns true (the TIK
+	// MessagesMissing counts native-locale messages that are present as TIKs
+	// in source code but absent from the ARB. An out-of-date bundle — fixed
+	// by re-running `toki generate`, not by repair.
+	MessagesMissing atomic.Int64
+	// MessagesCorrupt counts native-locale messages that exist in the ARB
+	// but disagree with the source-code TIK. Two sub-cases:
+	//  1. Locked mismatch — [tikutil.ProducesCompleteICU] returns true (the TIK
 	//     fully determines the ICU) but the ARB value differs from the expected one.
-	//  3. Placeholder mismatch — the message's placeholder metadata doesn't
+	//  2. Placeholder mismatch — the message's placeholder metadata doesn't
 	//     match what the TIK expects (see [PlaceholdersMismatch]).
+	// True corruption — fixed by `toki repair`.
 	MessagesCorrupt atomic.Int64
 }
 
@@ -215,7 +218,7 @@ func (p *Parser) Parse(
 
 	p.collectTexts(fset, pkgs, bundlePkg, pathPattern, trimpath, scan)
 
-	p.detectCorruptMessages(scan)
+	p.classifyNativeMessages(scan)
 
 	return scan, nil
 }
@@ -342,10 +345,12 @@ func IsMsgIncomplete(
 	return incomplete
 }
 
-// detectCorruptMessages counts native locale messages with auto-repairable
-// corruption (see [CatalogStatistics.MessagesCorrupt]).
+// classifyNativeMessages counts native-locale messages that are either
+// missing from the ARB (out of date — see [CatalogStatistics.MessagesMissing])
+// or corrupt (present but disagreeing with the TIK — see
+// [CatalogStatistics.MessagesCorrupt]).
 // Must be called after both CollectARBFiles and collectTexts.
-func (p *Parser) detectCorruptMessages(scan *Scan) {
+func (p *Parser) classifyNativeMessages(scan *Scan) {
 	var nativeCatalog *Catalog
 	for c := range scan.Catalogs.SeqRead() {
 		if c.ARB.Locale == scan.DefaultLocale {
@@ -362,14 +367,14 @@ func (p *Parser) detectCorruptMessages(scan *Scan) {
 		expectedICU := p.icuTranslator.TIK2ICU(t.TIK)
 		switch {
 		case msg.ICUMessage == "":
-			// Case 1: empty native message.
-			nativeCatalog.MessagesCorrupt.Add(1)
+			// Out of date: TIK exists in source but ARB has no entry.
+			nativeCatalog.MessagesMissing.Add(1)
 		case tikutil.ProducesCompleteICU(scan.DefaultLocale, t.TIK) &&
 			msg.ICUMessage != expectedICU:
-			// Case 2: locked message doesn't match expected ICU.
+			// Corrupt: locked message doesn't match expected ICU.
 			nativeCatalog.MessagesCorrupt.Add(1)
 		case PlaceholdersMismatch(t.TIK, msg):
-			// Case 3: missing or wrong placeholder metadata.
+			// Corrupt: missing or wrong placeholder metadata.
 			nativeCatalog.MessagesCorrupt.Add(1)
 		}
 	}

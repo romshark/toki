@@ -32,7 +32,8 @@ func (e *Edit) Run(osArgs, env []string, stderr io.Writer) error {
 	}
 
 	a, s := editor.Setup(dir, *bundlePkg, Version, env,
-		CleanGenerated, GenerateBundle, ApplyChangesAndBuild)
+		CleanGenerated, GenerateBundle, ApplyChangesAndBuild, RepairBundle,
+		RegenerateBundle)
 
 	if *server != "" {
 		os.Exit(editor.RunServer(s, *server))

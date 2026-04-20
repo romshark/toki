@@ -31,7 +31,15 @@ func (p PageProjectDir) GET(r *http.Request) (
 		return
 	}
 
-	body = template.PageProjectDir(p.App.dir, p.App.initErr, p.App.repairErr, len(p.App.changed), p.App.numCorrupt)
+	body = template.PageProjectDir(
+		p.App.dir,
+		p.App.initErr,
+		p.App.repairErr,
+		len(p.App.changed),
+		p.App.numCorrupt,
+		p.App.numMissing,
+		p.App.sourceErrors,
+	)
 	return
 }
 
@@ -52,15 +60,15 @@ func (p PageProjectDir) POSTOpen(
 	if p.App.PickDirectory != nil {
 		picked, err := p.App.PickDirectory()
 		if err != nil || picked == "" {
-			return sse.ExecuteScript(navigate(href.PageProjectDir()))
+			return sse.Redirect(href.PageProjectDir())
 		}
 		folder = picked
 	}
 	if folder == "" {
-		return sse.ExecuteScript(navigate(href.PageProjectDir()))
+		return sse.Redirect(href.PageProjectDir())
 	}
 	if err := p.App.SetDir(folder); err != nil {
-		return sse.ExecuteScript(navigate(href.PageProjectDir()))
+		return sse.Redirect(href.PageProjectDir())
 	}
-	return sse.ExecuteScript(navigate("/tiks/"))
+	return sse.Redirect(href.PageIndex())
 }

@@ -159,6 +159,15 @@ type Catalog struct {
 	Default bool
 }
 
+// SourceError is a source-code parse error surfaced on the project-dir
+// page when the bundle cannot be loaded.
+type SourceError struct {
+	File string // Path to the offending file (typically absolute).
+	Line int
+	Col  int
+	Err  string
+}
+
 // BuildBundleState holds the current state for the build-bundle page.
 type BuildBundleState struct {
 	Building     bool

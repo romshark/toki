@@ -23,6 +23,11 @@ type DataSettingsPreview struct {
 	UIPreviewICUEN      string
 	UIPreviewICUDE      string
 	UIPreviewEditorText string
+	// ServerURL is the HTTP address the editor is serving from (e.g.
+	// "http://127.0.0.1:50123"). Rendered as a link in the sidebar so
+	// users can open it in their external browser — useful when running
+	// inside the Wails desktop webview.
+	ServerURL string
 }
 
 func settingsResolvedThemeSignalExpr(theme string) string {
@@ -87,6 +92,15 @@ templ PageSettings(version string, data DataSettingsPreview) {
 						<div class="sidebar-version">
 							<small>Toki Editor { version }</small>
 						</div>
+						if data.ServerURL != "" {
+							<div class="sidebar-server-link">
+								<label class="sidebar-server-label">Server URL</label>
+								<div class="sidebar-server-row">
+									<span class="sidebar-server-url">{ data.ServerURL }</span>
+									@componentCopy(data.ServerURL)
+								</div>
+							</div>
+						}
 					</footer>
 				</nav>
 			</aside>

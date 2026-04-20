@@ -131,6 +131,18 @@ func (g *Generate) Run(
 		return result
 	}
 
+	// Refuse to run if the bundle is corrupt — generate can only fix
+	// missing entries, not resolve ARB/TIK disagreements. See `toki repair`.
+	var corruptTotal int64
+	for c := range scan.Catalogs.SeqRead() {
+		corruptTotal += c.MessagesCorrupt.Load()
+	}
+	if corruptTotal > 0 {
+		result.Err = fmt.Errorf("%w (%d corrupt native-locale entries)",
+			ErrBundleCorrupt, corruptTotal)
+		return result
+	}
+
 	if conf.Locale != language.Und {
 		// Locale parameter provided.
 		if scan.DefaultLocale != language.Und && conf.Locale != scan.DefaultLocale {
@@ -525,6 +537,40 @@ func CleanGenerated(bundlePkgPath string, defaultLocale language.Tag) error {
 		return fmt.Errorf("generating empty bundle: %w", err)
 	}
 	return nil
+}
+
+// RegenerateBundle runs the same logic as `toki generate` but invoked
+// programmatically: walks source code, adds missing native-locale ARB
+// entries, ensures every non-native catalog mirrors the set of TIK IDs,
+// writes the ARB files, and regenerates the Go bundle. Refuses when the
+// bundle is corrupt (see [ErrBundleCorrupt]) — run [RepairBundle] first.
+//
+// modDir is the absolute path to the Go module root.
+// bundlePkgPath is the bundle package path relative to modDir.
+//
+// Implementation note: Generate.Run currently derives its working
+// directory from the process cwd, so this helper chdirs to modDir for
+// the duration of the call. Callers must serialize invocations.
+func RegenerateBundle(env []string, modDir, bundlePkgPath string) error {
+	g := &Generate{
+		hasher:           xxhash.New(),
+		icuTokenizer:     new(icumsg.Tokenizer),
+		tikParser:        tik.NewParser(tik.DefaultConfig),
+		tikICUTranslator: tik.NewICUTranslator(tik.DefaultConfig),
+	}
+
+	oldWd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting cwd: %w", err)
+	}
+	if err := os.Chdir(modDir); err != nil {
+		return fmt.Errorf("chdir to %q: %w", modDir, err)
+	}
+	defer func() { _ = os.Chdir(oldWd) }()
+
+	osArgs := []string{"toki", "generate", "-b", bundlePkgPath, "-q"}
+	r := g.Run(osArgs, env, false, io.Discard, time.Now())
+	return r.Err
 }
 
 // GenerateBundle generates Go code from the scan data.

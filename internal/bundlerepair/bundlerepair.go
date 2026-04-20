@@ -1,6 +1,10 @@
-// Package bundlerepair repairs corrupt native locale bundle messages
+// Package bundlerepair repairs corrupt native-locale bundle messages
 // (see [codeparse.CatalogStatistics.MessagesCorrupt]) by regenerating
 // the ICU from the TIK.
+//
+// Corruption is specifically "TIK and ARB entry disagree" — locked-ICU
+// mismatch or placeholder-metadata mismatch. Missing ARB entries for TIKs
+// found in source code are NOT repaired here; that is `toki generate`'s job.
 package bundlerepair
 
 import (
@@ -49,7 +53,7 @@ func Repair(
 		corrupt := false
 		switch {
 		case msg.ICUMessage == "":
-			corrupt = true
+			// Missing, not corrupt — skip (generate handles it).
 		case tikutil.ProducesCompleteICU(scan.DefaultLocale, t.TIK) &&
 			msg.ICUMessage != expectedICU:
 			corrupt = true

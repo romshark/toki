@@ -29,7 +29,8 @@ func main() {
 	a, s := editor.Setup(
 		dir, *bundlePkg, cli.Version, os.Environ(),
 		cli.CleanGenerated, cli.GenerateBundle,
-		cli.ApplyChangesAndBuild)
+		cli.ApplyChangesAndBuild, cli.RepairBundle,
+		cli.RegenerateBundle)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

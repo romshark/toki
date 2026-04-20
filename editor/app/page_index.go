@@ -33,7 +33,7 @@ func (p PageIndex) GET(
 
 	p.App.clearBuildResultLocked()
 
-	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
+	if p.App.mustRedirectToProjectDir() {
 		return nil, href.PageProjectDir(), nil
 	}
 
@@ -50,10 +50,10 @@ func (p PageIndex) OnUpdated(
 	defer p.App.lock.Unlock()
 
 	if p.App.building {
-		return sse.ExecuteScript(navigate(href.PageBuildBundle()))
+		return sse.Redirect(href.PageBuildBundle())
 	}
 
-	if p.App.dir == "" || p.App.initErr != "" || p.App.numCorrupt > 0 {
+	if p.App.mustRedirectToProjectDir() {
 		return nil
 	}
 

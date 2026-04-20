@@ -339,6 +339,38 @@ func POSTAppApplyChanges(options ...option) string {
 	return b.String()
 }
 
+// POSTAppRegenerate references /regenerate/
+func POSTAppRegenerate(options ...option) string {
+	if len(options) == 0 {
+		return "@post('/regenerate/')"
+	}
+	var b strings.Builder
+	bl, al := beforeAfterLen(options)
+	b.Grow(bl + len("@post('/regenerate/'") + optionsLen(options) + len(")") + al)
+	writeBefore(&b, options)
+	b.WriteString("@post('/regenerate/'")
+	writeOptions(&b, options)
+	b.WriteByte(')')
+	writeAfter(&b, options)
+	return b.String()
+}
+
+// POSTAppRepair references /repair/
+func POSTAppRepair(options ...option) string {
+	if len(options) == 0 {
+		return "@post('/repair/')"
+	}
+	var b strings.Builder
+	bl, al := beforeAfterLen(options)
+	b.Grow(bl + len("@post('/repair/'") + optionsLen(options) + len(")") + al)
+	writeBefore(&b, options)
+	b.WriteString("@post('/repair/'")
+	writeOptions(&b, options)
+	b.WriteByte(')')
+	writeAfter(&b, options)
+	return b.String()
+}
+
 // POSTAppReset references /reset/
 func POSTAppReset(options ...option) string {
 	if len(options) == 0 {

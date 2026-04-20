@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"time"
 
 	"tokiexample/greatings"
@@ -64,4 +65,6 @@ Nulla eget sodales sem, dignissim elementum nulla. Sed sed elit feugiat, fringil
 	greatings.Casual(reader, tokibundle.String{Value: "Bob"})
 	greatings.Formal(reader, tokibundle.String{Value: "Alice"})
 	greatings.Farewell(reader, tokibundle.String{Value: "Joe"})
+
+	_, _ = reader.Write(os.Stdout, "Your score: {integer}", 42)
 }

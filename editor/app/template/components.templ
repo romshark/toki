@@ -22,7 +22,10 @@ templ componentNavbarBuildBtn(totalChanges int, canApplyChanges bool) {
 			if !canApplyChanges {
 				disabled
 			}
-			data-on:click="window.location='/build-bundle/'"
+			data-on:click={ fmt.Sprintf(
+				"window.location='%s'",
+				href.PageBuildBundle(),
+			) }
 		>
 			@iconSave()
 			<span class="navbar-desktop-only">Build Bundle</span>

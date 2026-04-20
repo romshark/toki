@@ -41,13 +41,24 @@ func Run(
 ) (result Result, exitCode int) {
 	if len(osArgs) < 2 {
 		return Result{
-			Err: fmt.Errorf("%w, use either of: [generate,lint,edit]", ErrNoCommand),
+			Err: fmt.Errorf("%w, use either of: [generate,lint,edit,repair]", ErrNoCommand),
 		}, 2
 	}
 
 	switch osArgs[1] {
 	case "version":
 		return Result{}, printVersionInfoAndExit(stderr, stdout)
+
+	case "repair":
+		r := Repair{}
+		err := r.Run(osArgs, env, stderr)
+		switch {
+		case errors.Is(err, ErrInvalidCLIArgs):
+			return Result{Err: err}, 2
+		case err != nil:
+			return Result{Err: err}, 1
+		}
+		return Result{}, 0
 
 	case "lint", "generate":
 		g := Generate{
@@ -77,7 +88,7 @@ func Run(
 		return Result{}, 0
 	}
 	return Result{
-		Err: fmt.Errorf("%w %q, use either of: [generate,lint,edit]",
+		Err: fmt.Errorf("%w %q, use either of: [generate,lint,edit,repair]",
 			ErrUnknownCommand, osArgs[1]),
 	}, 2
 }

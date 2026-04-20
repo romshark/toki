@@ -32,12 +32,23 @@ type ApplyChangesAndBuildFunc func(
 	edits []app.BundleEdit,
 ) (*codeparse.Scan, error)
 
+// RepairBundleFunc fixes corrupt native-locale entries by regenerating them
+// from TIK source. Returns the number of messages repaired (0 if the bundle
+// is already consistent).
+type RepairBundleFunc func(env []string, modDir, bundlePkgPath string) (int, error)
+
+// RegenerateBundleFunc runs `toki generate` programmatically — adds missing
+// native ARB entries and regenerates the Go bundle.
+type RegenerateBundleFunc func(env []string, modDir, bundlePkgPath string) error
+
 // Setup creates the App and datapages Server for the given directory.
 func Setup(
 	dir, bundlePkgPath, version string, env []string,
 	cleanGenerated CleanGeneratedFunc,
 	generateBundle GenerateBundleFunc,
 	applyChangesAndBuild ApplyChangesAndBuildFunc,
+	repairBundle RepairBundleFunc,
+	regenerateBundle RegenerateBundleFunc,
 ) (*app.App, *datapagesgen.Server) {
 	// Extract the custom sqinn binary (built with FTS5 support).
 	sqinnPath, err := tokisqinn.Path()
@@ -62,6 +73,8 @@ func Setup(
 	a.CleanGenerated = cleanGenerated
 	a.GenerateGoBundle = generateBundle
 	a.ApplyChangesAndBuild = applyChangesAndBuild
+	a.RepairBundle = repairBundle
+	a.RegenerateBundle = regenerateBundle
 
 	// Start initialization asynchronously so the server can show
 	// a loading screen while the index DB is being rebuilt.
@@ -75,14 +88,6 @@ func Setup(
 		datapagesgen.WithAssets(app.StaticFS),
 	)
 	s.UseContextCanceledFilter()
-
-	// Register the repair handler for fixing corrupt native locale messages.
-	// Repairs are applied as changes (preserving existing unsaved edits)
-	// and redirect back to the dashboard.
-	s.Mux().HandleFunc("GET /repair/{$}", func(w http.ResponseWriter, r *http.Request) {
-		a.RepairCorrupt()
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-	})
 
 	return a, s
 }

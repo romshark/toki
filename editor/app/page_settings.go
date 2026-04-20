@@ -87,9 +87,21 @@ func (p PageSettings) GET(
 		UIPreviewEditorText: "{count, plural,\n" +
 			"  one {You have # new message}\n" +
 			"  other {You have # new messages}\n}",
+		ServerURL: serverURL(r),
 	}
 	body = template.PageSettings(p.App.Version, data)
 	return
+}
+
+// serverURL returns the absolute URL this server is reachable at, derived
+// from the incoming request. Useful for showing a "open externally" link
+// inside the Wails desktop webview.
+func serverURL(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	return scheme + "://" + r.Host
 }
 
 // POSTSetPref is /settings/set-pref/{$}
