@@ -494,12 +494,14 @@ const (
 
 	// Public events:
 
-	EvSubjReset   = "editor.reset"
-	EvSubjUpdated = "editor.updated"
+	EvSubjPrefsChanged = "editor.prefs_changed"
+	EvSubjReset        = "editor.reset"
+	EvSubjUpdated      = "editor.updated"
 )
 
 func MessageBrokerStreamSubjects() []string {
 	return []string{
+		EvSubjPrefsChanged,
 		EvSubjReset,
 		EvSubjUpdated,
 	}
@@ -508,18 +510,33 @@ func MessageBrokerStreamSubjects() []string {
 func evSubjPageBuildBundle() []string {
 	return []string{
 		EvSubjUpdated,
+		EvSubjPrefsChanged,
 	}
 }
 
 func evSubjPageIndex() []string {
 	return []string{
 		EvSubjUpdated,
+		EvSubjPrefsChanged,
+	}
+}
+
+func evSubjPageProjectDir() []string {
+	return []string{
+		EvSubjPrefsChanged,
+	}
+}
+
+func evSubjPageSettings() []string {
+	return []string{
+		EvSubjPrefsChanged,
 	}
 }
 
 func evSubjPageTIK() []string {
 	return []string{
 		EvSubjUpdated,
+		EvSubjPrefsChanged,
 		EvSubjReset,
 	}
 }
@@ -527,6 +544,7 @@ func evSubjPageTIK() []string {
 func evSubjPageTIKs() []string {
 	return []string{
 		EvSubjUpdated,
+		EvSubjPrefsChanged,
 		EvSubjReset,
 	}
 }
@@ -552,8 +570,14 @@ func setupHandlers(s *Server) {
 		"GET /project-dir/{$}",
 		s.handlePageProjectDirGET)
 	s.mux.HandleFunc(
+		"GET /project-dir/_$/{$}",
+		s.handlePageProjectDirGETStream)
+	s.mux.HandleFunc(
 		"GET /settings/{$}",
 		s.handlePageSettingsGET)
+	s.mux.HandleFunc(
+		"GET /settings/_$/{$}",
+		s.handlePageSettingsGETStream)
 	s.mux.HandleFunc(
 		"GET /tik/{id}/{$}",
 		s.handlePageTIKGET)
@@ -937,6 +961,15 @@ func (s *Server) handlePageBuildBundleGETStream(w http.ResponseWriter, r *http.R
 					if err := p.OnUpdated(e, sse, streamID); err != nil {
 						s.logErr("handling PageBuildBundle.OnUpdated", err)
 					}
+				case EvSubjPrefsChanged:
+					var e app.EventPrefsChanged
+					if err := json.Unmarshal(msg.Data, &e); err != nil {
+						s.logErr("unmarshaling EventPrefsChanged JSON", err)
+						continue
+					}
+					if err := p.OnPrefsChanged(e, sse); err != nil {
+						s.logErr("handling PageBuildBundle.OnPrefsChanged", err)
+					}
 				}
 			}
 		})
@@ -1027,6 +1060,15 @@ func (s *Server) handlePageIndexGETStream(w http.ResponseWriter, r *http.Request
 					if err := p.OnUpdated(e, sse, streamID); err != nil {
 						s.logErr("handling PageIndex.OnUpdated", err)
 					}
+				case EvSubjPrefsChanged:
+					var e app.EventPrefsChanged
+					if err := json.Unmarshal(msg.Data, &e); err != nil {
+						s.logErr("unmarshaling EventPrefsChanged JSON", err)
+						continue
+					}
+					if err := p.OnPrefsChanged(e, sse); err != nil {
+						s.logErr("handling PageIndex.OnPrefsChanged", err)
+					}
 				}
 			}
 		})
@@ -1036,7 +1078,7 @@ func (s *Server) handlePageProjectDirGET(w http.ResponseWriter, r *http.Request)
 	p := app.PageProjectDir{
 		App: s.app,
 	}
-	body, redirect, _, disableRefreshAfterHidden, err := p.GET(r)
+	body, redirect, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(r)
 	if err != nil {
 		s.httpErrIntern(w, r, nil, "handling PageProjectDir.GET", err)
 		return
@@ -1052,12 +1094,53 @@ func (s *Server) handlePageProjectDirGET(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	bodySuffix := func(w http.ResponseWriter) {
+
+		_, _ = io.WriteString(w, `data-init="@get('/project-dir/_$/'`)
+		if enableBackgroundStreaming {
+			_, _ = io.WriteString(w, `,{openWhenHidden:true})"`)
+		} else {
+			_, _ = io.WriteString(w, `)"`)
+		}
+	}
+
 	if err := s.writeHTML(
-		w, r, genericHead, nil, body, bodyAttrs, nil,
+		w, r, genericHead, nil, body, bodyAttrs, bodySuffix,
 	); err != nil {
 		s.logErr("rendering PageProjectDir", err)
 		return
 	}
+}
+
+func (s *Server) handlePageProjectDirGETStream(w http.ResponseWriter, r *http.Request) {
+	if !s.checkIsDSReq(w, r) {
+		return
+	}
+
+	p := app.PageProjectDir{
+		App: s.app,
+	}
+	s.handleStreamRequest(w, r, evSubjPageProjectDir(),
+		nil,
+		nil,
+		func(
+			streamID uint64,
+			sse *datastar.ServerSentEventGenerator, ch <-chan msgbroker.Message,
+		) {
+			for msg := range ch {
+				switch msg.Subject {
+				case EvSubjPrefsChanged:
+					var e app.EventPrefsChanged
+					if err := json.Unmarshal(msg.Data, &e); err != nil {
+						s.logErr("unmarshaling EventPrefsChanged JSON", err)
+						continue
+					}
+					if err := p.OnPrefsChanged(e, sse); err != nil {
+						s.logErr("handling PageProjectDir.OnPrefsChanged", err)
+					}
+				}
+			}
+		})
 }
 
 func (s *Server) handlePageProjectDirPOSTPick(
@@ -1121,12 +1204,48 @@ func (s *Server) handlePageSettingsGET(w http.ResponseWriter, r *http.Request) {
 		writeBodyAttrOnVisibilityChange(w)
 	}
 
+	bodySuffix := func(w http.ResponseWriter) {
+
+		_, _ = io.WriteString(w, `data-init="@get('/settings/_$/')"`)
+	}
+
 	if err := s.writeHTML(
-		w, r, genericHead, nil, body, bodyAttrs, nil,
+		w, r, genericHead, nil, body, bodyAttrs, bodySuffix,
 	); err != nil {
 		s.logErr("rendering PageSettings", err)
 		return
 	}
+}
+
+func (s *Server) handlePageSettingsGETStream(w http.ResponseWriter, r *http.Request) {
+	if !s.checkIsDSReq(w, r) {
+		return
+	}
+
+	p := app.PageSettings{
+		App: s.app,
+	}
+	s.handleStreamRequest(w, r, evSubjPageSettings(),
+		nil,
+		nil,
+		func(
+			streamID uint64,
+			sse *datastar.ServerSentEventGenerator, ch <-chan msgbroker.Message,
+		) {
+			for msg := range ch {
+				switch msg.Subject {
+				case EvSubjPrefsChanged:
+					var e app.EventPrefsChanged
+					if err := json.Unmarshal(msg.Data, &e); err != nil {
+						s.logErr("unmarshaling EventPrefsChanged JSON", err)
+						continue
+					}
+					if err := p.OnPrefsChanged(e, sse); err != nil {
+						s.logErr("handling PageSettings.OnPrefsChanged", err)
+					}
+				}
+			}
+		})
 }
 
 func (s *Server) handlePageSettingsPOSTSetPref(
@@ -1135,6 +1254,7 @@ func (s *Server) handlePageSettingsPOSTSetPref(
 	if !s.checkIsDSReq(w, r) {
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, DefaultBodySizeLimit)
 	var signals struct {
 		PrefTheme          string `json:"pref_theme"`
 		PrefThemeResolved  string `json:"pref_theme_resolved"`
@@ -1148,13 +1268,27 @@ func (s *Server) handlePageSettingsPOSTSetPref(
 		return
 	}
 
-	sse := datastar.NewSSE(w, r, datastar.WithCompression())
+	dispatch := func(
+		e1 app.EventPrefsChanged,
+	) error {
+		{
+			j, err := json.Marshal(e1)
+			if err != nil {
+				return fmt.Errorf("marshaling EventPrefsChanged JSON: %w", err)
+			}
+			err = s.messageBroker.Publish(r.Context(), s.messageBrokerMetrics, EvSubjPrefsChanged, j)
+			if err != nil {
+				return fmt.Errorf("publishing subject %q: %w", EvSubjPrefsChanged, err)
+			}
+		}
+		return nil
+	}
 	p := app.PageSettings{
 		App: s.app,
 	}
-	err := p.POSTSetPref(r, sse, signals)
+	err := p.POSTSetPref(r, dispatch, signals)
 	if err != nil {
-		s.httpErrIntern(w, r, sse, "handling action PageSettings.SetPref", err)
+		s.httpErrIntern(w, r, nil, "handling action PageSettings.SetPref", err)
 		return
 	}
 }
@@ -1249,6 +1383,15 @@ func (s *Server) handlePageTIKGETStream(w http.ResponseWriter, r *http.Request) 
 					}
 					if err := p.OnUpdated(e, sse, streamID); err != nil {
 						s.logErr("handling PageTIK.OnUpdated", err)
+					}
+				case EvSubjPrefsChanged:
+					var e app.EventPrefsChanged
+					if err := json.Unmarshal(msg.Data, &e); err != nil {
+						s.logErr("unmarshaling EventPrefsChanged JSON", err)
+						continue
+					}
+					if err := p.OnPrefsChanged(e, sse); err != nil {
+						s.logErr("handling PageTIK.OnPrefsChanged", err)
 					}
 				case EvSubjReset:
 					var e app.EventReset
@@ -1420,6 +1563,15 @@ func (s *Server) handlePageTIKsGETStream(w http.ResponseWriter, r *http.Request)
 					}
 					if err := p.OnUpdated(e, sse, streamID); err != nil {
 						s.logErr("handling PageTIKs.OnUpdated", err)
+					}
+				case EvSubjPrefsChanged:
+					var e app.EventPrefsChanged
+					if err := json.Unmarshal(msg.Data, &e); err != nil {
+						s.logErr("unmarshaling EventPrefsChanged JSON", err)
+						continue
+					}
+					if err := p.OnPrefsChanged(e, sse); err != nil {
+						s.logErr("handling PageTIKs.OnPrefsChanged", err)
 					}
 				case EvSubjReset:
 					var e app.EventReset

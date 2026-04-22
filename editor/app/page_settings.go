@@ -106,9 +106,13 @@ func serverURL(r *http.Request) string {
 }
 
 // POSTSetPref is /settings/set-pref/{$}
+//
+// Emits EventPrefsChanged rather than patching the current tab directly
+// so every open tab (not just this one) applies the new cookie/CSS —
+// preferences are cookie-backed and shared across tabs of the same browser.
 func (p PageSettings) POSTSetPref(
 	_ *http.Request,
-	sse *datastar.ServerSentEventGenerator,
+	dispatch func(EventPrefsChanged) error,
 	signals struct {
 		PrefTheme          string `json:"pref_theme"`
 		PrefThemeResolved  string `json:"pref_theme_resolved"`
@@ -130,11 +134,18 @@ func (p PageSettings) POSTSetPref(
 	if !prefSignals.Valid() {
 		return httperr.BadRequest
 	}
-	prefs := prefSignals.UIPrefs()
-	signalsOut := prefs.Signals()
-	signalsOut.PrefThemeResolved = prefSignals.PrefThemeResolved
-	if err := sse.MarshalAndPatchSignals(signalsOut); err != nil {
-		return err
-	}
-	return sse.ExecuteScript(applyUIPrefsScript(prefs))
+	p2 := prefSignals.UIPrefs()
+	return dispatch(EventPrefsChanged{
+		Theme:          p2.Theme,
+		UIFont:         p2.UIFont,
+		EditorFont:     p2.EditorFont,
+		UIFontSize:     p2.UIFontSize,
+		EditorFontSize: p2.EditorFontSize,
+	})
+}
+
+func (PageSettings) OnPrefsChanged(
+	event EventPrefsChanged, sse *datastar.ServerSentEventGenerator,
+) error {
+	return patchUIPrefs(sse, event)
 }

@@ -65,6 +65,22 @@ type EventReset struct {
 	Locale      string `json:"locale"`
 }
 
+// EventPrefsChanged is "editor.prefs_changed"
+//
+// Dispatched whenever a tab mutates the UI preferences (theme, fonts,
+// sizes) so every other open tab can apply the same change live —
+// preferences are shared across tabs of the same browser (cookie-backed)
+// and must stay in sync.
+// Fields are flat (not nested UIPrefs) because datapages event subjects
+// only support primitive-typed fields.
+type EventPrefsChanged struct {
+	Theme          string `json:"theme"`
+	UIFont         string `json:"ui_font"`
+	EditorFont     string `json:"editor_font"`
+	UIFontSize     string `json:"ui_font_size"`
+	EditorFontSize string `json:"editor_font_size"`
+}
+
 // pageTIKsState holds server-side view state for the TIKs list page.
 type pageTIKsState struct {
 	filterType  string

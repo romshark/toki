@@ -91,6 +91,12 @@ func (p PageBuildBundle) OnUpdated(
 	return sse.PatchElementTempl(template.PageBuildBundleContent(state))
 }
 
+func (PageBuildBundle) OnPrefsChanged(
+	event EventPrefsChanged, sse *datastar.ServerSentEventGenerator,
+) error {
+	return patchUIPrefs(sse, event)
+}
+
 func (a *App) buildBundleStateLocked() template.BuildBundleState {
 	return template.BuildBundleState{
 		Building:     a.building,

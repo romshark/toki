@@ -60,3 +60,9 @@ func (p PageIndex) OnUpdated(
 	stats := p.App.buildDashboardStats()
 	return sse.PatchElementTempl(template.PageDashboard(stats))
 }
+
+func (PageIndex) OnPrefsChanged(
+	event EventPrefsChanged, sse *datastar.ServerSentEventGenerator,
+) error {
+	return patchUIPrefs(sse, event)
+}

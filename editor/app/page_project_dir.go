@@ -44,6 +44,12 @@ func (p PageProjectDir) GET(r *http.Request) (
 	return
 }
 
+func (PageProjectDir) OnPrefsChanged(
+	event EventPrefsChanged, sse *datastar.ServerSentEventGenerator,
+) error {
+	return patchUIPrefs(sse, event)
+}
+
 // POSTPick is /project-dir/pick/{$}
 //
 // Only meaningful in hybrid (Wails) mode: opens the native OS directory

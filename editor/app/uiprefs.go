@@ -5,15 +5,36 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/starfederation/datastar-go/datastar"
 )
+
+// patchUIPrefs pushes the current UI preferences to a single SSE stream:
+// a signal patch so the settings page's bindings stay in sync, plus the
+// cookie + root-CSS apply script so theme/font changes take effect
+// immediately without a reload.
+func patchUIPrefs(sse *datastar.ServerSentEventGenerator, e EventPrefsChanged) error {
+	prefs := UIPrefs{
+		Theme:          e.Theme,
+		UIFont:         e.UIFont,
+		EditorFont:     e.EditorFont,
+		UIFontSize:     e.UIFontSize,
+		EditorFontSize: e.EditorFontSize,
+	}
+	sigs := prefs.Signals().Normalized()
+	if err := sse.MarshalAndPatchSignals(sigs); err != nil {
+		return err
+	}
+	return sse.ExecuteScript(applyUIPrefsScript(prefs))
+}
 
 // UIPrefs holds user interface preferences stored in cookies.
 type UIPrefs struct {
-	Theme          string // "light", "dark", "system"
-	UIFont         string // "system", "georgia", "helvetica"
-	EditorFont     string // "mono-system", "mono-firacode", etc.
-	UIFontSize     string // "default", "small", "big", etc.
-	EditorFontSize string // "default", "small", "big", etc.
+	Theme          string `json:"theme"`            // "light", "dark", "system"
+	UIFont         string `json:"ui_font"`          // "system", "georgia", "helvetica"
+	EditorFont     string `json:"editor_font"`      // "mono-system", "mono-firacode", etc.
+	UIFontSize     string `json:"ui_font_size"`     // "default", "small", "big", etc.
+	EditorFontSize string `json:"editor_font_size"` // "default", "small", "big", etc.
 }
 
 type settingsPrefSignals struct {

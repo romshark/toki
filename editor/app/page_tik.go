@@ -125,6 +125,12 @@ func (p PageTIK) OnUpdated(
 	return sse.PatchElementTempl(template.TIKContent(tk, p.App.OpenNewWindow != nil))
 }
 
+func (PageTIK) OnPrefsChanged(
+	event EventPrefsChanged, sse *datastar.ServerSentEventGenerator,
+) error {
+	return patchUIPrefs(sse, event)
+}
+
 func (PageTIK) OnReset(
 	event EventReset,
 	sse *datastar.ServerSentEventGenerator,

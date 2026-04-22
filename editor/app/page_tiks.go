@@ -151,6 +151,12 @@ func (p PageTIKs) OnUpdated(
 	return sse.PatchElementTempl(template.PageTIKsContent(data))
 }
 
+func (PageTIKs) OnPrefsChanged(
+	event EventPrefsChanged, sse *datastar.ServerSentEventGenerator,
+) error {
+	return patchUIPrefs(sse, event)
+}
+
 func (PageTIKs) OnReset(
 	event EventReset,
 	sse *datastar.ServerSentEventGenerator,
