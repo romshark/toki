@@ -282,19 +282,17 @@ templ PageDashboard(stats DashboardStats) {
 									{ strfmt.ChangeWord(stats.TotalChanges) }.
 									Build the bundle to update .arb files and regenerate Go code.
 								</p>
-								<button
+								<a
 									class="btn-primary"
+									href={ href.PageBuildBundle() }
 									if !stats.CanApplyChanges {
-										disabled
+										aria-disabled="true"
+										tabindex="-1"
 									}
-									data-on:click={ fmt.Sprintf(
-										"window.location='%s'",
-										href.PageBuildBundle(),
-									) }
 								>
 									@iconSave()
 									Build Bundle
-								</button>
+								</a>
 								if !stats.CanApplyChanges {
 									<div class="alert alert-destructive">
 										<section>

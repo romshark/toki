@@ -582,6 +582,9 @@ func setupHandlers(s *Server) {
 		"POST /regenerate/{$}",
 		s.handlePOSTRegenerate)
 	s.mux.HandleFunc(
+		"POST /project-dir/pick/{$}",
+		s.handlePageProjectDirPOSTPick)
+	s.mux.HandleFunc(
 		"POST /project-dir/open/{$}",
 		s.handlePageProjectDirPOSTOpen)
 	s.mux.HandleFunc(
@@ -1042,6 +1045,24 @@ func (s *Server) handlePageProjectDirGET(w http.ResponseWriter, r *http.Request)
 		w, r, genericHead, nil, body, bodyAttrs, nil,
 	); err != nil {
 		s.logErr("rendering PageProjectDir", err)
+		return
+	}
+}
+
+func (s *Server) handlePageProjectDirPOSTPick(
+	w http.ResponseWriter, r *http.Request,
+) {
+	if !s.checkIsDSReq(w, r) {
+		return
+	}
+
+	sse := datastar.NewSSE(w, r, datastar.WithCompression())
+	p := app.PageProjectDir{
+		App: s.app,
+	}
+	err := p.POSTPick(r, sse)
+	if err != nil {
+		s.httpErrIntern(w, r, sse, "handling action PageProjectDir.Pick", err)
 		return
 	}
 }

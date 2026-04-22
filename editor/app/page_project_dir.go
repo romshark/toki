@@ -39,16 +39,43 @@ func (p PageProjectDir) GET(r *http.Request) (
 		p.App.numCorrupt,
 		p.App.numMissing,
 		p.App.sourceErrors,
+		p.App.PickDirectory != nil,
 	)
 	return
 }
 
+// POSTPick is /project-dir/pick/{$}
+//
+// Only meaningful in hybrid (Wails) mode: opens the native OS directory
+// picker and patches the selected path back into the folder signal so it
+// populates the input field. No-op in web/server mode.
+func (p PageProjectDir) POSTPick(
+	r *http.Request,
+	sse *datastar.ServerSentEventGenerator,
+) error {
+	if p.App.PickDirectory == nil {
+		return nil
+	}
+	picked, err := p.App.PickDirectory()
+	if err != nil || picked == "" {
+		return nil
+	}
+	if err := sse.MarshalAndPatchSignals(struct {
+		Folder string `json:"folder"`
+	}{Folder: picked}); err != nil {
+		return err
+	}
+	if err := p.App.SetDir(picked); err != nil {
+		return sse.Redirect(href.PageProjectDir())
+	}
+	return sse.Redirect(href.PageIndex())
+}
+
 // POSTOpen is /project-dir/open/{$}
 //
-// In Wails mode, PickDirectory opens a native OS directory picker dialog
-// and the selected path overrides the folder signal.
-// In web/server mode, PickDirectory is nil so the folder path comes
-// from the text input signal.
+// Opens the project from the folder path in the signal (populated either
+// by the user typing in web mode, or by POSTPick's native dialog in
+// hybrid mode).
 func (p PageProjectDir) POSTOpen(
 	r *http.Request,
 	sse *datastar.ServerSentEventGenerator,
@@ -56,18 +83,10 @@ func (p PageProjectDir) POSTOpen(
 		Folder string `json:"folder"`
 	},
 ) error {
-	folder := signals.Folder
-	if p.App.PickDirectory != nil {
-		picked, err := p.App.PickDirectory()
-		if err != nil || picked == "" {
-			return sse.Redirect(href.PageProjectDir())
-		}
-		folder = picked
-	}
-	if folder == "" {
+	if signals.Folder == "" {
 		return sse.Redirect(href.PageProjectDir())
 	}
-	if err := p.App.SetDir(folder); err != nil {
+	if err := p.App.SetDir(signals.Folder); err != nil {
 		return sse.Redirect(href.PageProjectDir())
 	}
 	return sse.Redirect(href.PageIndex())

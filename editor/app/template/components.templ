@@ -17,22 +17,20 @@ func resolvedThemeExpr() string {
 // --- Navbar ---
 templ componentNavbarBuildBtn(totalChanges int, canApplyChanges bool) {
 	if totalChanges > 0 {
-		<button
+		<a
 			class="btn-primary"
+			href={ href.PageBuildBundle() }
 			if !canApplyChanges {
-				disabled
+				aria-disabled="true"
+				tabindex="-1"
 			}
-			data-on:click={ fmt.Sprintf(
-				"window.location='%s'",
-				href.PageBuildBundle(),
-			) }
 		>
 			@iconSave()
 			<span class="navbar-desktop-only">Build Bundle</span>
 			<span class="badge badge-changed">
 				{ strfmt.Int(totalChanges) }
 			</span>
-		</button>
+		</a>
 	}
 }
 

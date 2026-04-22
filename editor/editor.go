@@ -8,16 +8,29 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 
 	"github.com/romshark/datapages/modules/msgbroker/inmem"
 	"github.com/romshark/toki/editor/app"
 	"github.com/romshark/toki/editor/datapagesgen"
+	"github.com/romshark/toki/editor/datapagesgen/assets"
 	"github.com/romshark/toki/editor/indexdb"
 	tokisqinn "github.com/romshark/toki/editor/sqinn"
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/log"
 	"golang.org/x/text/language"
 )
+
+// noBFCache disables the browser's back/forward cache on HTML responses so
+// back-nav re-requests fresh data. Static assets keep their normal caching.
+func noBFCache(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, assets.URLPrefix) {
+			w.Header().Set("Cache-Control", "no-store")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
 
 // CleanGeneratedFunc deletes stale generated Go files and creates a minimal bundle.
 type CleanGeneratedFunc func(bundlePkgPath string, defaultLocale language.Tag) error
@@ -86,6 +99,7 @@ func Setup(
 
 	s := datapagesgen.NewServer(a, inmem.New(8),
 		datapagesgen.WithAssets(app.StaticFS),
+		datapagesgen.WithMiddleware(noBFCache),
 	)
 	s.UseContextCanceledFilter()
 

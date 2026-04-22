@@ -419,6 +419,22 @@ func POSTPageProjectDirOpen(options ...option) string {
 	return b.String()
 }
 
+// POSTPageProjectDirPick references /project-dir/pick/
+func POSTPageProjectDirPick(options ...option) string {
+	if len(options) == 0 {
+		return "@post('/project-dir/pick/')"
+	}
+	var b strings.Builder
+	bl, al := beforeAfterLen(options)
+	b.Grow(bl + len("@post('/project-dir/pick/'") + optionsLen(options) + len(")") + al)
+	writeBefore(&b, options)
+	b.WriteString("@post('/project-dir/pick/'")
+	writeOptions(&b, options)
+	b.WriteByte(')')
+	writeAfter(&b, options)
+	return b.String()
+}
+
 // POSTPageSettingsSetPref references /settings/set-pref/
 func POSTPageSettingsSetPref(options ...option) string {
 	if len(options) == 0 {

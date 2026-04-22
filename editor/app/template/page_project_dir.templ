@@ -12,6 +12,7 @@ templ PageProjectDir(
 	dir string, errMsg string, repairErr string,
 	numChanges int, numCorrupt int, numMissing int,
 	sourceErrors []SourceError,
+	isHybrid bool,
 ) {
 	@page("page-project-dir") {
 		<div
@@ -30,16 +31,35 @@ templ PageProjectDir(
 					<div class="folder-picker">
 						<label>
 							<span>Project Folder</span>
-							<input
-								class="input"
-								type="text"
-								data-bind:folder
-								placeholder="/path/to/your/project"
-								data-on:keydown="if(evt.key==='Enter'){evt.preventDefault();evt.target.closest('.folder-picker').querySelector('button[data-open-project-trigger]:not([style*=none])').click()}"
-							/>
+							<div class="folder-input-row">
+								<input
+									class="input"
+									type="text"
+									data-bind:folder
+									placeholder="/path/to/your/project"
+									data-on:keydown="
+										if(evt.key==='Enter'){
+											evt.preventDefault();
+											evt.target.closest('.folder-picker').
+												querySelector('[data-action-trigger]:not([style*=none])').
+												click()
+										}
+									"
+								/>
+								if isHybrid {
+									<button
+										type="button"
+										class="btn-outline folder-pick-btn"
+										title="Browse for folder..."
+										data-on:click={ action.POSTPageProjectDirPick() }
+									>
+										@iconFolderOpen()
+									</button>
+								}
+							</div>
 						</label>
 						if errMsg != "" {
-							<div class="alert alert-destructive">
+							<div class="alert alert-destructive" data-show="$folder===$origfolder">
 								@iconAlertCircle()
 								<section>
 									<strong>{ errMsg }</strong>
@@ -59,7 +79,7 @@ templ PageProjectDir(
 							</div>
 						}
 						if numCorrupt > 0 {
-							<div class="alert alert-destructive">
+							<div class="alert alert-destructive" data-show="$folder===$origfolder">
 								@iconAlertTriangle()
 								<section>
 									<strong>Corrupted Bundle</strong>
@@ -81,7 +101,7 @@ templ PageProjectDir(
 							</div>
 						}
 						if numMissing > 0 && numCorrupt == 0 {
-							<div class="alert">
+							<div class="alert" data-show="$folder===$origfolder">
 								@iconAlertCircle()
 								<section>
 									<strong>Bundle Out of Date</strong>
@@ -102,21 +122,19 @@ templ PageProjectDir(
 							</div>
 						}
 						if dir != "" && errMsg == "" && numCorrupt == 0 && numMissing == 0 {
-							<button
+							<a
 								class="btn-primary"
-								data-open-project-trigger
-								data-on:click={ fmt.Sprintf(
-									"window.location='%s'",
-									href.PageIndex(),
-								) }
+								href={ href.PageIndex() }
+								data-action-trigger
 								data-show="$folder===$origfolder"
 							>
 								Continue
-							</button>
+							</a>
 						}
 						if numMissing > 0 && numCorrupt == 0 {
 							<button
 								class="btn-primary"
+								data-show="$folder===$origfolder"
 								data-on:click={ action.POSTAppRegenerate() }
 							>
 								Regenerate Bundle
@@ -125,6 +143,7 @@ templ PageProjectDir(
 						if numCorrupt > 0 {
 							<button
 								class="btn-destructive"
+								data-show="$folder===$origfolder"
 								data-on:click={ action.POSTAppRepair() }
 							>
 								Repair Bundle
@@ -132,7 +151,7 @@ templ PageProjectDir(
 						}
 						<button
 							class="btn-primary"
-							data-open-project-trigger
+							data-action-trigger
 							if dir != "" && errMsg == "" && numCorrupt == 0 && numMissing == 0 {
 								style="display:none"
 							}

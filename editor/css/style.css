@@ -109,10 +109,36 @@ body {
 	}
 }
 
+.folder-input-row {
+	display: flex;
+	gap: 0.5rem;
+	align-items: stretch;
+
+	& .input {
+		flex: 1;
+		min-inline-size: 0;
+	}
+
+	& .folder-pick-btn {
+		flex-shrink: 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding-inline: 0.75rem;
+	}
+}
+
 .error-dir {
 	font-family: monospace;
 	font-size: 0.9rem;
 	opacity: 0.7;
+}
+
+/* Anchors styled as buttons don't support the :disabled attribute;
+   mirror basecoat's disabled treatment via aria-disabled. */
+a[aria-disabled="true"] {
+	pointer-events: none;
+	opacity: 0.5;
 }
 
 /* --- Navbar (pinned at top of main-area) --- */
