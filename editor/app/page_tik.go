@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"net/http"
 	"slices"
 
@@ -116,10 +115,14 @@ func (p PageTIK) OnUpdated(
 	}
 
 	tk := p.App.orderTIK(p.App.tiks[iTIK])
-	if err := sse.PatchElementTempl(template.TIKContent(tk, p.App.OpenNewWindow != nil)); err != nil {
+	// Patch signals before morphing the DOM. The morph contains elements
+	// with data-attr:value bindings that read from these signals, so a
+	// stale signal during the morph would cause Datastar to overwrite
+	// the morphed value with the old one.
+	if err := sse.MarshalAndPatchSignals(editorSignalsFor([]template.TIK{*tk}, exclude)); err != nil {
 		return err
 	}
-	return sse.ExecuteScript(syncEditorsScript([]template.TIK{*tk}, exclude))
+	return sse.PatchElementTempl(template.TIKContent(tk, p.App.OpenNewWindow != nil))
 }
 
 func (PageTIK) OnReset(
@@ -129,16 +132,15 @@ func (PageTIK) OnReset(
 	if event.ResetEditor == "" {
 		return nil
 	}
-	if err := sse.MarshalAndPatchSignals(struct {
-		ResetDoneTIKID  string `json:"resetdonetikid"`
-		ResetDoneLocale string `json:"resetdonelocale"`
+	return sse.MarshalAndPatchSignals(struct {
+		ResetDoneTIKID  string                       `json:"resetdonetikid"`
+		ResetDoneLocale string                       `json:"resetdonelocale"`
+		Editor          map[string]map[string]string `json:"editor"`
 	}{
 		ResetDoneTIKID:  event.TIKID,
 		ResetDoneLocale: event.Locale,
-	}); err != nil {
-		return err
-	}
-	return sse.ExecuteScript(fmt.Sprintf(
-		"resetEditorValue(%q,%q)", event.ResetEditor, event.ResetValue,
-	))
+		Editor: map[string]map[string]string{
+			event.TIKID: {event.Locale: event.ResetValue},
+		},
+	})
 }

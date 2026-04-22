@@ -52,9 +52,29 @@ var writers_ru = map[string]func(w io.Writer, args ...any) (int, error){
 	msg7ba5e4f7ff9e557f: nil,
 	msga386be7d32b02521: nil,
 	msgba9076fe8292afb0: nil,
+	msgbad1abc0cf003582: nil,
 	msgbcdb3dde88d7bbb2: nil,
 	msgca9572938a754c86: func(w io.Writer, args ...any) (written int, err error) {
-		return wrs(w, "Добрый день, {var0}. Добро пожаловать.")
+		var n int
+		n, err = wrs(w, "Добрый день, ")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		{
+			s, _ := sv(args[0])
+			n, err = wrs(w, s)
+		}
+		if err != nil {
+			return written, err
+		}
+		written += n
+		n, err = wrs(w, ". Добро пожаловать.")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		return written, nil
 	},
 	msgd402b253f75c3b74: func(w io.Writer, args ...any) (written int, err error) {
 		var n int

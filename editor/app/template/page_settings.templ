@@ -327,7 +327,7 @@ templ themeCard(prefs UIPrefs, value, label, desc string) {
 			"$pref_theme==='%s' ? 'true' : 'false'", value,
 		) }
 		data-theme={ value }
-		data-on:click={ action.POSTPageSettingsSetPref(action.WithBefore(fmt.Sprintf(
+		data-on:click={ action.POSTPageSettingsSetPref(NoEditorSignals, action.WithBefore(fmt.Sprintf(
 			"$pref_theme=%q;$pref_theme_resolved=%s", value,
 			map[string]string{
 				"light":  "'light'",

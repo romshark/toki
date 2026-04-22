@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/a-h/templ"
@@ -135,7 +134,8 @@ func (p PageTIKs) OnUpdated(
 	data := p.App.buildFilteredDataIndex(
 		vs.filterType, vs.showLocales, vs.showDomains,
 		vs.pageIdx, vs.pageSize, vs.searchQuery)
-	if err := sse.PatchElementTempl(template.PageTIKsContent(data)); err != nil {
+	// Patch signals before morphing — see PageTIK.OnUpdated for why.
+	if err := sse.MarshalAndPatchSignals(editorSignalsFor(data.TIKs, exclude)); err != nil {
 		return err
 	}
 	// The build call may have clamped the page index — keep state and the
@@ -148,7 +148,7 @@ func (p PageTIKs) OnUpdated(
 			return err
 		}
 	}
-	return sse.ExecuteScript(syncEditorsScript(data.TIKs, exclude))
+	return sse.PatchElementTempl(template.PageTIKsContent(data))
 }
 
 func (PageTIKs) OnReset(
@@ -158,18 +158,17 @@ func (PageTIKs) OnReset(
 	if event.ResetEditor == "" {
 		return nil
 	}
-	if err := sse.MarshalAndPatchSignals(struct {
-		ResetDoneTIKID  string `json:"resetdonetikid"`
-		ResetDoneLocale string `json:"resetdonelocale"`
+	return sse.MarshalAndPatchSignals(struct {
+		ResetDoneTIKID  string                       `json:"resetdonetikid"`
+		ResetDoneLocale string                       `json:"resetdonelocale"`
+		Editor          map[string]map[string]string `json:"editor"`
 	}{
 		ResetDoneTIKID:  event.TIKID,
 		ResetDoneLocale: event.Locale,
-	}); err != nil {
-		return err
-	}
-	return sse.ExecuteScript(fmt.Sprintf(
-		"resetEditorValue(%q,%q)", event.ResetEditor, event.ResetValue,
-	))
+		Editor: map[string]map[string]string{
+			event.TIKID: {event.Locale: event.ResetValue},
+		},
+	})
 }
 
 // renderFromViewState renders the TIKs page from the current server-side
@@ -184,9 +183,6 @@ func (p PageTIKs) renderFromViewState(
 	// size — keep state in sync.
 	vs.pageIdx = data.PageIdx
 	vs.pageSize = data.PageSize
-	if err := sse.PatchElementTempl(template.PageTIKsContent(data)); err != nil {
-		return err
-	}
 
 	// Push checkbox signal state so data-bind stays in sync.
 	localeSignals := make(map[string]bool, len(data.Catalogs))
@@ -215,7 +211,11 @@ func (p PageTIKs) renderFromViewState(
 	}); err != nil {
 		return err
 	}
-	return sse.ExecuteScript(syncEditorsScript(data.TIKs, ""))
+	// Patch editor signals before morphing — see PageTIK.OnUpdated.
+	if err := sse.MarshalAndPatchSignals(editorSignalsFor(data.TIKs, "")); err != nil {
+		return err
+	}
+	return sse.PatchElementTempl(template.PageTIKsContent(data))
 }
 
 // POSTFilter is /tiks/filter/{$}

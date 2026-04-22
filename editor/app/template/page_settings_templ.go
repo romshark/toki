@@ -580,7 +580,7 @@ func themeCard(prefs UIPrefs, value, label, desc string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var21 string
-		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(action.POSTPageSettingsSetPref(action.WithBefore(fmt.Sprintf(
+		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(action.POSTPageSettingsSetPref(NoEditorSignals, action.WithBefore(fmt.Sprintf(
 			"$pref_theme=%q;$pref_theme_resolved=%s", value,
 			map[string]string{
 				"light":  "'light'",

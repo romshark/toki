@@ -25,6 +25,7 @@ templ PageTIKs(data DataIndex) {
 			data-signals:searchquery={ fmt.Sprintf("'%s'", data.SearchQuery) }
 			data-signals:page={ strfmt.Int(data.PageIdx + 1) }
 			data-signals:pagesize={ strfmt.Int(data.PageSize) }
+			data-signals:editor={ InitEditorSignals(data.TIKs) }
 		>
 			<aside
 				class="sidebar"

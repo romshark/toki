@@ -19,6 +19,7 @@ templ PageTIK(tk *TIK, isHybrid bool) {
 			data-signals:resetdonetikid="''"
 			data-signals:resetdonelocale="''"
 			data-signals:instance_id="getOrCreateInstanceID('toki-editor-instance-id')"
+			data-signals:editor={ InitEditorSignalsOne(tk) }
 		>
 			<aside
 				class="sidebar"

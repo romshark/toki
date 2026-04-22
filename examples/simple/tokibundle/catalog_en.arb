@@ -2,7 +2,7 @@
 	"@@locale": "en",
 	"@@last_modified": "2025-06-16T00:23:00+02:00",
 	"@@x-generator": "github.com/romshark/toki",
-	"@@x-generator-version": "v0.8.4-0.20260407160851-65d21749aa88+dirty",
+	"@@x-generator-version": "dev",
 	"msg40298b0dfa835a18": "Nothing found in folder {var0}",
 	"@msg40298b0dfa835a18": {
 		"placeholders": {
@@ -76,6 +76,13 @@
 				"description": "cardinal plural",
 				"example": "2"
 			}
+		},
+		"type": "text"
+	},
+	"msgbad1abc0cf003582": "Your score: {var0, number, integer}",
+	"@msgbad1abc0cf003582": {
+		"placeholders": {
+			"var0": {}
 		},
 		"type": "text"
 	},

@@ -1,7 +1,6 @@
 package app
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -741,24 +740,39 @@ func (a *App) unregisterTIKStreamLocked(streamID uint64) {
 	}
 }
 
-// syncEditorsScript builds a JS call to syncEditorValues with current
-// server-side values. This syncs editors that have data-ignore-morph
-// (editable editors) after a morphdom patch.
-// excludeEditor is omitted from the map so the source tab's in-progress
-// typing is never overwritten by a stale echo.
-func syncEditorsScript(tiks []template.TIK, excludeEditor string) string {
-	values := make(map[string]string, len(tiks)*2)
+// editorSignalsPayload is the server-to-client signal patch shape for
+// the "editor" namespace: editor.<tikID>.<locale> -> ICU message.
+// Per-editor signals are what <toki-editor>'s data-attr:value binds to,
+// so sending this via MarshalAndPatchSignals automatically updates the
+// value attribute on every connected tab's editor element.
+type editorSignalsPayload struct {
+	Editor map[string]map[string]string `json:"editor"`
+}
+
+// editorSignalsFor builds the editor signal patch for tiks. If
+// excludeEditor is non-empty (format: "editor-<tikID>-<locale>"), that
+// entry is omitted so the source tab's in-progress typing isn't raced
+// by a stale echo of its own edit. Empty inner maps are skipped to
+// keep the payload minimal.
+func editorSignalsFor(tiks []template.TIK, excludeEditor string) editorSignalsPayload {
+	m := make(map[string]map[string]string, len(tiks))
 	for i := range tiks {
+		var inner map[string]string
 		for _, msg := range tiks[i].ICU {
-			key := fmt.Sprintf("editor-%s-%s", tiks[i].ID, msg.Catalog.Locale)
-			if key == excludeEditor {
+			id := fmt.Sprintf("editor-%s-%s", tiks[i].ID, msg.Catalog.Locale)
+			if id == excludeEditor {
 				continue
 			}
-			values[key] = msg.Message
+			if inner == nil {
+				inner = make(map[string]string, len(tiks[i].ICU))
+			}
+			inner[msg.Catalog.Locale] = msg.Message
+		}
+		if inner != nil {
+			m[tiks[i].ID] = inner
 		}
 	}
-	j, _ := json.Marshal(values)
-	return fmt.Sprintf("syncEditorValues(%s)", j)
+	return editorSignalsPayload{Editor: m}
 }
 
 func (*App) Head(r *http.Request) templ.Component {

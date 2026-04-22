@@ -35,26 +35,7 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
   }
 });
 
-// --- <toki-editor> integration ---
-
-(window as any).syncEditorValues = function syncEditorValues(values: Record<string, string>) {
-  for (const id in values) {
-    const el = document.getElementById(id) as any;
-    if (el && el.value !== undefined) {
-      el.value = values[id];
-    }
-  }
-};
-
-(window as any).resetEditorValue = function resetEditorValue(editorId: string, value: string) {
-  const el = document.getElementById(editorId) as any;
-  if (el && el.value !== undefined) el.value = value;
-};
-
-(window as any).getEditorValue = function getEditorValue(id: string): string {
-  const el = document.getElementById(id) as any;
-  return el ? el.value : "";
-};
+// --- Tab instance ID ---
 
 (window as any).getOrCreateInstanceID = function getOrCreateInstanceID(storageKey: string): string {
   let id = sessionStorage.getItem(storageKey);

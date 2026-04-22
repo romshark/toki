@@ -28,14 +28,14 @@ templ sidebarContent(data DataIndex) {
 							if allDomainsInitial(data, false) {
 								disabled
 							}
-							data-on:click={ action.POSTPageTIKsHideAllDomains() }
+							data-on:click={ action.POSTPageTIKsHideAllDomains(NoEditorSignals) }
 						>Hide All</button>
 						<button
 							class="btn-secondary btn-sm"
 							if allDomainsInitial(data, true) {
 								disabled
 							}
-							data-on:click={ action.POSTPageTIKsShowAllDomains() }
+							data-on:click={ action.POSTPageTIKsShowAllDomains(NoEditorSignals) }
 						>Show All</button>
 					</div>
 					<ul>
@@ -51,7 +51,7 @@ templ sidebarContent(data DataIndex) {
 										}
 										data-bind={ fmt.Sprintf("showdomains.%s",
 											domain.SignalKey) }
-										data-on:change={ action.POSTPageTIKsFilter() }
+										data-on:change={ action.POSTPageTIKsFilter(NoEditorSignals) }
 									/>
 									<span>
 										<strong>{ domain.Name }</strong>
@@ -71,14 +71,14 @@ templ sidebarContent(data DataIndex) {
 						if allLocalesInitial(data, false) {
 							disabled
 						}
-						data-on:click={ action.POSTPageTIKsHideAllLocales() }
+						data-on:click={ action.POSTPageTIKsHideAllLocales(NoEditorSignals) }
 					>Hide All</button>
 					<button
 						class="btn-secondary btn-sm"
 						if allLocalesInitial(data, true) {
 							disabled
 						}
-						data-on:click={ action.POSTPageTIKsShowAllLocales() }
+						data-on:click={ action.POSTPageTIKsShowAllLocales(NoEditorSignals) }
 					>Show All</button>
 				</div>
 				<ul>
@@ -94,7 +94,7 @@ templ sidebarContent(data DataIndex) {
 									}
 									data-bind={ fmt.Sprintf("showlocales.%s",
 										catalog.Locale) }
-									data-on:change={ action.POSTPageTIKsFilter() }
+									data-on:change={ action.POSTPageTIKsFilter(NoEditorSignals) }
 								/>
 								<span>
 									<strong class="locale-code">{ catalog.Locale }</strong>
@@ -203,7 +203,7 @@ templ componentPageSizeSelector(data DataIndex, position string) {
 			id={ fmt.Sprintf("pagesize-%s", position) }
 			class="select"
 			data-bind:pagesize
-			data-on:change={ action.POSTPageTIKsSetPageSize() }
+			data-on:change={ action.POSTPageTIKsSetPageSize(NoEditorSignals) }
 		>
 			for _, opt := range PageSizeOptions {
 				<option
@@ -247,6 +247,7 @@ templ componentPagination(data DataIndex) {
 						}
 						aria-label="Previous page"
 						data-on:click={ action.POSTPageTIKsSetPage(
+							NoEditorSignals,
 							action.WithBefore(fmt.Sprintf("$page=%d", prev)),
 						) }
 					>
@@ -272,6 +273,7 @@ templ componentPagination(data DataIndex) {
 								}
 								aria-label={ fmt.Sprintf("Page %d", p.Page) }
 								data-on:click={ action.POSTPageTIKsSetPage(
+									NoEditorSignals,
 									action.WithBefore(fmt.Sprintf("$page=%d", p.Page)),
 								) }
 							>{ strfmt.Int(p.Page) }</button>
@@ -288,6 +290,7 @@ templ componentPagination(data DataIndex) {
 						}
 						aria-label="Next page"
 						data-on:click={ action.POSTPageTIKsSetPage(
+							NoEditorSignals,
 							action.WithBefore(fmt.Sprintf("$page=%d", next)),
 						) }
 					>

@@ -52,6 +52,7 @@ var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
 	msg7ba5e4f7ff9e557f: nil,
 	msga386be7d32b02521: nil,
 	msgba9076fe8292afb0: nil,
+	msgbad1abc0cf003582: nil,
 	msgbcdb3dde88d7bbb2: nil,
 	msgca9572938a754c86: nil,
 	msgd402b253f75c3b74: func(w io.Writer, args ...any) (written int, err error) {

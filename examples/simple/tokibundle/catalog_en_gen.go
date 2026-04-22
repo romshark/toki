@@ -162,6 +162,23 @@ var writers_en = map[string]func(w io.Writer, args ...any) (int, error){
 		}
 		return written, nil
 	},
+	msgbad1abc0cf003582: func(w io.Writer, args ...any) (written int, err error) {
+		var n int
+		n, err = wrs(w, "Your score: ")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		switch a := args[0].(type) {
+		case int, uint, int8, uint8, int16, uint16, int32, uint32, int64, uint64:
+			n, err = fmt.Fprintf(w, "%d", a)
+		}
+		if err != nil {
+			return written, err
+		}
+		written += n
+		return written, nil
+	},
 	msgbcdb3dde88d7bbb2: func(w io.Writer, args ...any) (written int, err error) {
 		var n int
 		n, err = wrs(w, "Hey ")
