@@ -1,9 +1,12 @@
 package template
 
-// page wraps every page body. UI preferences (theme, fonts) are applied
-// server-side from cookies — see head.templ and uiprefs.go.
+// page wraps every page body and seeds $pref_theme_resolved so
+// <toki-editor data-attr:theme=...> reacts to EventPrefsChanged patches.
 templ page(id string) {
-	<div id={ id }>
+	<div
+		id={ id }
+		data-signals:pref_theme_resolved={ resolvedThemeExpr() }
+	>
 		<div class="page-content">
 			{ children... }
 		</div>

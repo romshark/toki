@@ -134,12 +134,11 @@ func (p PageTIKs) OnUpdated(
 	data := p.App.buildFilteredDataIndex(
 		vs.filterType, vs.showLocales, vs.showDomains,
 		vs.pageIdx, vs.pageSize, vs.searchQuery)
-	// Patch signals before morphing — see PageTIK.OnUpdated for why.
+	// Signals first: the morph's data-attr:value bindings read them.
 	if err := sse.MarshalAndPatchSignals(editorSignalsFor(data.TIKs, exclude)); err != nil {
 		return err
 	}
-	// The build call may have clamped the page index — keep state and the
-	// URL/signal in sync if so.
+	// Keep the page signal in sync if the build clamped the index.
 	if data.PageIdx != vs.pageIdx {
 		vs.pageIdx = data.PageIdx
 		if err := sse.MarshalAndPatchSignals(struct {
@@ -217,7 +216,6 @@ func (p PageTIKs) renderFromViewState(
 	}); err != nil {
 		return err
 	}
-	// Patch editor signals before morphing — see PageTIK.OnUpdated.
 	if err := sse.MarshalAndPatchSignals(editorSignalsFor(data.TIKs, "")); err != nil {
 		return err
 	}

@@ -838,7 +838,7 @@ func componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) temp
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "\" data-attr:theme=\"document.documentElement.classList.contains('dark') ? 'dark' : 'light'\" data-tikid=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 72, "\" data-attr:theme=\"$pref_theme_resolved\" data-tikid=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -917,7 +917,7 @@ func componentICUMessageForm(tikID string, msg *ICUMessage, showLabel bool) temp
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "\" data-attr:theme=\"document.documentElement.classList.contains('dark') ? 'dark' : 'light'\" readonly></toki-editor> <button class=\"btn-destructive\" style=\"align-self:start\" data-on:click=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "\" data-attr:theme=\"$pref_theme_resolved\" readonly></toki-editor> <button class=\"btn-destructive\" style=\"align-self:start\" data-on:click=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

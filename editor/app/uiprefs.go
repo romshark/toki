@@ -9,10 +9,7 @@ import (
 	"github.com/starfederation/datastar-go/datastar"
 )
 
-// patchUIPrefs pushes the current UI preferences to a single SSE stream:
-// a signal patch so the settings page's bindings stay in sync, plus the
-// cookie + root-CSS apply script so theme/font changes take effect
-// immediately without a reload.
+// patchUIPrefs patches pref signals and runs the cookie + root-CSS apply script.
 func patchUIPrefs(sse *datastar.ServerSentEventGenerator, e EventPrefsChanged) error {
 	prefs := UIPrefs{
 		Theme:          e.Theme,
@@ -21,7 +18,8 @@ func patchUIPrefs(sse *datastar.ServerSentEventGenerator, e EventPrefsChanged) e
 		UIFontSize:     e.UIFontSize,
 		EditorFontSize: e.EditorFontSize,
 	}
-	sigs := prefs.Signals().Normalized()
+	sigs := prefs.Signals()
+	sigs.PrefThemeResolved = e.ThemeResolved
 	if err := sse.MarshalAndPatchSignals(sigs); err != nil {
 		return err
 	}

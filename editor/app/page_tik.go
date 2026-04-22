@@ -115,10 +115,7 @@ func (p PageTIK) OnUpdated(
 	}
 
 	tk := p.App.orderTIK(p.App.tiks[iTIK])
-	// Patch signals before morphing the DOM. The morph contains elements
-	// with data-attr:value bindings that read from these signals, so a
-	// stale signal during the morph would cause Datastar to overwrite
-	// the morphed value with the old one.
+	// Signals first: the morph's data-attr:value bindings read them.
 	if err := sse.MarshalAndPatchSignals(editorSignalsFor([]template.TIK{*tk}, exclude)); err != nil {
 		return err
 	}

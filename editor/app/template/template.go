@@ -9,28 +9,20 @@ import (
 	"github.com/romshark/toki/editor/datapagesgen/action"
 )
 
-// ActionExcludeEditor is the regex used with action.WithFilterSignals to
-// exclude per-editor value signals (under the "editor" namespace) from
-// POST requests. Also preserves the default "_"-prefix exclusion so
-// signals like $_history.canback stay local to the client.
+// ActionExcludeEditor excludes the "editor" signal tree (and default
+// "_"-prefixed signals) from POST payloads.
 const ActionExcludeEditor = `(^_|\._|^editor\.)`
 
-// NoEditorSignals is the action option that skips per-editor value
-// signals when making POST requests. Pass it to any action.POSTXxx(...)
-// call that doesn't need editor values — everything except the server
-// side of POST /set reads the truth from App state, not from signals.
+// NoEditorSignals applies ActionExcludeEditor to an action.
 var NoEditorSignals = action.WithFilterSignals("", ActionExcludeEditor)
 
-// EditorValueSignal returns the Datastar JS expression for the signal
-// that holds the current ICU message for a given TIK/locale. Bracket
-// notation is used so locales with hyphens (e.g. en-US) work.
+// EditorValueSignal returns the JS expression $editor[tikID][locale].
+// Bracket notation is required for hyphenated locales (e.g. en-US).
 func EditorValueSignal(tikID, locale string) string {
 	return fmt.Sprintf("$editor['%s']['%s']", tikID, locale)
 }
 
-// InitEditorSignals returns a JSON literal suitable for seeding the
-// top-level "editor" signal tree via data-signals:editor. Callers
-// scope this to the editors visible on the page.
+// InitEditorSignals returns the JSON seed for data-signals:editor.
 func InitEditorSignals(tiks []TIK) string {
 	m := make(map[string]map[string]string, len(tiks))
 	for i := range tiks {
@@ -47,7 +39,7 @@ func InitEditorSignals(tiks []TIK) string {
 	return string(b)
 }
 
-// InitEditorSignalsOne is the single-TIK variant used by PageTIK.
+// InitEditorSignalsOne is the single-TIK variant.
 func InitEditorSignalsOne(tk *TIK) string {
 	inner := make(map[string]string, len(tk.ICU))
 	for _, msg := range tk.ICU {

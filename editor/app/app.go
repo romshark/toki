@@ -33,10 +33,7 @@ import (
 
 const MainBundleFileGo = "bundle_gen.go"
 
-// newInstanceID returns a fresh server-generated instance ID identifying
-// a single browser tab's page render. The server is the sole source of
-// truth for instance identity — the client echoes this back in signals
-// but never invents its own, so one tab cannot impersonate another.
+// newInstanceID returns a random 128-bit hex tab instance ID.
 func newInstanceID() string {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {
@@ -67,14 +64,12 @@ type EventReset struct {
 
 // EventPrefsChanged is "editor.prefs_changed"
 //
-// Dispatched whenever a tab mutates the UI preferences (theme, fonts,
-// sizes) so every other open tab can apply the same change live —
-// preferences are shared across tabs of the same browser (cookie-backed)
-// and must stay in sync.
-// Fields are flat (not nested UIPrefs) because datapages event subjects
-// only support primitive-typed fields.
+// Dispatched when a tab changes UI prefs so every open tab re-applies.
+// ThemeResolved is the source's matchMedia result (the server can't
+// resolve "system" itself).
 type EventPrefsChanged struct {
 	Theme          string `json:"theme"`
+	ThemeResolved  string `json:"theme_resolved"`
 	UIFont         string `json:"ui_font"`
 	EditorFont     string `json:"editor_font"`
 	UIFontSize     string `json:"ui_font_size"`
@@ -770,20 +765,14 @@ func (a *App) unregisterTIKStreamLocked(streamID uint64) {
 	}
 }
 
-// editorSignalsPayload is the server-to-client signal patch shape for
-// the "editor" namespace: editor.<tikID>.<locale> -> ICU message.
-// Per-editor signals are what <toki-editor>'s data-attr:value binds to,
-// so sending this via MarshalAndPatchSignals automatically updates the
-// value attribute on every connected tab's editor element.
+// editorSignalsPayload patches $editor.<tikID>.<locale> on each client.
 type editorSignalsPayload struct {
 	Editor map[string]map[string]string `json:"editor"`
 }
 
-// editorSignalsFor builds the editor signal patch for tiks. If
-// excludeEditor is non-empty (format: "editor-<tikID>-<locale>"), that
-// entry is omitted so the source tab's in-progress typing isn't raced
-// by a stale echo of its own edit. Empty inner maps are skipped to
-// keep the payload minimal.
+// editorSignalsFor builds the patch for tiks, omitting excludeEditor
+// ("editor-<tikID>-<locale>") so the source tab's in-progress typing
+// isn't raced by its own echo.
 func editorSignalsFor(tiks []template.TIK, excludeEditor string) editorSignalsPayload {
 	m := make(map[string]map[string]string, len(tiks))
 	for i := range tiks {

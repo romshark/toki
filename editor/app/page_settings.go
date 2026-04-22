@@ -106,10 +106,6 @@ func serverURL(r *http.Request) string {
 }
 
 // POSTSetPref is /settings/set-pref/{$}
-//
-// Emits EventPrefsChanged rather than patching the current tab directly
-// so every open tab (not just this one) applies the new cookie/CSS —
-// preferences are cookie-backed and shared across tabs of the same browser.
 func (p PageSettings) POSTSetPref(
 	_ *http.Request,
 	dispatch func(EventPrefsChanged) error,
@@ -137,6 +133,7 @@ func (p PageSettings) POSTSetPref(
 	p2 := prefSignals.UIPrefs()
 	return dispatch(EventPrefsChanged{
 		Theme:          p2.Theme,
+		ThemeResolved:  prefSignals.PrefThemeResolved,
 		UIFont:         p2.UIFont,
 		EditorFont:     p2.EditorFont,
 		UIFontSize:     p2.UIFontSize,

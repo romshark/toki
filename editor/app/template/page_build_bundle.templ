@@ -16,9 +16,8 @@ templ PageBuildBundle(state BuildBundleState, instanceID string) {
 	}
 }
 
-// PageBuildBundleContent is the morph target for PageBuildBundle.OnUpdated
-// SSE patches. Excludes the outer div so the instance_id signal seed
-// isn't re-evaluated (which would regenerate the tab identity mid-session).
+// PageBuildBundleContent is the OnUpdated morph target, excluding the
+// outer div so data-signals:instance_id isn't re-evaluated mid-session.
 templ PageBuildBundleContent(state BuildBundleState) {
 	<div id="build-bundle-content">
 		if state.Building {
