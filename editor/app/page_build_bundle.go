@@ -52,7 +52,7 @@ func (p PageBuildBundle) GET(
 		state.Building = true
 	}
 
-	body = template.PageBuildBundle(state)
+	body = template.PageBuildBundle(state, newInstanceID())
 	return
 }
 
@@ -88,7 +88,7 @@ func (p PageBuildBundle) OnUpdated(
 	defer p.App.lock.Unlock()
 
 	state := p.App.buildBundleStateLocked()
-	return sse.PatchElementTempl(template.PageBuildBundle(state))
+	return sse.PatchElementTempl(template.PageBuildBundleContent(state))
 }
 
 func (a *App) buildBundleStateLocked() template.BuildBundleState {

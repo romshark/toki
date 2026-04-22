@@ -61,7 +61,7 @@ func (p PageTIKs) GET(
 		query.Page-1, 0)
 	data := p.App.buildFilteredDataIndex(
 		query.Filter, showLocales, showDomains, pageIdx, query.PageSize, query.Search)
-	body = template.PageTIKs(data)
+	body = template.PageTIKs(data, newInstanceID())
 	return
 }
 

@@ -10,6 +10,15 @@ type Integer interface {
 	uint | int | uint8 | int8 | uint16 | int16 | uint32 | int32 | uint64 | int64
 }
 
+func SingleQuote(s string) string {
+	var b strings.Builder
+	b.Grow(len(s) + 2)
+	b.WriteByte('\'')
+	b.WriteString(s)
+	b.WriteByte('\'')
+	return b.String()
+}
+
 // Int formats an integer with thousands separators (e.g. 10,000).
 func Int[I Integer](i I) string {
 	s := fmt.Sprintf("%d", i)
@@ -54,12 +63,4 @@ func Bool(b bool) string {
 		return "true"
 	}
 	return "false"
-}
-
-// ChangeWord returns "change" for 1, "changes" otherwise.
-func ChangeWord(n int) string {
-	if n == 1 {
-		return "change"
-	}
-	return "changes"
 }

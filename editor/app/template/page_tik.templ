@@ -3,10 +3,11 @@ package template
 import (
 	"fmt"
 
+	"github.com/romshark/toki/editor/app/template/strfmt"
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
-templ PageTIK(tk *TIK, isHybrid bool) {
+templ PageTIK(tk *TIK, isHybrid bool, instanceID string) {
 	@page("page-tik") {
 		<div
 			style="display:contents"
@@ -18,7 +19,7 @@ templ PageTIK(tk *TIK, isHybrid bool) {
 			data-signals:resetmodalopen="false"
 			data-signals:resetdonetikid="''"
 			data-signals:resetdonelocale="''"
-			data-signals:instance_id="getOrCreateInstanceID('toki-editor-instance-id')"
+			data-signals:instance_id={ strfmt.SingleQuote(instanceID) }
 			data-signals:editor={ InitEditorSignalsOne(tk) }
 		>
 			<aside

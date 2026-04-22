@@ -59,7 +59,7 @@ func (p PageTIK) GET(
 	}
 
 	tk := p.App.orderTIK(p.App.tiks[iTIK])
-	body = template.PageTIK(tk, p.App.OpenNewWindow != nil)
+	body = template.PageTIK(tk, p.App.OpenNewWindow != nil, newInstanceID())
 	return
 }
 

@@ -1,6 +1,8 @@
 package app
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -30,6 +32,18 @@ import (
 )
 
 const MainBundleFileGo = "bundle_gen.go"
+
+// newInstanceID returns a fresh server-generated instance ID identifying
+// a single browser tab's page render. The server is the sole source of
+// truth for instance identity — the client echoes this back in signals
+// but never invents its own, so one tab cannot impersonate another.
+func newInstanceID() string {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		panic(fmt.Errorf("reading random bytes for instance ID: %w", err))
+	}
+	return hex.EncodeToString(b[:])
+}
 
 // EventUpdated is "editor.updated"
 type EventUpdated struct {

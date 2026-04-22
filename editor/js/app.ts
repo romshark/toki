@@ -35,16 +35,3 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
   }
 });
 
-// --- Tab instance ID ---
-
-(window as any).getOrCreateInstanceID = function getOrCreateInstanceID(storageKey: string): string {
-  let id = sessionStorage.getItem(storageKey);
-  if (id) return id;
-  if (window.crypto && typeof window.crypto.randomUUID === "function") {
-    id = window.crypto.randomUUID();
-  } else {
-    id = Date.now().toString(36) + Math.random().toString(36).slice(2);
-  }
-  sessionStorage.setItem(storageKey, id);
-  return id;
-};

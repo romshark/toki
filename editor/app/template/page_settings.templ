@@ -3,6 +3,7 @@ package template
 import (
 	"fmt"
 
+	"github.com/romshark/toki/editor/app/template/strfmt"
 	"github.com/romshark/toki/editor/datapagesgen/action"
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
@@ -47,13 +48,13 @@ templ PageSettings(version string, data DataSettingsPreview) {
 		<div
 			style="display:contents"
 			data-signals:_ZWdnMQ="false"
-			data-signals:pref_theme={ fmt.Sprintf("'%s'", data.Prefs.Theme) }
+			data-signals:pref_theme={ strfmt.SingleQuote(data.Prefs.Theme) }
 			data-signals:pref_theme_resolved={ settingsResolvedThemeSignalExpr(
 				data.Prefs.Theme) }
-			data-signals:pref_ui_font={ fmt.Sprintf("'%s'", data.Prefs.UIFont) }
-			data-signals:pref_editor_font={ fmt.Sprintf("'%s'", data.Prefs.EditorFont) }
-			data-signals:pref_ui_font_size={ fmt.Sprintf("'%s'", data.Prefs.UIFontSize) }
-			data-signals:pref_editor_font_size={ fmt.Sprintf("'%s'",
+			data-signals:pref_ui_font={ strfmt.SingleQuote(data.Prefs.UIFont) }
+			data-signals:pref_editor_font={ strfmt.SingleQuote(data.Prefs.EditorFont) }
+			data-signals:pref_ui_font_size={ strfmt.SingleQuote(data.Prefs.UIFontSize) }
+			data-signals:pref_editor_font_size={ strfmt.SingleQuote(
 				data.Prefs.EditorFontSize) }
 		>
 			<aside

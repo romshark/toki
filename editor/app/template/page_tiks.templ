@@ -1,13 +1,11 @@
 package template
 
 import (
-	"fmt"
-
 	"github.com/romshark/toki/editor/app/template/strfmt"
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
-templ PageTIKs(data DataIndex) {
+templ PageTIKs(data DataIndex, instanceID string) {
 	@page("page-tiks") {
 		<div
 			style="display:contents"
@@ -19,10 +17,10 @@ templ PageTIKs(data DataIndex) {
 			data-signals:resetmodalopen="false"
 			data-signals:resetdonetikid="''"
 			data-signals:resetdonelocale="''"
-			data-signals:instance_id="getOrCreateInstanceID('toki-editor-instance-id')"
+			data-signals:instance_id={ strfmt.SingleQuote(instanceID) }
 			data-signals:showlocales={ initShowLocalesSignal(data) }
 			data-signals:showdomains={ initShowDomainsSignal(data) }
-			data-signals:searchquery={ fmt.Sprintf("'%s'", data.SearchQuery) }
+			data-signals:searchquery={ strfmt.SingleQuote(data.SearchQuery) }
 			data-signals:page={ strfmt.Int(data.PageIdx + 1) }
 			data-signals:pagesize={ strfmt.Int(data.PageSize) }
 			data-signals:editor={ InitEditorSignals(data.TIKs) }
