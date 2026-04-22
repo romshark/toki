@@ -339,6 +339,22 @@ func POSTAppApplyChanges(options ...option) string {
 	return b.String()
 }
 
+// POSTAppOpenNewWindow references /open-new-window/
+func POSTAppOpenNewWindow(options ...option) string {
+	if len(options) == 0 {
+		return "@post('/open-new-window/')"
+	}
+	var b strings.Builder
+	bl, al := beforeAfterLen(options)
+	b.Grow(bl + len("@post('/open-new-window/'") + optionsLen(options) + len(")") + al)
+	writeBefore(&b, options)
+	b.WriteString("@post('/open-new-window/'")
+	writeOptions(&b, options)
+	b.WriteByte(')')
+	writeAfter(&b, options)
+	return b.String()
+}
+
 // POSTAppRegenerate references /regenerate/
 func POSTAppRegenerate(options ...option) string {
 	if len(options) == 0 {

@@ -14,7 +14,7 @@ import (
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
-func PageTIK(tk *TIK) templ.Component {
+func PageTIK(tk *TIK, isHybrid bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -51,7 +51,7 @@ func PageTIK(tk *TIK) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = tikSidebarNav(tk).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = tikSidebarNav(tk, isHybrid).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -83,7 +83,7 @@ func PageTIK(tk *TIK) templ.Component {
 
 // TIKContent is the morph target for PageTIK.OnUpdated SSE patches.
 // Excludes the <aside> wrapper so sidebar open/closed state is preserved.
-func TIKContent(tk *TIK) templ.Component {
+func TIKContent(tk *TIK, isHybrid bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -104,7 +104,7 @@ func TIKContent(tk *TIK) templ.Component {
 			templ_7745c5c3_Var3 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = tikSidebarNav(tk).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = tikSidebarNav(tk, isHybrid).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -116,7 +116,7 @@ func TIKContent(tk *TIK) templ.Component {
 	})
 }
 
-func tikSidebarNav(tk *TIK) templ.Component {
+func tikSidebarNav(tk *TIK, isHybrid bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -141,7 +141,7 @@ func tikSidebarNav(tk *TIK) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = componentSidebarHeader().Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = componentSidebarHeader(isHybrid).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

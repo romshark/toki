@@ -16,7 +16,7 @@ templ PageDashboard(stats DashboardStats) {
 			data-initial-open="true"
 		>
 			<nav aria-label="Dashboard navigation">
-				@componentSidebarHeader()
+				@componentSidebarHeader(stats.IsHybrid)
 				<section>
 					<div role="group">
 						<h3>Navigation</h3>

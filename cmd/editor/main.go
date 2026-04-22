@@ -19,6 +19,10 @@ import (
 	"github.com/romshark/toki/internal/log"
 )
 
+// windowCascadeOffset is the pixel offset for new windows relative to
+// the current window — mirrors the OS-level "cascade" placement.
+const windowCascadeOffset = 32
+
 func main() {
 	bundlePkg := flag.String("b", "tokibundle", "path to generated Go bundle package")
 	flag.Parse()
@@ -42,6 +46,8 @@ func main() {
 	serverCtx, serverCancel := context.WithCancel(context.Background())
 	defer serverCancel()
 
+	cli.DisableAutomaticWindowTabbing()
+
 	wailsApp := application.New(application.Options{
 		Name: "Toki Editor",
 		Mac: application.MacOptions{
@@ -58,6 +64,24 @@ func main() {
 			CanChooseFiles(false).
 			SetTitle("Select Project Folder").
 			PromptForSingleSelection()
+	}
+
+	a.OpenNewWindow = func() {
+		opts := application.WebviewWindowOptions{
+			Title:     "Toki Editor",
+			Width:     1200,
+			Height:    800,
+			MinWidth:  600,
+			MinHeight: 400,
+			URL:       fmt.Sprintf("http://%s", addr),
+		}
+		if cur := wailsApp.Window.Current(); cur != nil {
+			x, y := cur.Position()
+			opts.InitialPosition = application.WindowXY
+			opts.X = x + windowCascadeOffset
+			opts.Y = y + windowCascadeOffset
+		}
+		wailsApp.Window.NewWithOptions(opts)
 	}
 
 	serverErr := make(chan error, 1)

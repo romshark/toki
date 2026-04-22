@@ -17,7 +17,7 @@ type Breadcrumb struct {
 
 templ sidebarContent(data DataIndex) {
 	<nav id="sidebar-content" class="sidebar-index" aria-label="Editor navigation">
-		@componentSidebarHeader()
+		@componentSidebarHeader(data.IsHybrid)
 		<section class="sidebar-filters">
 			if len(data.Domains) > 0 {
 				<div role="group" aria-labelledby="domains-label">

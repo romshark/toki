@@ -136,6 +136,10 @@ type App struct {
 	// Set by the Wails runner; nil in server mode.
 	PickDirectory func() (string, error)
 
+	// OpenNewWindow opens a new native editor window pointed at the same
+	// local server. Set by the Wails runner; nil in server mode.
+	OpenNewWindow func()
+
 	// Version is the Toki version string. Set by editor.Setup.
 	Version string
 
@@ -1008,6 +1012,18 @@ func (a *App) POSTRegenerate(
 	return href.PageIndex(), nil
 }
 
+// POSTOpenNewWindow is /open-new-window/{$}
+//
+// Only meaningful in hybrid (Wails) mode: opens a second native editor
+// window pointed at the same local server. No-op in web/server mode.
+func (a *App) POSTOpenNewWindow(r *http.Request) error {
+	if a.OpenNewWindow == nil {
+		return nil
+	}
+	a.OpenNewWindow()
+	return nil
+}
+
 // clearBuildResultLocked clears stale build results so the build-bundle
 // page doesn't show an old result when revisited later.
 func (a *App) clearBuildResultLocked() {
@@ -1019,6 +1035,7 @@ func (a *App) clearBuildResultLocked() {
 
 func (a *App) buildDashboardStats() template.DashboardStats {
 	s := template.DashboardStats{
+		IsHybrid:        a.OpenNewWindow != nil,
 		Dir:             a.dir,
 		NumTIKs:         len(a.tiks),
 		NumLocales:      len(a.catalogs),
@@ -1488,6 +1505,7 @@ func (a *App) buildFilteredDataIndex(
 	pageIdx, pageSize int, searchQuery string,
 ) template.DataIndex {
 	data := template.DataIndex{
+		IsHybrid:        a.OpenNewWindow != nil,
 		Dir:             a.dir,
 		ShownLocales:    showLocales,
 		ShownDomains:    showDomains,

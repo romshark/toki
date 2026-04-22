@@ -270,6 +270,12 @@ a[aria-disabled="true"] {
 	font-size: 1.1rem;
 }
 
+.sidebar-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+}
+
 #editor-sidebar nav > :is(header, section, footer) {
 	padding: 0.75rem 1rem;
 }

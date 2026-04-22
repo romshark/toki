@@ -6,7 +6,7 @@ import (
 	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
-templ PageTIK(tk *TIK) {
+templ PageTIK(tk *TIK, isHybrid bool) {
 	@page("page-tik") {
 		<div
 			style="display:contents"
@@ -26,7 +26,7 @@ templ PageTIK(tk *TIK) {
 				data-side="left"
 				data-initial-open="true"
 			>
-				@tikSidebarNav(tk)
+				@tikSidebarNav(tk, isHybrid)
 			</aside>
 			@tikMainArea(tk)
 			@componentEditorModals()
@@ -36,14 +36,14 @@ templ PageTIK(tk *TIK) {
 
 // TIKContent is the morph target for PageTIK.OnUpdated SSE patches.
 // Excludes the <aside> wrapper so sidebar open/closed state is preserved.
-templ TIKContent(tk *TIK) {
-	@tikSidebarNav(tk)
+templ TIKContent(tk *TIK, isHybrid bool) {
+	@tikSidebarNav(tk, isHybrid)
 	@tikMainArea(tk)
 }
 
-templ tikSidebarNav(tk *TIK) {
+templ tikSidebarNav(tk *TIK, isHybrid bool) {
 	<nav id="tik-sidebar-content" aria-label="TIK navigation">
-		@componentSidebarHeader()
+		@componentSidebarHeader(isHybrid)
 		<section>
 			<ul>
 				<li>

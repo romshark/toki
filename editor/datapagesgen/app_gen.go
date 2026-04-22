@@ -582,6 +582,9 @@ func setupHandlers(s *Server) {
 		"POST /regenerate/{$}",
 		s.handlePOSTRegenerate)
 	s.mux.HandleFunc(
+		"POST /open-new-window/{$}",
+		s.handlePOSTOpenNewWindow)
+	s.mux.HandleFunc(
 		"POST /project-dir/pick/{$}",
 		s.handlePageProjectDirPOSTPick)
 	s.mux.HandleFunc(
@@ -825,6 +828,14 @@ func (s *Server) handlePOSTRegenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if httpRedirect(w, r, redirect, 0) {
+		return
+	}
+}
+
+func (s *Server) handlePOSTOpenNewWindow(w http.ResponseWriter, r *http.Request) {
+	err := s.app.POSTOpenNewWindow(r)
+	if err != nil {
+		s.httpErrIntern(w, r, nil, "handling action App.OpenNewWindow", err)
 		return
 	}
 }

@@ -60,7 +60,7 @@ func (p PageTIK) GET(
 	}
 
 	tk := p.App.orderTIK(p.App.tiks[iTIK])
-	body = template.PageTIK(tk)
+	body = template.PageTIK(tk, p.App.OpenNewWindow != nil)
 	return
 }
 
@@ -116,7 +116,7 @@ func (p PageTIK) OnUpdated(
 	}
 
 	tk := p.App.orderTIK(p.App.tiks[iTIK])
-	if err := sse.PatchElementTempl(template.TIKContent(tk)); err != nil {
+	if err := sse.PatchElementTempl(template.TIKContent(tk, p.App.OpenNewWindow != nil)); err != nil {
 		return err
 	}
 	return sse.ExecuteScript(syncEditorsScript([]template.TIK{*tk}, exclude))

@@ -16,6 +16,7 @@ type FontOption struct {
 }
 
 type DataSettingsPreview struct {
+	IsHybrid            bool // True when running as a native Wails desktop app.
 	Prefs               UIPrefs
 	UIFonts             []FontOption
 	EditorFonts         []FontOption
@@ -62,7 +63,7 @@ templ PageSettings(version string, data DataSettingsPreview) {
 				data-initial-open="true"
 			>
 				<nav aria-label="Settings navigation">
-					@componentSidebarHeader()
+					@componentSidebarHeader(data.IsHybrid)
 					<section>
 						<div role="group" aria-labelledby="settings-nav-label">
 							<h3 id="settings-nav-label">Settings</h3>

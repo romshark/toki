@@ -15,6 +15,10 @@ import (
 	"github.com/romshark/toki/editor/datapagesgen"
 )
 
+// windowCascadeOffset is the pixel offset for new windows relative to
+// the current window — mirrors the OS-level "cascade" placement.
+const windowCascadeOffset = 32
+
 // RunHybridApp launches the editor as a native Wails desktop app backed by
 // a local HTTP server on an ephemeral 127.0.0.1 port. Returns when the
 // webview window closes or the server fails to start.
@@ -33,6 +37,8 @@ func RunHybridApp(a *app.App, s *datapagesgen.Server) error {
 	serverCtx, serverCancel := context.WithCancel(context.Background())
 	defer serverCancel()
 
+	DisableAutomaticWindowTabbing()
+
 	wailsApp := application.New(application.Options{
 		Name: "Toki Editor",
 		Mac: application.MacOptions{
@@ -47,6 +53,24 @@ func RunHybridApp(a *app.App, s *datapagesgen.Server) error {
 			CanChooseFiles(false).
 			SetTitle("Select Project Folder").
 			PromptForSingleSelection()
+	}
+
+	a.OpenNewWindow = func() {
+		opts := application.WebviewWindowOptions{
+			Title:     "Toki Editor",
+			Width:     1200,
+			Height:    800,
+			MinWidth:  600,
+			MinHeight: 400,
+			URL:       fmt.Sprintf("http://%s", addr),
+		}
+		if cur := wailsApp.Window.Current(); cur != nil {
+			x, y := cur.Position()
+			opts.InitialPosition = application.WindowXY
+			opts.X = x + windowCascadeOffset
+			opts.Y = y + windowCascadeOffset
+		}
+		wailsApp.Window.NewWithOptions(opts)
 	}
 
 	serverErr := make(chan error, 1)

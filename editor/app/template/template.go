@@ -22,6 +22,7 @@ type UIPrefs struct {
 
 // DashboardStats holds statistics for the dashboard page.
 type DashboardStats struct {
+	IsHybrid        bool // True when running as a native Wails desktop app.
 	Dir             string
 	NumTIKs         int
 	NumLocales      int
@@ -59,6 +60,7 @@ type DomainFilter struct {
 }
 
 type DataIndex struct {
+	IsHybrid bool // True when running as a native Wails desktop app.
 	Dir      string
 	TIKs     []TIK // windowed slice of full TIKs to render
 	Catalogs []*Catalog

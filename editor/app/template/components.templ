@@ -197,20 +197,33 @@ templ componentNavbarSearch(
 }
 
 // --- Sidebar ---
-templ componentSidebarHeader() {
+templ componentSidebarHeader(isHybrid bool) {
 	<header>
 		<div class="sidebar-title">
 			<a
 				href={ href.PageIndex() }
 				class="sidebar-app-name"
 			>Toki Editor</a>
-			<a
-				href={ href.PageSettings() }
-				class="btn-secondary btn-icon"
-				aria-label="Settings"
-			>
-				@iconSettings()
-			</a>
+			<div class="sidebar-actions">
+				if isHybrid {
+					<button
+						type="button"
+						class="btn-secondary btn-icon"
+						aria-label="Open new window"
+						title="Open new window"
+						data-on:click={ action.POSTAppOpenNewWindow() }
+					>
+						@iconAppWindow()
+					</button>
+				}
+				<a
+					href={ href.PageSettings() }
+					class="btn-secondary btn-icon"
+					aria-label="Settings"
+				>
+					@iconSettings()
+				</a>
+			</div>
 		</div>
 	</header>
 }
