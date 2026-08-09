@@ -440,7 +440,7 @@ func Encode(w io.Writer, file *File, indent string) error {
 		lines := strings.Split(strings.TrimRight(valBuf.String(), "\n"), "\n")
 
 		_, _ = w.Write([]byte(indent))
-		_, _ = w.Write([]byte(keyJSON))
+		_, _ = w.Write(keyJSON)
 		_, _ = w.Write(partColon)
 		_, _ = w.Write([]byte(lines[0]))
 		for _, line := range lines[1:] {

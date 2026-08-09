@@ -16,7 +16,7 @@ var (
 	once     sync.Once
 	tempDir  string
 	sqinnBin string
-	initErr  error
+	errInit  error
 )
 
 // Path returns the filesystem path to the extracted sqinn binary.
@@ -25,11 +25,11 @@ var (
 func Path() (string, error) {
 	once.Do(func() {
 		if len(gzipData) == 0 {
-			initErr = os.ErrNotExist
+			errInit = os.ErrNotExist
 			return
 		}
-		tempDir, initErr = os.MkdirTemp("", "toki-sqinn-*")
-		if initErr != nil {
+		tempDir, errInit = os.MkdirTemp("", "toki-sqinn-*")
+		if errInit != nil {
 			return
 		}
 		exeName := "sqinn"
@@ -39,20 +39,20 @@ func Path() (string, error) {
 		sqinnBin = filepath.Join(tempDir, exeName)
 		gr, err := gzip.NewReader(bytes.NewReader(gzipData))
 		if err != nil {
-			initErr = err
+			errInit = err
 			return
 		}
 		f, err := os.OpenFile(sqinnBin, os.O_RDWR|os.O_CREATE, 0o755)
 		if err != nil {
-			initErr = err
+			errInit = err
 			return
 		}
 		defer func() { _ = f.Close() }()
 		if _, err := io.Copy(f, gr); err != nil {
-			initErr = err
+			errInit = err
 		}
 	})
-	return sqinnBin, initErr
+	return sqinnBin, errInit
 }
 
 // Cleanup removes the temp directory. Call on shutdown.

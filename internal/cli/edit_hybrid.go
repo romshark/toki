@@ -62,7 +62,7 @@ func RunHybridApp(a *app.App, s *datapagesgen.Server) error {
 			Height:    800,
 			MinWidth:  600,
 			MinHeight: 400,
-			URL:       fmt.Sprintf("http://%s", addr),
+			URL:       "http://" + addr,
 		}
 		if cur := wailsApp.Window.Current(); cur != nil {
 			x, y := cur.Position()
@@ -98,7 +98,7 @@ func RunHybridApp(a *app.App, s *datapagesgen.Server) error {
 		Height:    800,
 		MinWidth:  600,
 		MinHeight: 400,
-		URL:       fmt.Sprintf("http://%s", addr),
+		URL:       "http://" + addr,
 	})
 
 	if err := wailsApp.Run(); err != nil {

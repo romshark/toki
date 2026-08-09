@@ -224,7 +224,7 @@ func tikGenerators() []tikGenerator {
 		// Simple literal text.
 		func(rng *rand.Rand) (string, string, []tikParam) {
 			s := templates.Literals[rng.IntN(len(templates.Literals))]
-			return s, fmt.Sprintf("UI label: %s", s), nil
+			return s, "UI label: " + s, nil
 		},
 		// {text} placeholder (plain string arg).
 		func(rng *rand.Rand) (string, string, []tikParam) {
