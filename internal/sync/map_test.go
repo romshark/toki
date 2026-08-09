@@ -14,11 +14,11 @@ func TestMap(t *testing.T) {
 	require.Zero(t, m.Len())
 	{
 		v, ok := m.Get(1)
-		require.Zero(t, v)
+		require.Empty(t, v)
 		require.False(t, ok)
 
 		v = m.GetValue(1)
-		require.Zero(t, v)
+		require.Empty(t, v)
 	}
 
 	m.Set(1, "first")

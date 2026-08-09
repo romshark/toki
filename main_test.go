@@ -29,7 +29,7 @@ func TestVersion(t *testing.T) {
 	require.Equal(t, 0, exitCode)
 	require.Zero(t, res)
 
-	require.Zero(t, stderr.String())
+	require.Empty(t, stderr.String())
 	require.Contains(t, stdout.String(), "Toki v"+app.Version)
 }
 
@@ -942,11 +942,12 @@ var TimeNow = time.Date(2025, 1, 1, 1, 1, 1, 0, time.UTC)
 
 const ModName = "tstmod"
 
-func runInDir(t testing.TB, dir string, fn func()) {
+func runInDir(tb testing.TB, dir string, fn func()) {
+	tb.Helper()
 	wd, err := os.Getwd()
-	require.NoError(t, err)
+	require.NoError(tb, err)
 	defer func() { _ = os.Chdir(wd) }()
-	require.NoError(t, os.Chdir(dir))
+	require.NoError(tb, os.Chdir(dir))
 	fn()
 }
 
@@ -1071,12 +1072,12 @@ func (s FileSnapshot) RequireUnchanged(tb testing.TB, root string) {
 
 	// Check all originally present files
 	for path, old := range s.m {
-		new, ok := after.m[path]
+		current, ok := after.m[path]
 		if !ok {
 			tb.Errorf("file unexpectedly deleted: %s", path)
 			continue
 		}
-		if !bytes.Equal(old, new) {
+		if !bytes.Equal(old, current) {
 			tb.Errorf("unexpected file change: %s", path)
 		}
 	}

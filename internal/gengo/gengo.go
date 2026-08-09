@@ -164,7 +164,7 @@ func (w *Writer) WritePackageCatalog(
 
 func (w *Writer) writeCatalogType(locale language.Tag) {
 	localeCatalogSuffix := localeToCatalogSuffix(w.l)
-	w.translatorVar = fmt.Sprintf("tr_%s", localeCatalogSuffix)
+	w.translatorVar = "tr_" + localeCatalogSuffix
 	localeVarName := "loc_" + localeCatalogSuffix
 
 	w.printf("\n// This prevents the \"imported and not used\" error " +

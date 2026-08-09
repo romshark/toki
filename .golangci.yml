@@ -1,0 +1,31 @@
+version: "2"
+
+linters:
+  # Keeps the defaults (errcheck, govet, ineffassign, staticcheck, unused)
+  # and adds the linters below.
+  enable:
+    - asasalint # []any passed to a variadic func(...any)
+    - bidichk # Dangerous bidirectional unicode sequences
+    - bodyclose # Unclosed http.Response bodies
+    - contextcheck # Functions dropping an inherited context
+    - copyloopvar # Redundant loop-variable copies (Go 1.22+)
+    - durationcheck # Multiplying two time.Durations
+    - errname # Error vars named ErrFoo, error types named FooError
+    - fatcontext # context.WithValue etc. inside a loop
+    - iface # Redundant/unused interface declarations
+    - inamedparam # Unnamed params in interface method signatures
+    - intrange # for i := 0; i < n; i++  ->  for i := range n
+    - makezero # make([]T, n) followed by append
+    - misspell # Commonly misspelled English words
+    - nilnesserr # return nil after a non-nil error check
+    - perfsprint # fmt.Sprintf where concatenation/strconv suffices
+    - predeclared # Shadowing predeclared identifiers (new, len, cap, ...)
+    - reassign # Reassigning variables of imported packages
+    - recvcheck # Mixed pointer/value receivers on one type
+    - sloglint # Consistent log/slog key-value usage
+    - testifylint # Correct testify assertion choice
+    - thelper # Missing t.Helper() and non-standard param names
+    - tparallel # Misuse of t.Parallel()
+    - unconvert # Unnecessary type conversions
+    - usestdlibvars # http.MethodGet over "GET", etc.
+    - wastedassign # Assignments never read

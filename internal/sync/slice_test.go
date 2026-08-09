@@ -17,7 +17,7 @@ func TestSlice(t *testing.T) {
 	{
 		errTest := errors.New("test error")
 		err := s.Access(func(s []int) error {
-			require.Len(t, s, 0)
+			require.Empty(t, s)
 			return errTest
 		})
 		require.Equal(t, errTest, err)
