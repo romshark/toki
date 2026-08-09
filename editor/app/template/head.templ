@@ -1,0 +1,65 @@
+package template
+
+import (
+	"strings"
+
+	"github.com/romshark/toki/editor/datapagesgen/assets"
+)
+
+func prefsStyleTag(p UIPrefs) string {
+	if p.UIFontCSS == "" && p.EditorFontCSS == "" &&
+		p.UIFontSizeCSS == "" && p.EditorFontSizeCSS == "" {
+		return ""
+	}
+	var s strings.Builder
+	s.WriteString("<style>:root{")
+	if p.UIFontCSS != "" {
+		s.WriteString("--font-ui:")
+		s.WriteString(p.UIFontCSS)
+		s.WriteByte(';')
+	}
+	if p.EditorFontCSS != "" {
+		s.WriteString("--font-editor:")
+		s.WriteString(p.EditorFontCSS)
+		s.WriteByte(';')
+	}
+	if p.UIFontSizeCSS != "" {
+		s.WriteString("--font-size-ui:")
+		s.WriteString(p.UIFontSizeCSS)
+		s.WriteByte(';')
+	}
+	if p.EditorFontSizeCSS != "" {
+		s.WriteString("--font-size-editor:")
+		s.WriteString(p.EditorFontSizeCSS)
+		s.WriteByte(';')
+	}
+	s.WriteString("}</style>")
+	return s.String()
+}
+
+templ Head(prefs UIPrefs) {
+	<title>Toki Editor</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<meta charset="UTF-8"/>
+	<link rel="stylesheet" href={ assets.Path("basecoat.min.css") }/>
+	// Set dark/light class before any content renders to avoid FOUC.
+	switch prefs.Theme {
+		case "dark":
+			<script>document.documentElement.classList.add('dark')</script>
+		case "light":
+			<script>document.documentElement.classList.add('light')</script>
+		default:
+			<script>
+				if(matchMedia('(prefers-color-scheme:dark)').matches) {
+					document.documentElement.classList.add('dark')
+				}
+			</script>
+	}
+	// Inject CSS custom properties for user font preferences on :root.
+	// templ.Raw is acceptable here because templ has no native construct
+	// for <style> tags with dynamic content.
+	@templ.Raw(prefsStyleTag(prefs))
+	<script src={ assets.Path("basecoat.min.js") } defer></script>
+	<script src={ assets.Path("bundle.js") }></script>
+	<link rel="stylesheet" href={ assets.Path("style.min.css") }/>
+}

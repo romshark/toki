@@ -1,0 +1,48 @@
+package template
+
+import (
+	"github.com/romshark/toki/editor/app/template/strfmt"
+	"github.com/romshark/toki/editor/datapagesgen/href"
+)
+
+templ PageTIKs(data DataIndex, instanceID string) {
+	@page("page-tiks") {
+		<div
+			style="display:contents"
+			data-signals:icumsg="''"
+			data-signals:settikid="''"
+			data-signals:setlocale="''"
+			data-signals:resettikid="''"
+			data-signals:resetlocale="''"
+			data-signals:resetmodalopen="false"
+			data-signals:resetdonetikid="''"
+			data-signals:resetdonelocale="''"
+			data-signals:instance_id={ strfmt.SingleQuote(instanceID) }
+			data-signals:showlocales={ initShowLocalesSignal(data) }
+			data-signals:showdomains={ initShowDomainsSignal(data) }
+			data-signals:searchquery={ strfmt.SingleQuote(data.SearchQuery) }
+			data-signals:page={ strfmt.Int(data.PageIdx + 1) }
+			data-signals:pagesize={ strfmt.Int(data.PageSize) }
+			data-signals:editor={ InitEditorSignals(data.TIKs) }
+		>
+			<aside
+				class="sidebar"
+				id="editor-sidebar"
+				data-side="left"
+				data-initial-open="true"
+			>
+				@sidebarContent(data)
+			</aside>
+			<div id="main-area" class="main-area">
+				@componentNavbarSearch([]Breadcrumb{
+					{Label: "Dashboard", Href: href.PageIndex()},
+					{Label: "Messages"},
+				}, data.TotalChanges, data.CanApplyChanges)
+				<main>
+					@TiksContentList(data)
+				</main>
+			</div>
+			@componentEditorModals()
+		</div>
+	}
+}

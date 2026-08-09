@@ -19,6 +19,7 @@ import (
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/log"
 	"github.com/romshark/toki/internal/sync"
+	tikutil "github.com/romshark/toki/internal/tik"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/romshark/icumsg"
@@ -55,6 +56,13 @@ type Parser struct {
 	readerType string
 }
 
+// ICUTranslator returns the parser's TIK-to-ICU translator.
+func (p *Parser) ICUTranslator() *tik.ICUTranslator { return p.icuTranslator }
+
+// ICUTokenizer returns the parser's ICU message tokenizer.
+func (p *Parser) ICUTokenizer() *icumsg.Tokenizer { return p.icuDecoder }
+
+// NewParser creates a new source code parser.
 func NewParser(
 	hasher *xxhash.Digest,
 	tikParser *tik.Parser,
@@ -93,7 +101,21 @@ type SourceError struct {
 }
 
 type CatalogStatistics struct {
+	// MessagesIncomplete counts non-empty messages that fail
+	// [IsMsgIncomplete] (e.g. missing required plural/select options).
 	MessagesIncomplete atomic.Int64
+	// MessagesMissing counts native-locale messages that are present as TIKs
+	// in source code but absent from the ARB. An out-of-date bundle — fixed
+	// by re-running `toki generate`, not by repair.
+	MessagesMissing atomic.Int64
+	// MessagesCorrupt counts native-locale messages that exist in the ARB
+	// but disagree with the source-code TIK. Two sub-cases:
+	//  1. Locked mismatch — [tikutil.ProducesCompleteICU] returns true (the TIK
+	//     fully determines the ICU) but the ARB value differs from the expected one.
+	//  2. Placeholder mismatch — the message's placeholder metadata doesn't
+	//     match what the TIK expects (see [PlaceholdersMismatch]).
+	// True corruption — fixed by `toki repair`.
+	MessagesCorrupt atomic.Int64
 }
 
 type Catalog struct {
@@ -124,12 +146,17 @@ type Scan struct {
 	Domains       *DomainTree // Domain hierarchy discovered during scan.
 }
 
+// Parse parses Go source code and ARB files to produce a Scan.
+// If dir is non-empty, package loading is rooted there instead of the
+// process working directory. Callers should prefer passing dir over
+// using os.Chdir, which is process-global and unsafe in servers.
 func (p *Parser) Parse(
-	env []string, pathPattern, bundlePkgPath string, trimpath bool,
+	env []string, dir, pathPattern, bundlePkgPath string, trimpath bool,
 ) (scan *Scan, err error) {
 	fset := token.NewFileSet()
 
 	conf := &packages.Config{
+		Dir: dir,
 		Mode: packages.NeedFiles |
 			packages.NeedSyntax |
 			packages.NeedTypes |
@@ -175,6 +202,7 @@ func (p *Parser) Parse(
 		if err != nil {
 			return scan, fmt.Errorf("searching .arb files: %w", err)
 		}
+
 		p.genderType = pkgBundle.PkgPath + ".Gender"
 		p.readerType = pkgBundle.PkgPath + ".Reader"
 	}
@@ -189,6 +217,8 @@ func (p *Parser) Parse(
 	}
 
 	p.collectTexts(fset, pkgs, bundlePkg, pathPattern, trimpath, scan)
+
+	p.classifyNativeMessages(scan)
 
 	return scan, nil
 }
@@ -313,6 +343,55 @@ func IsMsgIncomplete(
 		},
 	)
 	return incomplete
+}
+
+// classifyNativeMessages counts native-locale messages that are either
+// missing from the ARB (out of date — see [CatalogStatistics.MessagesMissing])
+// or corrupt (present but disagreeing with the TIK — see
+// [CatalogStatistics.MessagesCorrupt]).
+// Must be called after both CollectARBFiles and collectTexts.
+func (p *Parser) classifyNativeMessages(scan *Scan) {
+	var nativeCatalog *Catalog
+	for c := range scan.Catalogs.SeqRead() {
+		if c.ARB.Locale == scan.DefaultLocale {
+			nativeCatalog = c
+			break
+		}
+	}
+	if nativeCatalog == nil {
+		return
+	}
+	for _, i := range scan.TextIndexByID.SeqRead() {
+		t := scan.Texts.At(i)
+		msg := nativeCatalog.ARB.Messages[t.IDHash]
+		expectedICU := p.icuTranslator.TIK2ICU(t.TIK)
+		switch {
+		case msg.ICUMessage == "":
+			// Out of date: TIK exists in source but ARB has no entry.
+			nativeCatalog.MessagesMissing.Add(1)
+		case tikutil.ProducesCompleteICU(scan.DefaultLocale, t.TIK) &&
+			msg.ICUMessage != expectedICU:
+			// Corrupt: locked message doesn't match expected ICU.
+			nativeCatalog.MessagesCorrupt.Add(1)
+		case PlaceholdersMismatch(t.TIK, msg):
+			// Corrupt: missing or wrong placeholder metadata.
+			nativeCatalog.MessagesCorrupt.Add(1)
+		}
+	}
+}
+
+// PlaceholdersMismatch returns true if the message's placeholder metadata
+// doesn't match what the TIK expects (wrong count or missing entries).
+func PlaceholdersMismatch(tk tik.TIK, msg arb.Message) bool {
+	n := 0
+	for range tk.Placeholders() {
+		name := fmt.Sprintf("var%d", n)
+		if _, ok := msg.Placeholders[name]; !ok {
+			return true
+		}
+		n++
+	}
+	return len(msg.Placeholders) != n
 }
 
 func (p *Parser) collectTexts(

@@ -162,6 +162,89 @@ var writers_en = map[string]func(w io.Writer, args ...any) (int, error){
 		}
 		return written, nil
 	},
+	msgbad1abc0cf003582: func(w io.Writer, args ...any) (written int, err error) {
+		var n int
+		n, err = wrs(w, "Your score: ")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		switch a := args[0].(type) {
+		case int, uint, int8, uint8, int16, uint16, int32, uint32, int64, uint64:
+			n, err = fmt.Fprintf(w, "%d", a)
+		}
+		if err != nil {
+			return written, err
+		}
+		written += n
+		return written, nil
+	},
+	msgbcdb3dde88d7bbb2: func(w io.Writer, args ...any) (written int, err error) {
+		var n int
+		n, err = wrs(w, "Hey ")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		{
+			s, _ := sv(args[0])
+			n, err = wrs(w, s)
+		}
+		if err != nil {
+			return written, err
+		}
+		written += n
+		n, err = wrs(w, ", what's up?")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		return written, nil
+	},
+	msgca9572938a754c86: func(w io.Writer, args ...any) (written int, err error) {
+		var n int
+		n, err = wrs(w, "Good day, ")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		{
+			s, _ := sv(args[0])
+			n, err = wrs(w, s)
+		}
+		if err != nil {
+			return written, err
+		}
+		written += n
+		n, err = wrs(w, ". Welcome.")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		return written, nil
+	},
+	msgd402b253f75c3b74: func(w io.Writer, args ...any) (written int, err error) {
+		var n int
+		n, err = wrs(w, "See you later, ")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		{
+			s, _ := sv(args[0])
+			n, err = wrs(w, s)
+		}
+		if err != nil {
+			return written, err
+		}
+		written += n
+		n, err = wrs(w, "!")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		return written, nil
+	},
 }
 
 func (catalog_en) Locale() language.Tag { return loc_en }

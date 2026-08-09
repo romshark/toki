@@ -5,7 +5,7 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/romshark/toki/internal/app"
+	"github.com/romshark/toki/internal/cli"
 )
 
 // Set by goreleaser via -ldflags -X.
@@ -28,10 +28,10 @@ func main() {
 		}
 	}
 
-	app.Version = version
-	app.Commit = commit
-	app.Date = date
-	r, exitCode := app.Run(os.Args, os.Environ(), os.Stderr, os.Stdout, time.Now())
+	cli.Version = version
+	cli.Commit = commit
+	cli.Date = date
+	r, exitCode := cli.Run(os.Args, os.Environ(), os.Stderr, os.Stdout, time.Now())
 	r.Print()
 	os.Exit(exitCode)
 }

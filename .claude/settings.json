@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command' | grep -qE '(templ generate|go build)' && echo '{\"decision\":\"block\",\"reason\":\"Do not run templ generate or go build manually — datapages watch handles this automatically. Only edit source files. You may run datapages gen for lint feedback.\"}' || true"
+          }
+        ]
+      }
+    ]
+  }
+}

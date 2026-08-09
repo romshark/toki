@@ -52,6 +52,20 @@ type DomainTree struct {
 	byDir map[string]*Domain // Absolute directory path -> Domain defined there.
 }
 
+// Len returns the number of domains in the tree.
+func (dt *DomainTree) Len() int { return len(dt.byDir) }
+
+// All returns an iterator over all domains in the tree.
+func (dt *DomainTree) All() iter.Seq[*Domain] {
+	return func(yield func(*Domain) bool) {
+		for _, d := range dt.byDir {
+			if !yield(d) {
+				return
+			}
+		}
+	}
+}
+
 // ForDir returns the domain that applies to dir by walking up to the nearest
 // ancestor with a .tokidomain file. Returns nil if no domain covers dir.
 func (dt *DomainTree) ForDir(dir string) *Domain {

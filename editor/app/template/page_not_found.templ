@@ -1,0 +1,32 @@
+package template
+
+import "github.com/romshark/toki/editor/datapagesgen/href"
+
+templ PageNotFound(path string) {
+	@page("page-not-found") {
+		<div class="page-center">
+			<header>
+				<code>404</code>
+			</header>
+			<main>
+				<toki-editor
+					value={ "Hello, {name}!\n"+
+					"The page \"{text}\" you asked for, doesn''t exist.\n"+
+					"Want to go back, or to the dashboard?" }
+					data-attr:theme="$pref_theme_resolved"
+					readonly
+				></toki-editor>
+				<div role="group" class="button-group not-found-actions">
+					<button
+						class="btn-secondary"
+						data-on:click="history.back()"
+					>Previous Page</button>
+					<a
+						class="btn-primary"
+						href={ href.PageIndex() }
+					>Dashboard</a>
+				</div>
+			</main>
+		</div>
+	}
+}

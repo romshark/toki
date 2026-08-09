@@ -1,0 +1,14 @@
+package template
+
+// page wraps every page body and seeds $pref_theme_resolved so
+// <toki-editor data-attr:theme=...> reacts to EventPrefsChanged patches.
+templ page(id string) {
+	<div
+		id={ id }
+		data-signals:pref_theme_resolved={ resolvedThemeExpr() }
+	>
+		<div class="page-content">
+			{ children... }
+		</div>
+	</div>
+}

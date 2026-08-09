@@ -126,7 +126,6 @@ var (
 	ErrMissingRequiredLocale = errors.New("missing required @@locale")
 	ErrInvalid               = errors.New("invalid")
 	ErrMalformedJSON         = errors.New("malformed JSON")
-	ErrUndefinedPlaceholder  = errors.New("undefined placeholder")
 )
 
 type Decoder struct {
@@ -277,15 +276,6 @@ func (d *Decoder) Decode(r io.Reader) (*File, error) {
 				if err := validatePlaceholderType(string(p.Type)); err != nil {
 					return nil, fmt.Errorf(
 						"%w (for key %q): %w", ErrInvalid, k, err)
-				}
-			}
-
-			for _, tok := range msg.ICUMessageTokens {
-				if tok.Type == icumsg.TokenTypeArgName {
-					name := tok.String(msgText, msg.ICUMessageTokens)
-					if _, ok := meta.Placeholders[name]; !ok {
-						return nil, fmt.Errorf("%w: %q", ErrUndefinedPlaceholder, name)
-					}
 				}
 			}
 

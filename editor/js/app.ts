@@ -1,0 +1,37 @@
+export {}; // Ensure this file is treated as a module.
+
+// --- Sidebar state (tab-scoped) ---
+
+if (sessionStorage.getItem("toki-sidebar") === "false") {
+  new MutationObserver((_, obs) => {
+    const sidebar = document.getElementById("editor-sidebar");
+    if (sidebar) {
+      sidebar.setAttribute("data-initial-open", "false");
+      sidebar.setAttribute("aria-hidden", "true");
+      sidebar.setAttribute("inert", "");
+      obs.disconnect();
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+}
+
+(window as any).toggleSidebar = function toggleSidebar() {
+  const isOpen = sessionStorage.getItem("toki-sidebar") !== "false";
+  sessionStorage.setItem("toki-sidebar", isOpen ? "false" : "true");
+  document.dispatchEvent(new CustomEvent(
+    "basecoat:sidebar", { detail: { id: "editor-sidebar" } },
+  ));
+};
+
+// --- OS theme preference change ---
+// When the user has "system" theme and toggles OS dark mode,
+// update the current page without reloading.
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  const theme = document.cookie.match(/(?:^|;\s*)toki-theme=([^;]*)/)?.[1] || "system";
+  if (theme === "system") {
+    document.documentElement.classList.toggle(
+      "dark",
+      matchMedia("(prefers-color-scheme: dark)").matches,
+    );
+  }
+});
+

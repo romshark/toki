@@ -10,12 +10,6 @@ import (
 	"golang.org/x/text/language"
 )
 
-type ConfigWebedit struct {
-	Host          string
-	BundlePkgPath string
-	DontOpen      bool
-}
-
 type ConfigGenerate struct {
 	Locale          language.Tag
 	Translations    []language.Tag
@@ -29,23 +23,6 @@ type ConfigGenerate struct {
 }
 
 var ErrLocaleNotBCP47 = errors.New("must be a valid non-und BCP 47 locale")
-
-func ParseCLIArgsWebedit(osArgs []string) (*ConfigWebedit, error) {
-	c := &ConfigWebedit{}
-
-	cli := flag.NewFlagSet(osArgs[0], flag.ExitOnError)
-	cli.BoolVar(&c.DontOpen, "dontopen", false, "disables automatic browser opening")
-	cli.StringVar(&c.Host, "host", "localhost:52000",
-		"HTTP server host address")
-	cli.StringVar(&c.BundlePkgPath, "b", "tokibundle",
-		"path to generated Go bundle package")
-
-	if err := cli.Parse(osArgs[2:]); err != nil {
-		return nil, fmt.Errorf("parsing: %w", err)
-	}
-
-	return c, nil
-}
 
 // ParseCLIArgsGenerate parses CLI arguments for command "generate"
 func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
