@@ -53,16 +53,19 @@ func newStringified[T stringifier](cap int) *stringified[T] {
 	return &stringified[T]{m: make(map[T]string, cap)}
 }
 
+// The constants are explicitly typed because untyped ones overflow int and uint
+// on targets where those are 32 bits wide.
 const (
-	minInt53 = -1 << 53
-	maxInt53 = 1 << 53
+	minInt53  int64  = -1 << 53
+	maxInt53  int64  = 1 << 53
+	maxUint53 uint64 = 1 << 53
 )
 
 func pluralRuleCardinal(t locales.Translator, quantity any) (locales.PluralRule) {
 	var q float64
 	switch n := quantity.(type) {
 	case uint:
-		if n >= maxInt53 {
+		if uint64(n) >= maxUint53 {
 			return locales.PluralRuleOther // Lossy conversion.
 		}
 		q = float64(n)
@@ -73,12 +76,12 @@ func pluralRuleCardinal(t locales.Translator, quantity any) (locales.PluralRule)
 	case uint32:
 		q = float64(n)
 	case uint64:
-		if n >= maxInt53 {
+		if n >= maxUint53 {
 			return locales.PluralRuleOther // Lossy conversion.
 		}
 		q = float64(n)
 	case int:
-		if n >= maxInt53 || n <= minInt53 {
+		if int64(n) >= maxInt53 || int64(n) <= minInt53 {
 			return locales.PluralRuleOther // Lossy conversion.
 		}
 		q = float64(n)
@@ -108,7 +111,7 @@ func pluralRuleOrdinal(t locales.Translator, quantity any) (locales.PluralRule) 
 	var q float64
 	switch n := quantity.(type) {
 	case uint:
-		if n >= maxInt53 {
+		if uint64(n) >= maxUint53 {
 			// Lossy conversion.
 			return locales.PluralRuleOther
 		}
@@ -120,13 +123,13 @@ func pluralRuleOrdinal(t locales.Translator, quantity any) (locales.PluralRule) 
 	case uint32:
 		q = float64(n)
 	case uint64:
-		if n >= maxInt53 {
+		if n >= maxUint53 {
 			// Lossy conversion.
 			return locales.PluralRuleOther
 		}
 		q = float64(n)
 	case int:
-		if n >= maxInt53 || n <= minInt53 {
+		if int64(n) >= maxInt53 || int64(n) <= minInt53 {
 			// Lossy conversion.
 			return locales.PluralRuleOther
 		}
@@ -154,7 +157,9 @@ func pluralRuleOrdinal(t locales.Translator, quantity any) (locales.PluralRule) 
 	return t.OrdinalPluralRule(float64(q), 0)
 }
 
-func subtract(number any, amount uint) any {
+// amount is uint64 because the generator emits plural offsets as untyped
+// constants which would overflow uint on targets where it's 32 bits wide.
+func subtract(number any, amount uint64) any {
 	switch v := number.(type) {
 	case int:
 		return v - int(amount)

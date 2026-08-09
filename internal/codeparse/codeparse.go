@@ -670,8 +670,7 @@ func (p *Parser) isStringValue(
 	}
 
 	var hasValue, hasGender bool
-	for i := range st.NumFields() {
-		f := st.Field(i)
+	for f := range st.Fields() {
 		switch f.Name() {
 		case "Value":
 			b, ok := f.Type().Underlying().(*types.Basic)
@@ -800,8 +799,7 @@ func (p *Parser) isCurrencyAmount(
 	}
 
 	var hasValue, hasType bool
-	for i := range st.NumFields() {
-		f := st.Field(i)
+	for f := range st.Fields() {
 		switch f.Name() {
 		case "Amount":
 			b, ok := f.Type().Underlying().(*types.Basic)
