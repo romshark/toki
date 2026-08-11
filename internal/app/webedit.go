@@ -75,11 +75,14 @@ func (g *WebEdit) Run(osArgs, env []string, stderr io.Writer) error {
 		})
 	}
 
+	// Channel to signal server errors (e.g., port already in use)
+	serverErr := make(chan error, 1)
+
 	go func() {
 		log.Info("listening", slog.String("host", conf.Host))
 		if err := s.ListenAndServe(); err != nil {
 			if !errors.Is(err, http.ErrServerClosed) {
-				log.Error("listening and serving HTTP", err)
+				serverErr <- err
 			}
 		}
 	}()
@@ -87,11 +90,15 @@ func (g *WebEdit) Run(osArgs, env []string, stderr io.Writer) error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	<-ctx.Done() // Wait for interrupt signal.
-	log.Info("server shutting down")
-	if err := s.Shutdown(context.Background()); err != nil {
-		log.Error("shutting down server", err)
+	// Wait for either interrupt signal or server error
+	select {
+	case <-ctx.Done():
+		log.Info("server shutting down")
+		if err := s.Shutdown(context.Background()); err != nil {
+			log.Error("shutting down server", err)
+		}
+		return nil
+	case err := <-serverErr:
+		return fmt.Errorf("server failed to start: %w", err)
 	}
-
-	return nil
 }
