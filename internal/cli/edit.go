@@ -31,9 +31,12 @@ func (e *Edit) Run(osArgs, env []string, stderr io.Writer) error {
 		return fmt.Errorf("resolving working directory: %w", err)
 	}
 
-	a, s := editor.Setup(dir, *bundlePkg, Version, env,
+	a, s, err := editor.Setup(dir, *bundlePkg, Version, env,
 		CleanGenerated, GenerateBundle, ApplyChangesAndBuild, RepairBundle,
 		RegenerateBundle)
+	if err != nil {
+		return fmt.Errorf("setting up editor: %w", err)
+	}
 
 	if *server != "" {
 		os.Exit(editor.RunServer(s, *server))

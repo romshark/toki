@@ -3,32 +3,45 @@ package app
 import (
 	"net/http"
 
-	"github.com/a-h/templ"
-	"github.com/starfederation/datastar-go/datastar"
+	"github.com/romshark/datapages"
 
+	"github.com/romshark/toki/editor/app/datapagesgen/href"
 	"github.com/romshark/toki/editor/app/template"
-	"github.com/romshark/toki/editor/datapagesgen/href"
-	"github.com/romshark/toki/editor/datapagesgen/httperr"
 )
 
 // PageTIKs is /tiks
-type PageTIKs struct{ App *App }
+type PageTIKs struct {
+	App *App
+	PrefsSync
+	ResetSync
+}
+
+// StateTIKs is the per-tab view state of PageTIKs: the filters and the
+// page the tab shows. StreamOpen seeds it from the URL-synced signals.
+type StateTIKs struct {
+	FilterType  string
+	ShowLocales map[string]bool // nil shows all
+	ShowDomains map[string]bool // nil shows all
+	SearchQuery string
+	PageIdx     int // 0-based
+	PageSize    int
+}
 
 func (p PageTIKs) GET(
 	r *http.Request,
-	query struct {
+	query datapages.Query[struct {
 		Filter   string `query:"f" reflectsignal:"filtertype"`
 		Locales  string `query:"l" reflectsignal:"shownlocales"`
 		Domains  string `query:"d" reflectsignal:"showndomains"`
 		Search   string `query:"q" reflectsignal:"searchquery"`
 		Page     int    `query:"p" reflectsignal:"page"`
 		PageSize int    `query:"ps" reflectsignal:"pagesize"`
-	},
+	}],
 ) (
-	body templ.Component,
-	redirect string,
-	enableBackgroundStreaming bool,
-	disableRefreshAfterHidden bool,
+	body datapages.Component,
+	redirect datapages.Redirect,
+	enableBackgroundStreaming datapages.EnableBackgroundStreaming,
+	disableRefreshAfterHidden datapages.DisableRefreshAfterHidden,
 	err error,
 ) {
 	enableBackgroundStreaming = true
@@ -43,68 +56,57 @@ func (p PageTIKs) GET(
 	defer p.App.lock.Unlock()
 
 	if p.App.building {
-		redirect = href.PageBuildBundle()
+		redirect.URL = href.PageBuildBundle()
 		return
 	}
 
 	p.App.clearBuildResultLocked()
 
 	if p.App.mustRedirectToProjectDir() {
-		redirect = href.PageProjectDir()
+		redirect.URL = href.PageProjectDir()
 		return
 	}
 
-	showLocales := parseLocalesParam(query.Locales)
-	showDomains := parseDomainsParam(query.Domains)
-	pageIdx := max(
-		// URL is 1-based, internal is 0-based
-		query.Page-1, 0)
+	q := query.Values
 	data := p.App.buildFilteredDataIndex(
-		query.Filter, showLocales, showDomains, pageIdx, query.PageSize, query.Search)
-	body = template.PageTIKs(data, newInstanceID())
+		q.Filter, parseLocalesParam(q.Locales), parseDomainsParam(q.Domains),
+		// URL is 1-based, internal is 0-based
+		max(q.Page-1, 0),
+		q.PageSize, q.Search)
+	body = template.PageTIKs(data)
 	return
 }
 
-func (p PageTIKs) StreamOpen(
+func (PageTIKs) StreamOpen(
 	r *http.Request,
-	streamID uint64,
-	signals struct {
+	state datapages.State[StateTIKs],
+	signals datapages.Signals[struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
 		ShowDomains map[string]bool `json:"showdomains"`
 		SearchQuery string          `json:"searchquery"`
 		Page        int             `json:"page"`
 		PageSize    int             `json:"pagesize"`
-		InstanceID  string          `json:"instance_id"`
-	},
+	}],
 ) error {
-	p.App.lock.Lock()
-	defer p.App.lock.Unlock()
-	pageIdx := max(
+	s := signals.Values
+	*state.Values = StateTIKs{
+		FilterType:  normalizeFilterType(s.FilterType),
+		ShowLocales: s.ShowLocales,
+		ShowDomains: normalizeDomainsSignal(s.ShowDomains),
+		SearchQuery: s.SearchQuery,
 		// signal is 1-based, internal is 0-based
-		signals.Page-1, 0)
-	p.App.registerTIKsStreamLocked(streamID, signals.InstanceID, pageTIKsState{
-		filterType:  normalizeFilterType(signals.FilterType),
-		showLocales: signals.ShowLocales,
-		showDomains: normalizeDomainsSignal(signals.ShowDomains),
-		searchQuery: signals.SearchQuery,
-		pageIdx:     pageIdx,
-		pageSize:    template.NormalizePageSize(signals.PageSize),
-	})
-	return nil
-}
-
-func (p PageTIKs) StreamClose(r *http.Request, streamID uint64) error {
-	p.App.lock.Lock()
-	defer p.App.lock.Unlock()
-	p.App.unregisterTIKsStreamLocked(streamID)
+		PageIdx:  max(s.Page-1, 0),
+		PageSize: template.NormalizePageSize(s.PageSize),
+	}
 	return nil
 }
 
 func (p PageTIKs) OnUpdated(
 	event EventUpdated,
-	sse *datastar.ServerSentEventGenerator,
-	streamID uint64,
+	sse datapages.SSE,
+	state datapages.State[StateTIKs],
+	stateID string,
 ) error {
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
@@ -114,262 +116,180 @@ func (p PageTIKs) OnUpdated(
 	}
 
 	if p.App.mustRedirectToProjectDir() {
-		return nil
+		return sse.Redirect(href.PageProjectDir())
 	}
 
-	instID := p.App.streamInst[streamID]
-	vs := p.App.tiksViews[instID]
-	if vs == nil {
-		return nil
-	}
-
-	// If this SSE connection belongs to the tab that triggered the
-	// change, exclude the changed editor from the sync so that in-
-	// progress typing is never overwritten by its own stale echo.
+	// If this tab triggered the change, leave the changed editor's signal
+	// alone so that in-progress typing is never overwritten by its own
+	// stale echo.
 	var exclude string
-	if event.SourceInstanceID != "" && event.SourceInstanceID == instID {
+	if event.SourceStateID == stateID {
 		exclude = event.ChangedEditor
 	}
-
-	data := p.App.buildFilteredDataIndex(
-		vs.filterType, vs.showLocales, vs.showDomains,
-		vs.pageIdx, vs.pageSize, vs.searchQuery)
-	// Signals first: the morph's data-attr:value bindings read them.
-	if err := sse.MarshalAndPatchSignals(editorSignalsFor(data.TIKs, exclude)); err != nil {
-		return err
-	}
-	// Keep the page signal in sync if the build clamped the index.
-	if data.PageIdx != vs.pageIdx {
-		vs.pageIdx = data.PageIdx
-		if err := sse.MarshalAndPatchSignals(struct {
-			Page int `json:"page"`
-		}{Page: data.PageIdx + 1}); err != nil {
-			return err
-		}
-	}
-	return sse.PatchElementTempl(template.PageTIKsContent(data))
+	return p.renderLocked(sse, state.Values, exclude)
 }
 
-func (PageTIKs) OnPrefsChanged(
-	event EventPrefsChanged, sse *datastar.ServerSentEventGenerator,
-) error {
-	return patchUIPrefs(sse, event)
+// tiksSignals are the signals the server owns on the TIKs page. It patches
+// them before every render so the URL, the pagination and the editors
+// follow the view state.
+type tiksSignals struct {
+	ShowLocales  map[string]bool              `json:"showlocales"`
+	ShowDomains  map[string]bool              `json:"showdomains"`
+	ShownLocales string                       `json:"shownlocales"`
+	ShownDomains string                       `json:"showndomains"`
+	Page         int                          `json:"page"`
+	PageSize     int                          `json:"pagesize"`
+	Editor       map[string]map[string]string `json:"editor"`
 }
 
-func (PageTIKs) OnReset(
-	event EventReset,
-	sse *datastar.ServerSentEventGenerator,
-) error {
-	if event.ResetEditor == "" {
-		return nil
-	}
-	return sse.MarshalAndPatchSignals(struct {
-		ResetDoneTIKID  string                       `json:"resetdonetikid"`
-		ResetDoneLocale string                       `json:"resetdonelocale"`
-		Editor          map[string]map[string]string `json:"editor"`
-	}{
-		ResetDoneTIKID:  event.TIKID,
-		ResetDoneLocale: event.Locale,
-		Editor: map[string]map[string]string{
-			event.TIKID: {event.Locale: event.ResetValue},
-		},
-	})
-}
-
-// renderFromViewState renders the TIKs page from the current server-side
-// view state and pushes updated signals for checkbox bindings and URL sync.
-func (p PageTIKs) renderFromViewState(
-	sse *datastar.ServerSentEventGenerator, vs *pageTIKsState,
+// renderLocked patches the whole TIKs page rendered from the tab's view
+// state. excludeEditor names the editor whose signal is left alone
+// (see [editorSignalsFor]). Caller holds the App lock.
+func (p PageTIKs) renderLocked(
+	sse datapages.SSE, vs *StateTIKs, excludeEditor string,
 ) error {
 	data := p.App.buildFilteredDataIndex(
-		vs.filterType, vs.showLocales, vs.showDomains,
-		vs.pageIdx, vs.pageSize, vs.searchQuery)
-	// The build call may have clamped the page index or normalized page
-	// size — keep state in sync.
-	vs.pageIdx = data.PageIdx
-	vs.pageSize = data.PageSize
+		vs.FilterType, vs.ShowLocales, vs.ShowDomains,
+		vs.PageIdx, vs.PageSize, vs.SearchQuery)
+	// The build may have clamped the page index or normalized the page
+	// size, keep the state in sync.
+	vs.PageIdx = data.PageIdx
+	vs.PageSize = data.PageSize
 
-	// Push checkbox signal state so data-bind stays in sync.
 	localeSignals := make(map[string]bool, len(data.Catalogs))
 	for _, c := range data.Catalogs {
-		localeSignals[c.Locale] = vs.showLocales == nil || vs.showLocales[c.Locale]
+		localeSignals[c.Locale] = vs.ShowLocales == nil || vs.ShowLocales[c.Locale]
 	}
 	domainSignals := make(map[string]bool, len(data.Domains))
 	for _, d := range data.Domains {
-		domainSignals[d.SignalKey] = vs.showDomains == nil || vs.showDomains[d.FullName]
+		domainSignals[d.SignalKey] = vs.ShowDomains == nil || vs.ShowDomains[d.FullName]
 	}
 
-	if err := sse.MarshalAndPatchSignals(struct {
-		ShowLocales  map[string]bool `json:"showlocales"`
-		ShowDomains  map[string]bool `json:"showdomains"`
-		ShownLocales string          `json:"shownlocales"`
-		ShownDomains string          `json:"showndomains"`
-		Page         int             `json:"page"`
-		PageSize     int             `json:"pagesize"`
-	}{
+	// Signals first: the morph's data-attr:value bindings read them.
+	if err := sse.PatchSignals(tiksSignals{
 		ShowLocales:  localeSignals,
 		ShowDomains:  domainSignals,
-		ShownLocales: serializeShownSignal(vs.showLocales),
-		ShownDomains: serializeShownSignal(vs.showDomains),
+		ShownLocales: serializeShownSignal(vs.ShowLocales),
+		ShownDomains: serializeShownSignal(vs.ShowDomains),
 		Page:         data.PageIdx + 1,
 		PageSize:     data.PageSize,
+		Editor:       editorSignalsFor(data.TIKs, excludeEditor),
 	}); err != nil {
 		return err
 	}
-	if err := sse.MarshalAndPatchSignals(editorSignalsFor(data.TIKs, "")); err != nil {
-		return err
+	return sse.PatchElement(template.PageTIKs(data))
+}
+
+// render is renderLocked for actions, which don't hold the App lock.
+func (p PageTIKs) render(sse datapages.SSE, vs *StateTIKs) error {
+	p.App.lock.Lock()
+	defer p.App.lock.Unlock()
+
+	if p.App.mustRedirectToProjectDir() {
+		return datapages.ErrBadRequest
 	}
-	return sse.PatchElementTempl(template.PageTIKsContent(data))
+	return p.renderLocked(sse, vs, "")
+}
+
+// scrollToTop scrolls the list back to its start after a page change.
+// The scroll position is out of the server's reach, hence the script.
+func scrollToTop(sse datapages.SSE) error {
+	return sse.ExecuteScript(
+		`document.querySelector('#page-tiks main')?.scrollTo({top:0})`,
+	)
+}
+
+// POSTSet is /tiks/set/{$}
+func (p PageTIKs) POSTSet(
+	r *http.Request,
+	query datapages.Query[struct {
+		TIKID  string `query:"t"`
+		Locale string `query:"l"`
+	}],
+	signals datapages.Signals[struct {
+		ICUMsg string `json:"icumsg"`
+	}],
+	_ datapages.State[StateTIKs],
+	stateID string,
+	updated datapages.Dispatcher[EventUpdated],
+) error {
+	return p.App.setMessageFromTab(
+		query.Values.TIKID, query.Values.Locale, signals.Values.ICUMsg,
+		stateID, updated,
+	)
 }
 
 // POSTFilter is /tiks/filter/{$}
 func (p PageTIKs) POSTFilter(
 	r *http.Request,
-	sse *datastar.ServerSentEventGenerator,
-	signals struct {
+	sse datapages.SSE,
+	state datapages.State[StateTIKs],
+	signals datapages.Signals[struct {
 		FilterType  string          `json:"filtertype"`
 		ShowLocales map[string]bool `json:"showlocales"`
 		ShowDomains map[string]bool `json:"showdomains"`
 		SearchQuery string          `json:"searchquery"`
-		InstanceID  string          `json:"instance_id"`
-	},
+	}],
 ) error {
-	p.App.lock.Lock()
-	defer p.App.lock.Unlock()
-
-	if p.App.mustRedirectToProjectDir() {
-		return httperr.BadRequest
+	vs, s := state.Values, signals.Values
+	ft := normalizeFilterType(s.FilterType)
+	if vs.FilterType != ft || vs.SearchQuery != s.SearchQuery {
+		vs.PageIdx = 0
 	}
-
-	vs := p.App.tiksViews[signals.InstanceID]
-	if vs == nil {
-		return httperr.BadRequest
-	}
-
-	ft := normalizeFilterType(signals.FilterType)
-	if vs.filterType != ft || vs.searchQuery != signals.SearchQuery {
-		vs.pageIdx = 0
-	}
-	vs.filterType = ft
-	vs.showLocales = signals.ShowLocales
-	vs.showDomains = normalizeDomainsSignal(signals.ShowDomains)
-	vs.searchQuery = signals.SearchQuery
-
-	return p.renderFromViewState(sse, vs)
+	vs.FilterType = ft
+	vs.ShowLocales = s.ShowLocales
+	vs.ShowDomains = normalizeDomainsSignal(s.ShowDomains)
+	vs.SearchQuery = s.SearchQuery
+	return p.render(sse, vs)
 }
 
 // POSTShowAllLocales is /tiks/show-all-locales/{$}
 func (p PageTIKs) POSTShowAllLocales(
-	r *http.Request,
-	sse *datastar.ServerSentEventGenerator,
-	signals struct {
-		InstanceID string `json:"instance_id"`
-	},
+	r *http.Request, sse datapages.SSE, state datapages.State[StateTIKs],
 ) error {
-	p.App.lock.Lock()
-	defer p.App.lock.Unlock()
-
-	vs := p.App.tiksViews[signals.InstanceID]
-	if vs == nil {
-		return httperr.BadRequest
-	}
-
-	vs.showLocales = nil
-	return p.renderFromViewState(sse, vs)
+	state.Values.ShowLocales = nil
+	return p.render(sse, state.Values)
 }
 
 // POSTHideAllLocales is /tiks/hide-all-locales/{$}
 func (p PageTIKs) POSTHideAllLocales(
-	r *http.Request,
-	sse *datastar.ServerSentEventGenerator,
-	signals struct {
-		InstanceID string `json:"instance_id"`
-	},
+	r *http.Request, sse datapages.SSE, state datapages.State[StateTIKs],
 ) error {
-	p.App.lock.Lock()
-	defer p.App.lock.Unlock()
-
-	vs := p.App.tiksViews[signals.InstanceID]
-	if vs == nil {
-		return httperr.BadRequest
-	}
-
-	vs.showLocales = map[string]bool{}
-	return p.renderFromViewState(sse, vs)
+	state.Values.ShowLocales = map[string]bool{}
+	return p.render(sse, state.Values)
 }
 
 // POSTShowAllDomains is /tiks/show-all-domains/{$}
 func (p PageTIKs) POSTShowAllDomains(
-	r *http.Request,
-	sse *datastar.ServerSentEventGenerator,
-	signals struct {
-		InstanceID string `json:"instance_id"`
-	},
+	r *http.Request, sse datapages.SSE, state datapages.State[StateTIKs],
 ) error {
-	p.App.lock.Lock()
-	defer p.App.lock.Unlock()
-
-	vs := p.App.tiksViews[signals.InstanceID]
-	if vs == nil {
-		return httperr.BadRequest
-	}
-
-	vs.showDomains = nil
-	return p.renderFromViewState(sse, vs)
+	state.Values.ShowDomains = nil
+	return p.render(sse, state.Values)
 }
 
 // POSTHideAllDomains is /tiks/hide-all-domains/{$}
 func (p PageTIKs) POSTHideAllDomains(
-	r *http.Request,
-	sse *datastar.ServerSentEventGenerator,
-	signals struct {
-		InstanceID string `json:"instance_id"`
-	},
+	r *http.Request, sse datapages.SSE, state datapages.State[StateTIKs],
 ) error {
-	p.App.lock.Lock()
-	defer p.App.lock.Unlock()
-
-	vs := p.App.tiksViews[signals.InstanceID]
-	if vs == nil {
-		return httperr.BadRequest
-	}
-
-	vs.showDomains = map[string]bool{}
-	return p.renderFromViewState(sse, vs)
+	state.Values.ShowDomains = map[string]bool{}
+	return p.render(sse, state.Values)
 }
 
 // POSTSetPage is /tiks/set-page/{$}
 func (p PageTIKs) POSTSetPage(
 	r *http.Request,
-	sse *datastar.ServerSentEventGenerator,
-	signals struct {
-		Page       int    `json:"page"`
-		InstanceID string `json:"instance_id"`
-	},
+	sse datapages.SSE,
+	state datapages.State[StateTIKs],
+	signals datapages.Signals[struct {
+		Page int `json:"page"`
+	}],
 ) error {
-	p.App.lock.Lock()
-	defer p.App.lock.Unlock()
-
-	if p.App.mustRedirectToProjectDir() {
-		return httperr.BadRequest
-	}
-
-	vs := p.App.tiksViews[signals.InstanceID]
-	if vs == nil {
-		return httperr.BadRequest
-	}
-
-	pageIdx := max(
-		// signal is 1-based, internal is 0-based
-		signals.Page-1, 0)
-	vs.pageIdx = pageIdx
-
-	if err := sse.ExecuteScript(
-		`document.querySelector('#page-tiks main')?.scrollTo({top:0})`,
-	); err != nil {
+	// signal is 1-based, internal is 0-based
+	state.Values.PageIdx = max(signals.Values.Page-1, 0)
+	if err := scrollToTop(sse); err != nil {
 		return err
 	}
-	return p.renderFromViewState(sse, vs)
+	return p.render(sse, state.Values)
 }
 
 // POSTSetPageSize is /tiks/set-page-size/{$}
@@ -378,35 +298,21 @@ func (p PageTIKs) POSTSetPage(
 // the first item of the old page onto the new page that contains it.
 func (p PageTIKs) POSTSetPageSize(
 	r *http.Request,
-	sse *datastar.ServerSentEventGenerator,
-	signals struct {
-		PageSize   int    `json:"pagesize"`
-		InstanceID string `json:"instance_id"`
-	},
+	sse datapages.SSE,
+	state datapages.State[StateTIKs],
+	signals datapages.Signals[struct {
+		PageSize int `json:"pagesize"`
+	}],
 ) error {
-	p.App.lock.Lock()
-	defer p.App.lock.Unlock()
-
-	if p.App.mustRedirectToProjectDir() {
-		return httperr.BadRequest
+	vs := state.Values
+	newSize := template.NormalizePageSize(signals.Values.PageSize)
+	if vs.PageSize > 0 && newSize != vs.PageSize {
+		firstItem := vs.PageIdx * vs.PageSize
+		vs.PageIdx = firstItem / newSize
 	}
-
-	vs := p.App.tiksViews[signals.InstanceID]
-	if vs == nil {
-		return httperr.BadRequest
-	}
-
-	newSize := template.NormalizePageSize(signals.PageSize)
-	if vs.pageSize > 0 && newSize != vs.pageSize {
-		firstItem := vs.pageIdx * vs.pageSize
-		vs.pageIdx = firstItem / newSize
-	}
-	vs.pageSize = newSize
-
-	if err := sse.ExecuteScript(
-		`document.querySelector('#page-tiks main')?.scrollTo({top:0})`,
-	); err != nil {
+	vs.PageSize = newSize
+	if err := scrollToTop(sse); err != nil {
 		return err
 	}
-	return p.renderFromViewState(sse, vs)
+	return p.render(sse, vs)
 }

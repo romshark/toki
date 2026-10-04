@@ -3,6 +3,7 @@ package editor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -10,10 +11,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/romshark/datapages/modules/msgbroker/inmem"
+	"github.com/romshark/datapages"
+	"github.com/romshark/datapages/modules/messaging"
+	"github.com/romshark/datapages/modules/messaging/inmem"
 	"github.com/romshark/toki/editor/app"
-	"github.com/romshark/toki/editor/datapagesgen"
-	"github.com/romshark/toki/editor/datapagesgen/assets"
+	"github.com/romshark/toki/editor/app/datapagesgen"
+	"github.com/romshark/toki/editor/app/datapagesgen/assets"
 	"github.com/romshark/toki/editor/indexdb"
 	tokisqinn "github.com/romshark/toki/editor/sqinn"
 	"github.com/romshark/toki/internal/codeparse"
@@ -62,7 +65,7 @@ func Setup(
 	applyChangesAndBuild ApplyChangesAndBuildFunc,
 	repairBundle RepairBundleFunc,
 	regenerateBundle RegenerateBundleFunc,
-) (*app.App, *datapagesgen.Server) {
+) (*app.App, datapages.Server, error) {
 	// Extract the custom sqinn binary (built with FTS5 support).
 	sqinnPath, err := tokisqinn.Path()
 	if err != nil {
@@ -97,17 +100,25 @@ func Setup(
 		_ = a.TryInit()
 	}()
 
-	s := datapagesgen.NewServer(a, inmem.New(8),
-		datapagesgen.WithAssets(app.StaticFS),
-		datapagesgen.WithMiddleware(noBFCache),
+	s, err := datapages.NewServer[
+		app.App,
+		datapages.DisableSessions,
+		datapages.DisablePrometheus,
+		datapagesgen.Server,
+	](a, inmem.New(messaging.DefaultBrokerChanBuffer),
+		datapages.WithAssets(app.StaticFS, false),
+		// Self-hosted: the editor must work offline.
+		datapages.WithDatastarJS(assets.Path("datastar.js")),
+		datapages.WithMiddleware(noBFCache),
 	)
-	s.UseContextCanceledFilter()
-
-	return a, s
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating server: %w", err)
+	}
+	return a, s, nil
 }
 
 // RunServer starts the HTTP server on the given address and blocks until interrupted.
-func RunServer(s *datapagesgen.Server, host string) int {
+func RunServer(s datapages.Server, host string) int {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 

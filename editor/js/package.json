@@ -13,6 +13,9 @@
   },
   "devDependencies": {
     "esbuild": "^0.28.0",
-    "typescript": "^5"
+    "typescript": "^7.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
   }
 }

@@ -3,49 +3,46 @@ package app
 import (
 	"net/http"
 
-	"github.com/a-h/templ"
-	"github.com/starfederation/datastar-go/datastar"
+	"github.com/romshark/datapages"
 
+	"github.com/romshark/toki/editor/app/datapagesgen/href"
 	"github.com/romshark/toki/editor/app/template"
-	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
 // PageIndex is /
-type PageIndex struct{ App *App }
+type PageIndex struct {
+	App *App
+	PrefsSync
+}
 
 func (p PageIndex) GET(
 	r *http.Request,
 ) (
-	body templ.Component,
-	redirect string,
+	body datapages.Component,
+	redirect datapages.Redirect,
 	err error,
 ) {
 	if p.App.IsLoading() {
-		return template.PageLoading(), "", nil
+		return template.PageLoading(), redirect, nil
 	}
 
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
 
 	if p.App.building {
-		return nil, href.PageBuildBundle(), nil
+		return nil, datapages.Redirect{URL: href.PageBuildBundle()}, nil
 	}
 
 	p.App.clearBuildResultLocked()
 
 	if p.App.mustRedirectToProjectDir() {
-		return nil, href.PageProjectDir(), nil
+		return nil, datapages.Redirect{URL: href.PageProjectDir()}, nil
 	}
 
-	stats := p.App.buildDashboardStats()
-	return template.PageDashboard(stats), "", nil
+	return template.PageDashboard(p.App.buildDashboardStats()), redirect, nil
 }
 
-func (p PageIndex) OnUpdated(
-	event EventUpdated,
-	sse *datastar.ServerSentEventGenerator,
-	streamID uint64,
-) error {
+func (p PageIndex) OnUpdated(event EventUpdated, sse datapages.SSE) error {
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
 
@@ -54,15 +51,8 @@ func (p PageIndex) OnUpdated(
 	}
 
 	if p.App.mustRedirectToProjectDir() {
-		return nil
+		return sse.Redirect(href.PageProjectDir())
 	}
 
-	stats := p.App.buildDashboardStats()
-	return sse.PatchElementTempl(template.PageDashboard(stats))
-}
-
-func (PageIndex) OnPrefsChanged(
-	event EventPrefsChanged, sse *datastar.ServerSentEventGenerator,
-) error {
-	return patchUIPrefs(sse, event)
+	return sse.PatchElement(template.PageDashboard(p.App.buildDashboardStats()))
 }

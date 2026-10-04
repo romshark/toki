@@ -3,25 +3,26 @@ package app
 import (
 	"net/http"
 
-	"github.com/a-h/templ"
-	"github.com/starfederation/datastar-go/datastar"
+	"github.com/romshark/datapages"
 
+	"github.com/romshark/toki/editor/app/datapagesgen/href"
 	"github.com/romshark/toki/editor/app/template"
-	"github.com/romshark/toki/editor/datapagesgen/href"
-	"github.com/romshark/toki/editor/datapagesgen/httperr"
 )
 
 // PageSettings is /settings
-type PageSettings struct{ App *App }
+type PageSettings struct {
+	App *App
+	PrefsSync
+}
 
 func (p PageSettings) GET(
 	r *http.Request,
-) (body templ.Component, redirect string, err error) {
+) (body datapages.Component, redirect datapages.Redirect, err error) {
 	p.App.lock.Lock()
 	building := p.App.building
 	p.App.lock.Unlock()
 	if building {
-		return nil, href.PageBuildBundle(), nil
+		return nil, datapages.Redirect{URL: href.PageBuildBundle()}, nil
 	}
 
 	preview := "The quick brown fox jumps over the lazy dog"
@@ -45,13 +46,13 @@ func (p PageSettings) GET(
 			},
 			{
 				Value:   "georgia",
-				Family:  "Georgia, 'Times New Roman', serif",
+				Family:  "Georgia, Times New Roman, serif",
 				Label:   "Georgia",
 				Preview: preview,
 			},
 			{
 				Value:   "helvetica",
-				Family:  "'Helvetica Neue', Helvetica, Arial, sans-serif",
+				Family:  "Helvetica Neue, Helvetica, Arial, sans-serif",
 				Label:   "Helvetica",
 				Preview: preview,
 			},
@@ -59,13 +60,13 @@ func (p PageSettings) GET(
 		EditorFonts: []template.FontOption{
 			{
 				Value:   "mono-system",
-				Family:  "ui-monospace, 'SF Mono', 'Cascadia Code', monospace",
+				Family:  "ui-monospace, SF Mono, Cascadia Code, monospace",
 				Label:   "System Mono",
 				Preview: icuPreview,
 			},
 			{
 				Value:   "mono-firacode",
-				Family:  "'Fira Code', monospace",
+				Family:  "Fira Code, monospace",
 				Label:   "Fira Code",
 				Preview: icuPreview,
 			},
@@ -77,14 +78,16 @@ func (p PageSettings) GET(
 			},
 			{
 				Value:   "mono-courier",
-				Family:  "'Courier New', Courier, monospace",
+				Family:  "Courier New, Courier, monospace",
 				Label:   "Courier New",
 				Preview: icuPreview,
 			},
 		},
-		UIPreviewTIK:   "{name, select, other {Welcome, {name}!}}",
-		UIPreviewICUEN: "{name, select, other {Welcome back, {name}!}}",
-		UIPreviewICUDE: "{name, select, other {Willkommen, {name}!}}",
+		UIFontSizes:     fontSizeOptions(preview, ""),
+		EditorFontSizes: fontSizeOptions(icuPreview, "ui-monospace, monospace"),
+		UIPreviewTIK:    "{name, select, other {Welcome, {name}!}}",
+		UIPreviewICUEN:  "{name, select, other {Welcome back, {name}!}}",
+		UIPreviewICUDE:  "{name, select, other {Willkommen, {name}!}}",
 		UIPreviewEditorText: "{count, plural,\n" +
 			"  one {You have # new message}\n" +
 			"  other {You have # new messages}\n}",
@@ -92,6 +95,29 @@ func (p PageSettings) GET(
 	}
 	body = template.PageSettings(p.App.Version, data)
 	return
+}
+
+// fontSizeOptions builds the selectable font sizes, rendering the sample in
+// the given family so the editor's sizes preview in a monospace face.
+func fontSizeOptions(preview, family string) []template.FontSizeOption {
+	steps := []struct{ value, size, label string }{
+		{"very-small", "0.8rem", "Very Small"},
+		{"small", "0.9rem", "Small"},
+		{"default", "1rem", "Default"},
+		{"big", "1.1rem", "Big"},
+		{"bigger", "1.25rem", "Bigger"},
+	}
+	opts := make([]template.FontSizeOption, 0, len(steps))
+	for _, s := range steps {
+		opts = append(opts, template.FontSizeOption{
+			Value:   s.value,
+			Size:    s.size,
+			Family:  family,
+			Label:   s.label,
+			Preview: preview,
+		})
+	}
+	return opts
 }
 
 // serverURL returns the absolute URL this server is reachable at, derived
@@ -108,30 +134,15 @@ func serverURL(r *http.Request) string {
 // POSTSetPref is /settings/set-pref/{$}
 func (p PageSettings) POSTSetPref(
 	_ *http.Request,
-	dispatch func(EventPrefsChanged) error,
-	signals struct {
-		PrefTheme          string `json:"pref_theme"`
-		PrefThemeResolved  string `json:"pref_theme_resolved"`
-		PrefUIFont         string `json:"pref_ui_font"`
-		PrefEditorFont     string `json:"pref_editor_font"`
-		PrefUIFontSize     string `json:"pref_ui_font_size"`
-		PrefEditorFontSize string `json:"pref_editor_font_size"`
-	},
+	prefsChanged datapages.Dispatcher[EventPrefsChanged],
+	signals datapages.Signals[PrefSignals],
 ) error {
-	prefSignals := settingsPrefSignals{
-		PrefTheme:          signals.PrefTheme,
-		PrefThemeResolved:  signals.PrefThemeResolved,
-		PrefUIFont:         signals.PrefUIFont,
-		PrefEditorFont:     signals.PrefEditorFont,
-		PrefUIFontSize:     signals.PrefUIFontSize,
-		PrefEditorFontSize: signals.PrefEditorFontSize,
-	}
-	prefSignals = prefSignals.Normalized()
+	prefSignals := signals.Values.Normalized()
 	if !prefSignals.Valid() {
-		return httperr.BadRequest
+		return datapages.ErrBadRequest
 	}
 	p2 := prefSignals.UIPrefs()
-	return dispatch(EventPrefsChanged{
+	return prefsChanged.Dispatch(EventPrefsChanged{
 		Theme:          p2.Theme,
 		ThemeResolved:  prefSignals.PrefThemeResolved,
 		UIFont:         p2.UIFont,
@@ -139,10 +150,4 @@ func (p PageSettings) POSTSetPref(
 		UIFontSize:     p2.UIFontSize,
 		EditorFontSize: p2.EditorFontSize,
 	})
-}
-
-func (PageSettings) OnPrefsChanged(
-	event EventPrefsChanged, sse *datastar.ServerSentEventGenerator,
-) error {
-	return patchUIPrefs(sse, event)
 }

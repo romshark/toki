@@ -30,11 +30,15 @@ func main() {
 	dir, _ := filepath.Abs(".")
 	log.SetWriter(os.Stderr, false)
 
-	a, s := editor.Setup(
+	a, s, err := editor.Setup(
 		dir, *bundlePkg, cli.Version, os.Environ(),
 		cli.CleanGenerated, cli.GenerateBundle,
 		cli.ApplyChangesAndBuild, cli.RepairBundle,
 		cli.RegenerateBundle)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "setting up editor: %v\n", err)
+		os.Exit(1)
+	}
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {

@@ -6,11 +6,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/starfederation/datastar-go/datastar"
+	"github.com/romshark/datapages"
 )
 
-// patchUIPrefs patches pref signals and runs the cookie + root-CSS apply script.
-func patchUIPrefs(sse *datastar.ServerSentEventGenerator, e EventPrefsChanged) error {
+// PrefsSync is embedded by every page so each open tab re-applies the UI
+// preferences whenever any tab changes them.
+type PrefsSync struct{ App *App }
+
+// OnPrefsChanged patches the pref signals and runs the cookie and root-CSS
+// apply script.
+func (PrefsSync) OnPrefsChanged(e EventPrefsChanged, sse datapages.SSE) error {
 	prefs := UIPrefs{
 		Theme:          e.Theme,
 		UIFont:         e.UIFont,
@@ -20,7 +25,7 @@ func patchUIPrefs(sse *datastar.ServerSentEventGenerator, e EventPrefsChanged) e
 	}
 	sigs := prefs.Signals()
 	sigs.PrefThemeResolved = e.ThemeResolved
-	if err := sse.MarshalAndPatchSignals(sigs); err != nil {
+	if err := sse.PatchSignals(sigs); err != nil {
 		return err
 	}
 	return sse.ExecuteScript(applyUIPrefsScript(prefs))
@@ -35,7 +40,9 @@ type UIPrefs struct {
 	EditorFontSize string `json:"editor_font_size"` // "default", "small", "big", etc.
 }
 
-type settingsPrefSignals struct {
+// PrefSignals are the pref_* signals of the settings page. POSTSetPref
+// reads them, hence exported: the generated server decodes into it.
+type PrefSignals struct {
 	PrefTheme          string `json:"pref_theme"`
 	PrefThemeResolved  string `json:"pref_theme_resolved"`
 	PrefUIFont         string `json:"pref_ui_font"`
@@ -53,13 +60,13 @@ var uiPrefsDefaults = UIPrefs{
 }
 
 var fontFamilies = map[string]string{
-	"system":        "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-	"georgia":       "Georgia, 'Times New Roman', serif",
-	"helvetica":     "'Helvetica Neue', Helvetica, Arial, sans-serif",
-	"mono-system":   "ui-monospace, 'SF Mono', 'Cascadia Code', 'Segoe UI Mono', monospace",
-	"mono-firacode": "'Fira Code', monospace",
-	"mono-monaco":   "Monaco, 'Consolas', monospace",
-	"mono-courier":  "'Courier New', Courier, monospace",
+	"system":        "system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+	"georgia":       "Georgia, Times New Roman, serif",
+	"helvetica":     "Helvetica Neue, Helvetica, Arial, sans-serif",
+	"mono-system":   "ui-monospace, SF Mono, Cascadia Code, Segoe UI Mono, monospace",
+	"mono-firacode": "Fira Code, monospace",
+	"mono-monaco":   "Monaco, Consolas, monospace",
+	"mono-courier":  "Courier New, Courier, monospace",
 }
 
 var fontSizes = map[string]string{
@@ -132,8 +139,8 @@ func isValidUIPref(name, value string) bool {
 	return false
 }
 
-func (p UIPrefs) Signals() settingsPrefSignals {
-	return settingsPrefSignals{
+func (p UIPrefs) Signals() PrefSignals {
+	return PrefSignals{
 		PrefTheme:          p.Theme,
 		PrefUIFont:         p.UIFont,
 		PrefEditorFont:     p.EditorFont,
@@ -142,7 +149,7 @@ func (p UIPrefs) Signals() settingsPrefSignals {
 	}
 }
 
-func (s settingsPrefSignals) Valid() bool {
+func (s PrefSignals) Valid() bool {
 	return isValidUIPref("toki-theme", s.PrefTheme) &&
 		(s.PrefThemeResolved == "light" || s.PrefThemeResolved == "dark") &&
 		isValidUIPref("toki-ui-font", s.PrefUIFont) &&
@@ -151,7 +158,7 @@ func (s settingsPrefSignals) Valid() bool {
 		isValidUIPref("toki-editor-font-size", s.PrefEditorFontSize)
 }
 
-func (s settingsPrefSignals) UIPrefs() UIPrefs {
+func (s PrefSignals) UIPrefs() UIPrefs {
 	return UIPrefs{
 		Theme:          s.PrefTheme,
 		UIFont:         s.PrefUIFont,
@@ -161,7 +168,7 @@ func (s settingsPrefSignals) UIPrefs() UIPrefs {
 	}
 }
 
-func (s settingsPrefSignals) Normalized() settingsPrefSignals {
+func (s PrefSignals) Normalized() PrefSignals {
 	switch s.PrefTheme {
 	case "dark":
 		s.PrefThemeResolved = "dark"

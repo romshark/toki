@@ -21,9 +21,15 @@ test: fmtcheck lint
 templ:
 	go run github.com/a-h/templ/cmd/templ@v0.3.1020 generate
 
+# TEMPL_DEV_MODE_WATCH_ROOT scopes templ's hot-reload string lookup to this repository.
+# Templier runs the app with TEMPL_DEV_MODE=true, which makes the templ runtime resolve
+# every literal through a _templ.txt sidecar — including for prebuilt _templ.go files in
+# the read-only module cache (Morpheus), which have none.
+# Files outside the root fall back to their compiled-in literals.
 dev-editor: templ
 	cd editor/js && npm install
-	datapages watch
+	TEMPL_DEV_MODE_WATCH_ROOT=$(CURDIR) \
+		go run github.com/romshark/datapages/cmd/datapages@v0.10.1 watch
 
 gen-example-large:
 	go run ./cmd/genexamplelarge

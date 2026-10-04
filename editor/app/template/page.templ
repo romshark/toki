@@ -1,14 +1,24 @@
 package template
 
-// page wraps every page body and seeds $pref_theme_resolved so
-// <toki-editor data-attr:theme=...> reacts to EventPrefsChanged patches.
-templ page(id string) {
+// page wraps every page body. Its root is what the page's event handlers
+// morph: they re-render the whole page from current state, which makes
+// the id the only thing a patch needs to find it.
+//
+// signals seeds the page's signals on the root. A fat morph re-applies
+// every data-signals attribute whose value changed. A seed of a value the
+// client owns (typed input, editor text) must hence carry __ifmissing,
+// while the server patches the values it owns before it morphs.
+//
+// $pref_theme_resolved lets <toki-editor data-attr:theme=...> follow
+// EventPrefsChanged patches.
+templ page(id string, signals templ.Attributes) {
 	<div
 		id={ id }
 		data-signals:pref_theme_resolved={ resolvedThemeExpr() }
+		{ signals... }
 	>
-		<div class="page-content">
+		@componentPageShell() {
 			{ children... }
-		</div>
+		}
 	</div>
 }

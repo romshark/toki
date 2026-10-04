@@ -24,10 +24,14 @@ func main() {
 	}
 	log.SetWriter(os.Stderr, false)
 
-	_, s := editor.Setup(
+	_, s, err := editor.Setup(
 		dir, *bundlePkg, cli.Version, os.Environ(),
 		cli.CleanGenerated, cli.GenerateBundle,
 		cli.ApplyChangesAndBuild, cli.RepairBundle,
 		cli.RegenerateBundle)
+	if err != nil {
+		log.Error("setting up editor", err)
+		os.Exit(1)
+	}
 	os.Exit(editor.RunServer(s, *server))
 }

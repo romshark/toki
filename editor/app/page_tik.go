@@ -4,27 +4,35 @@ import (
 	"net/http"
 	"slices"
 
-	"github.com/a-h/templ"
-	"github.com/starfederation/datastar-go/datastar"
+	"github.com/romshark/datapages"
 
+	"github.com/romshark/toki/editor/app/datapagesgen/href"
 	"github.com/romshark/toki/editor/app/template"
-	"github.com/romshark/toki/editor/datapagesgen/href"
-	"github.com/romshark/toki/editor/datapagesgen/httperr"
 )
 
 // PageTIK is /tik/{id}
-type PageTIK struct{ App *App }
+type PageTIK struct {
+	App *App
+	PrefsSync
+	ResetSync
+}
+
+// StateTIK is the per-tab view state of PageTIK.
+type StateTIK struct {
+	// TIKID is the TIK the tab shows, taken from the page URL.
+	TIKID string
+}
 
 func (p PageTIK) GET(
 	r *http.Request,
-	path struct {
+	path datapages.Path[struct {
 		ID string `path:"id"`
-	},
+	}],
 ) (
-	body templ.Component,
-	redirect string,
-	enableBackgroundStreaming bool,
-	disableRefreshAfterHidden bool,
+	body datapages.Component,
+	redirect datapages.Redirect,
+	enableBackgroundStreaming datapages.EnableBackgroundStreaming,
+	disableRefreshAfterHidden datapages.DisableRefreshAfterHidden,
 	err error,
 ) {
 	enableBackgroundStreaming = true
@@ -39,55 +47,38 @@ func (p PageTIK) GET(
 	defer p.App.lock.Unlock()
 
 	if p.App.building {
-		redirect = href.PageBuildBundle()
+		redirect.URL = href.PageBuildBundle()
 		return
 	}
 
 	p.App.clearBuildResultLocked()
 
 	if p.App.mustRedirectToProjectDir() {
-		redirect = href.PageProjectDir()
+		redirect.URL = href.PageProjectDir()
 		return
 	}
 
-	iTIK := slices.IndexFunc(p.App.tiks, func(t *template.TIK) bool {
-		return t.ID == path.ID
-	})
-	if iTIK == -1 {
-		err = httperr.NotFound
+	tk := p.App.orderedTIKLocked(path.Values.ID)
+	if tk == nil {
+		err = datapages.ErrNotFound
 		return
 	}
-
-	tk := p.App.orderTIK(p.App.tiks[iTIK])
-	body = template.PageTIK(tk, p.App.OpenNewWindow != nil, newInstanceID())
+	body = template.PageTIK(tk, p.App.OpenNewWindow != nil)
 	return
 }
 
-func (p PageTIK) StreamOpen(
-	r *http.Request,
-	streamID uint64,
-	signals struct {
-		InstanceID string `json:"instance_id"`
-	},
+func (PageTIK) StreamOpen(
+	r *http.Request, state datapages.State[StateTIK],
 ) error {
-	tikID := r.PathValue("id")
-	p.App.lock.Lock()
-	defer p.App.lock.Unlock()
-	p.App.registerTIKStreamLocked(streamID, signals.InstanceID, tikID)
-	return nil
-}
-
-func (p PageTIK) StreamClose(r *http.Request, streamID uint64) error {
-	p.App.lock.Lock()
-	defer p.App.lock.Unlock()
-	p.App.unregisterTIKStreamLocked(streamID)
+	state.Values.TIKID = r.PathValue("id")
 	return nil
 }
 
 func (p PageTIK) OnUpdated(
 	event EventUpdated,
-	sse *datastar.ServerSentEventGenerator,
-	streamID uint64,
+	sse datapages.SSE,
+	state datapages.State[StateTIK],
+	stateID string,
 ) error {
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
@@ -96,54 +87,59 @@ func (p PageTIK) OnUpdated(
 		return sse.Redirect(href.PageBuildBundle())
 	}
 
-	instID := p.App.streamInst[streamID]
-	vs := p.App.tikViews[instID]
-	if vs == nil || vs.tikID == "" {
-		return nil
+	if p.App.mustRedirectToProjectDir() {
+		return sse.Redirect(href.PageProjectDir())
 	}
 
-	iTIK := slices.IndexFunc(p.App.tiks, func(t *template.TIK) bool {
-		return t.ID == vs.tikID
-	})
-	if iTIK == -1 {
+	tk := p.App.orderedTIKLocked(state.Values.TIKID)
+	if tk == nil {
 		return nil
 	}
 
 	var exclude string
-	if event.SourceInstanceID != "" && event.SourceInstanceID == instID {
+	if event.SourceStateID == stateID {
 		exclude = event.ChangedEditor
 	}
 
-	tk := p.App.orderTIK(p.App.tiks[iTIK])
 	// Signals first: the morph's data-attr:value bindings read them.
-	if err := sse.MarshalAndPatchSignals(editorSignalsFor([]template.TIK{*tk}, exclude)); err != nil {
+	if err := sse.PatchSignals(editorSignals{
+		Editor: editorSignalsFor([]template.TIK{*tk}, exclude),
+	}); err != nil {
 		return err
 	}
-	return sse.PatchElementTempl(template.TIKContent(tk, p.App.OpenNewWindow != nil))
+	return sse.PatchElement(template.PageTIK(tk, p.App.OpenNewWindow != nil))
 }
 
-func (PageTIK) OnPrefsChanged(
-	event EventPrefsChanged, sse *datastar.ServerSentEventGenerator,
+// POSTSet is /tik/{id}/set/{$}
+func (p PageTIK) POSTSet(
+	r *http.Request,
+	path datapages.Path[struct {
+		ID string `path:"id"`
+	}],
+	query datapages.Query[struct {
+		Locale string `query:"l"`
+	}],
+	signals datapages.Signals[struct {
+		ICUMsg string `json:"icumsg"`
+	}],
+	_ datapages.State[StateTIK],
+	stateID string,
+	updated datapages.Dispatcher[EventUpdated],
 ) error {
-	return patchUIPrefs(sse, event)
+	return p.App.setMessageFromTab(
+		path.Values.ID, query.Values.Locale, signals.Values.ICUMsg,
+		stateID, updated,
+	)
 }
 
-func (PageTIK) OnReset(
-	event EventReset,
-	sse *datastar.ServerSentEventGenerator,
-) error {
-	if event.ResetEditor == "" {
+// orderedTIKLocked returns TIK id with its default-locale message first,
+// or nil when there is no such TIK. Caller holds the App lock.
+func (a *App) orderedTIKLocked(id string) *template.TIK {
+	i := slices.IndexFunc(a.tiks, func(t *template.TIK) bool {
+		return t.ID == id
+	})
+	if i == -1 {
 		return nil
 	}
-	return sse.MarshalAndPatchSignals(struct {
-		ResetDoneTIKID  string                       `json:"resetdonetikid"`
-		ResetDoneLocale string                       `json:"resetdonelocale"`
-		Editor          map[string]map[string]string `json:"editor"`
-	}{
-		ResetDoneTIKID:  event.TIKID,
-		ResetDoneLocale: event.Locale,
-		Editor: map[string]map[string]string{
-			event.TIKID: {event.Locale: event.ResetValue},
-		},
-	})
+	return a.orderTIK(a.tiks[i])
 }

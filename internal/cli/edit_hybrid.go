@@ -9,10 +9,10 @@ import (
 	"net"
 	"time"
 
+	"github.com/romshark/datapages"
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"github.com/romshark/toki/editor/app"
-	"github.com/romshark/toki/editor/datapagesgen"
 )
 
 // windowCascadeOffset is the pixel offset for new windows relative to
@@ -26,7 +26,7 @@ const windowCascadeOffset = 32
 // This file is compiled only when cgo is enabled (the `import "C"` above
 // acts as an implicit build constraint); edit_nocgo.go provides a stub
 // used under CGO_ENABLED=0 (e.g. the govulncheck CI job).
-func RunHybridApp(a *app.App, s *datapagesgen.Server) error {
+func RunHybridApp(a *app.App, s datapages.Server) error {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		return fmt.Errorf("finding free port: %w", err)

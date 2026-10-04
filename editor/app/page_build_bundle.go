@@ -1,25 +1,28 @@
 package app
 
 import (
+	"context"
 	"net/http"
 
-	"github.com/a-h/templ"
-	"github.com/starfederation/datastar-go/datastar"
+	"github.com/romshark/datapages"
 
+	"github.com/romshark/toki/editor/app/datapagesgen/href"
 	"github.com/romshark/toki/editor/app/template"
-	"github.com/romshark/toki/editor/datapagesgen/href"
 )
 
 // PageBuildBundle is /build-bundle
-type PageBuildBundle struct{ App *App }
+type PageBuildBundle struct {
+	App *App
+	PrefsSync
+}
 
 func (p PageBuildBundle) GET(
 	r *http.Request,
 ) (
-	body templ.Component,
-	redirect string,
-	enableBackgroundStreaming bool,
-	disableRefreshAfterHidden bool,
+	body datapages.Component,
+	redirect datapages.Redirect,
+	enableBackgroundStreaming datapages.EnableBackgroundStreaming,
+	disableRefreshAfterHidden datapages.DisableRefreshAfterHidden,
 	err error,
 ) {
 	enableBackgroundStreaming = true
@@ -34,7 +37,7 @@ func (p PageBuildBundle) GET(
 	defer p.App.lock.Unlock()
 
 	if p.App.mustRedirectToProjectDir() {
-		redirect = href.PageProjectDir()
+		redirect.URL = href.PageProjectDir()
 		return
 	}
 
@@ -43,7 +46,7 @@ func (p PageBuildBundle) GET(
 	// If not building and no result to show, redirect to dashboard.
 	if !state.Building && state.Duration == 0 && state.Err == "" {
 		if len(p.App.changed) == 0 || !p.App.canApplyChangesLocked() {
-			redirect = href.PageIndex()
+			redirect.URL = href.PageIndex()
 			return
 		}
 		// Show "Building..." — the actual build starts in StreamOpen
@@ -52,17 +55,14 @@ func (p PageBuildBundle) GET(
 		state.Building = true
 	}
 
-	body = template.PageBuildBundle(state, newInstanceID())
+	body = template.PageBuildBundle(state)
 	return
 }
 
 func (p PageBuildBundle) StreamOpen(
 	r *http.Request,
-	streamID uint64,
-	signals struct {
-		InstanceID string `json:"instance_id"`
-	},
-	dispatch func(EventUpdated) error,
+	_ datapages.StreamID,
+	updated datapages.Dispatcher[EventUpdated],
 ) error {
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
@@ -70,31 +70,16 @@ func (p PageBuildBundle) StreamOpen(
 	// This guarantees the client sees the loading state before the build runs.
 	if !p.App.building && p.App.buildDuration == 0 && p.App.buildErr == "" &&
 		len(p.App.changed) > 0 && p.App.canApplyChangesLocked() {
-		p.App.startBuildBundleLocked(dispatch)
+		p.App.startBuildBundleLocked(context.WithoutCancel(r.Context()), updated)
 	}
 	return nil
 }
 
-func (PageBuildBundle) StreamClose(r *http.Request, streamID uint64) error {
-	return nil
-}
-
-func (p PageBuildBundle) OnUpdated(
-	event EventUpdated,
-	sse *datastar.ServerSentEventGenerator,
-	streamID uint64,
-) error {
+func (p PageBuildBundle) OnUpdated(event EventUpdated, sse datapages.SSE) error {
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
 
-	state := p.App.buildBundleStateLocked()
-	return sse.PatchElementTempl(template.PageBuildBundleContent(state))
-}
-
-func (PageBuildBundle) OnPrefsChanged(
-	event EventPrefsChanged, sse *datastar.ServerSentEventGenerator,
-) error {
-	return patchUIPrefs(sse, event)
+	return sse.PatchElement(template.PageBuildBundle(p.App.buildBundleStateLocked()))
 }
 
 func (a *App) buildBundleStateLocked() template.BuildBundleState {

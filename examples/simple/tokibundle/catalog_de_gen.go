@@ -40,7 +40,7 @@ var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
 			return written, err
 		}
 		written += n
-		n, err = wrs(w, " wurde nichts gefunden")
+		n, err = wrs(w, " wurde nichts ASFDADSF")
 		if err != nil {
 			return written, err
 		}

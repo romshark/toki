@@ -1,8 +1,7 @@
 package app
 
 import (
-	"crypto/rand"
-	"encoding/hex"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,13 +14,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/a-h/templ"
 	"github.com/cespare/xxhash/v2"
+	"github.com/romshark/datapages"
 	"github.com/romshark/icumsg"
 	"github.com/romshark/tik/tik-go"
+	"github.com/romshark/toki/editor/app/datapagesgen/href"
 	"github.com/romshark/toki/editor/app/template"
-	"github.com/romshark/toki/editor/datapagesgen/href"
-	"github.com/romshark/toki/editor/datapagesgen/httperr"
 	"github.com/romshark/toki/editor/indexdb"
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/codeparse"
@@ -33,23 +31,14 @@ import (
 
 const MainBundleFileGo = "bundle_gen.go"
 
-// newInstanceID returns a random 128-bit hex tab instance ID.
-func newInstanceID() string {
-	var b [16]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		panic(fmt.Errorf("reading random bytes for instance ID: %w", err))
-	}
-	return hex.EncodeToString(b[:])
-}
-
 // EventUpdated is "editor.updated"
 type EventUpdated struct {
-	// SourceInstanceID is the tab instance that triggered the change.
+	// SourceStateID is the stateID of the tab that triggered the change.
 	// Empty for non-editor events (e.g. file watcher, build).
-	SourceInstanceID string `json:"source_instance_id"`
-	// ChangedEditor is the editor ID (e.g. "editor-tikid-locale") that
-	// was just changed. Excluded from syncEditorValues for the source
-	// tab to avoid overwriting in-progress typing.
+	SourceStateID string `json:"source_state_id"`
+	// ChangedEditor is the editor ID (see [template.EditorID]) that
+	// was just changed. The source tab leaves its signal alone to avoid
+	// overwriting in-progress typing.
 	ChangedEditor string `json:"changed_editor"`
 }
 
@@ -74,23 +63,6 @@ type EventPrefsChanged struct {
 	EditorFont     string `json:"editor_font"`
 	UIFontSize     string `json:"ui_font_size"`
 	EditorFontSize string `json:"editor_font_size"`
-}
-
-// pageTIKsState holds server-side view state for the TIKs list page.
-type pageTIKsState struct {
-	filterType  string
-	showLocales map[string]bool
-	showDomains map[string]bool
-	pageIdx     int
-	pageSize    int
-	searchQuery string
-	refCount    int
-}
-
-// pageTIKState holds server-side view state for a single TIK page.
-type pageTIKState struct {
-	tikID    string
-	refCount int
 }
 
 // BundleEdit describes a pending in-memory edit to an ARB message.
@@ -151,11 +123,6 @@ type App struct {
 	buildErr      string
 	buildDuration time.Duration
 
-	// Per-page server-side state, keyed by instance_id.
-	tiksViews  map[string]*pageTIKsState
-	tikViews   map[string]*pageTIKState
-	streamInst map[uint64]string // streamID -> instance_id (shared across page types)
-
 	// PickDirectory opens a native directory picker dialog.
 	// Set by the Wails runner; nil in server mode.
 	PickDirectory func() (string, error)
@@ -206,9 +173,6 @@ func NewApp(dir, bundlePkgPath string, env []string, db *indexdb.DB) *App {
 		icuTokenizer:     new(icumsg.Tokenizer),
 		tikParser:        tik.NewParser(tik.DefaultConfig),
 		tikICUTranslator: tik.NewICUTranslator(tik.DefaultConfig),
-		tiksViews:        make(map[string]*pageTIKsState),
-		tikViews:         make(map[string]*pageTIKState),
-		streamInst:       make(map[uint64]string),
 	}
 }
 
@@ -709,77 +673,22 @@ func (a *App) SetDir(dir string) error {
 	return a.tryInitLocked()
 }
 
-func (a *App) registerTIKsStreamLocked(
-	streamID uint64, instanceID string, vs pageTIKsState,
-) {
-	a.streamInst[streamID] = instanceID
-	if existing, ok := a.tiksViews[instanceID]; ok {
-		existing.filterType = vs.filterType
-		existing.showLocales = vs.showLocales
-		existing.showDomains = vs.showDomains
-		existing.searchQuery = vs.searchQuery
-		existing.pageIdx = vs.pageIdx
-		existing.pageSize = vs.pageSize
-		existing.refCount++
-	} else {
-		vs.refCount = 1
-		a.tiksViews[instanceID] = &vs
-	}
-}
-
-func (a *App) unregisterTIKsStreamLocked(streamID uint64) {
-	instanceID, ok := a.streamInst[streamID]
-	if !ok {
-		return
-	}
-	delete(a.streamInst, streamID)
-	if vs, ok := a.tiksViews[instanceID]; ok {
-		vs.refCount--
-		if vs.refCount <= 0 {
-			delete(a.tiksViews, instanceID)
-		}
-	}
-}
-
-func (a *App) registerTIKStreamLocked(streamID uint64, instanceID string, tikID string) {
-	a.streamInst[streamID] = instanceID
-	if existing, ok := a.tikViews[instanceID]; ok {
-		existing.tikID = tikID
-		existing.refCount++
-	} else {
-		a.tikViews[instanceID] = &pageTIKState{tikID: tikID, refCount: 1}
-	}
-}
-
-func (a *App) unregisterTIKStreamLocked(streamID uint64) {
-	instanceID, ok := a.streamInst[streamID]
-	if !ok {
-		return
-	}
-	delete(a.streamInst, streamID)
-	if vs, ok := a.tikViews[instanceID]; ok {
-		vs.refCount--
-		if vs.refCount <= 0 {
-			delete(a.tikViews, instanceID)
-		}
-	}
-}
-
-// editorSignalsPayload patches $editor.<tikID>.<locale> on each client.
-type editorSignalsPayload struct {
+// editorSignals patches $editor.<tikID>.<locale> on each client.
+type editorSignals struct {
 	Editor map[string]map[string]string `json:"editor"`
 }
 
-// editorSignalsFor builds the patch for tiks, omitting excludeEditor
-// ("editor-<tikID>-<locale>") so the source tab's in-progress typing
+// editorSignalsFor builds the $editor patch for tiks, omitting excludeEditor
+// (see [template.EditorID]) so the source tab's in-progress typing
 // isn't raced by its own echo.
-func editorSignalsFor(tiks []template.TIK, excludeEditor string) editorSignalsPayload {
+func editorSignalsFor(
+	tiks []template.TIK, excludeEditor string,
+) map[string]map[string]string {
 	m := make(map[string]map[string]string, len(tiks))
 	for i := range tiks {
 		var inner map[string]string
 		for _, msg := range tiks[i].ICU {
-			id := fmt.Sprintf("editor-%s-%s", tiks[i].ID, msg.Catalog.Locale)
-			if id == excludeEditor {
+			if template.EditorID(tiks[i].ID, msg.Catalog.Locale) == excludeEditor {
 				continue
 			}
 			if inner == nil {
@@ -791,10 +700,10 @@ func editorSignalsFor(tiks []template.TIK, excludeEditor string) editorSignalsPa
 			m[tiks[i].ID] = inner
 		}
 	}
-	return editorSignalsPayload{Editor: m}
+	return m
 }
 
-func (*App) Head(r *http.Request) templ.Component {
+func (*App) Head(r *http.Request) datapages.Head {
 	p := ReadUIPrefs(r)
 	return template.Head(template.UIPrefs{
 		Theme:             p.Theme,
@@ -809,39 +718,42 @@ func (*App) Head(r *http.Request) templ.Component {
 	})
 }
 
-// POSTSet is /set/{$}
-func (a *App) POSTSet(
-	r *http.Request,
-	dispatch func(EventUpdated) error,
-	signals struct {
-		TIKID      string `json:"settikid"`
-		Locale     string `json:"setlocale"`
-		ICUMsg     string `json:"icumsg"`
-		InstanceID string `json:"instance_id"`
-	},
+// setMessageFromTab applies an editor change made in the tab identified by
+// stateID and notifies every tab. The pages' POSTSet actions share it.
+func (a *App) setMessageFromTab(
+	id, locale, newMessage, stateID string,
+	updated datapages.Dispatcher[EventUpdated],
 ) error {
+	if err := a.setMessage(id, locale, newMessage); err != nil {
+		return err
+	}
+	return updated.Dispatch(EventUpdated{
+		SourceStateID: stateID,
+		ChangedEditor: template.EditorID(id, locale),
+	})
+}
+
+// setMessage replaces the ICU message of TIK id in locale, revalidates it
+// and tracks it as a pending change until it matches the original again.
+func (a *App) setMessage(id, locale, newMessage string) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
-	id := signals.TIKID
-	locale := signals.Locale
-	newMessage := signals.ICUMsg
-
 	if id == "" || locale == "" {
-		return httperr.BadRequest
+		return datapages.ErrBadRequest
 	}
 
 	iCatalog := slices.IndexFunc(a.catalogs, func(c *template.Catalog) bool {
 		return c.Locale == locale
 	})
 	if iCatalog == -1 {
-		return httperr.BadRequest
+		return datapages.ErrBadRequest
 	}
 	iTIK := slices.IndexFunc(a.tiks, func(t *template.TIK) bool {
 		return t.ID == id
 	})
 	if iTIK == -1 {
-		return httperr.BadRequest
+		return datapages.ErrBadRequest
 	}
 	tk := a.tiks[iTIK]
 
@@ -850,85 +762,100 @@ func (a *App) POSTSet(
 	})
 	icuMsg := tk.ICU[iICUMsg]
 
-	if icuMsg.Message != newMessage {
-		loc := a.localeTags[iCatalog]
-
-		var icuErr error
-		a.icuTokBuffer = a.icuTokBuffer[:0]
-		a.icuTokBuffer, icuErr = a.icuTokenizer.Tokenize(
-			loc, a.icuTokBuffer, newMessage,
-		)
-		if icuErr != nil {
-			icuMsg.Error = fmt.Sprintf("at index %d: %v", a.icuTokenizer.Pos(), icuErr)
-		} else {
-			icuMsg.Error = ""
-			icuMsg.IncompleteReports = icu.AnalysisReport(
-				loc, newMessage, a.icuTokBuffer, codeparse.ICUSelectOptions,
-			)
-		}
-
-		if icuMsg.Changed {
-			if newMessage == icuMsg.MessageOriginal {
-				icuMsg.Message = newMessage
-				icuMsg.Changed = false
-				icuMsg.MessageOriginal = ""
-				a.changed = slices.DeleteFunc(
-					a.changed, func(m *template.ICUMessage) bool {
-						return m == icuMsg
-					})
-			} else {
-				icuMsg.Message = newMessage
-			}
-		} else {
-			icuMsg.Changed = true
-			icuMsg.MessageOriginal = icuMsg.Message
-			icuMsg.Message = newMessage
-			a.changed = append(a.changed, icuMsg)
-		}
-
-		// Persist to index DB.
-		if a.indexDB != nil {
-			_ = a.indexDB.UpdateMessage(id, locale, newMessage)
-		}
+	if icuMsg.Message == newMessage {
+		return nil
 	}
 
-	return dispatch(EventUpdated{
-		SourceInstanceID: signals.InstanceID,
-		ChangedEditor:    fmt.Sprintf("editor-%s-%s", id, locale),
-	})
+	loc := a.localeTags[iCatalog]
+
+	var icuErr error
+	a.icuTokBuffer = a.icuTokBuffer[:0]
+	a.icuTokBuffer, icuErr = a.icuTokenizer.Tokenize(
+		loc, a.icuTokBuffer, newMessage,
+	)
+	if icuErr != nil {
+		icuMsg.Error = fmt.Sprintf("at index %d: %v", a.icuTokenizer.Pos(), icuErr)
+	} else {
+		icuMsg.Error = ""
+		icuMsg.IncompleteReports = icu.AnalysisReport(
+			loc, newMessage, a.icuTokBuffer, codeparse.ICUSelectOptions,
+		)
+	}
+
+	if icuMsg.Changed {
+		if newMessage == icuMsg.MessageOriginal {
+			icuMsg.Message = newMessage
+			icuMsg.Changed = false
+			icuMsg.MessageOriginal = ""
+			a.changed = slices.DeleteFunc(
+				a.changed, func(m *template.ICUMessage) bool {
+					return m == icuMsg
+				})
+		} else {
+			icuMsg.Message = newMessage
+		}
+	} else {
+		icuMsg.Changed = true
+		icuMsg.MessageOriginal = icuMsg.Message
+		icuMsg.Message = newMessage
+		a.changed = append(a.changed, icuMsg)
+	}
+
+	// Persist to index DB.
+	if a.indexDB != nil {
+		_ = a.indexDB.UpdateMessage(id, locale, newMessage)
+	}
+	return nil
 }
 
 // POSTReset is /reset/{$}
 func (a *App) POSTReset(
 	r *http.Request,
-	dispatch func(EventUpdated, EventReset) error,
-	signals struct {
+	updated datapages.Dispatcher[EventUpdated],
+	reset datapages.Dispatcher[EventReset],
+	signals datapages.Signals[struct {
 		ResetTIKID  string `json:"resettikid"`
 		ResetLocale string `json:"resetlocale"`
-		InstanceID  string `json:"instance_id"`
-	},
+	}],
 ) error {
+	id := signals.Values.ResetTIKID
+	locale := signals.Values.ResetLocale
+	resetValue, err := a.resetMessage(id, locale)
+	if err != nil {
+		return err
+	}
+	return errors.Join(
+		updated.Dispatch(EventUpdated{}),
+		reset.Dispatch(EventReset{
+			ResetEditor: template.EditorID(id, locale),
+			ResetValue:  resetValue,
+			TIKID:       id,
+			Locale:      locale,
+		}),
+	)
+}
+
+// resetMessage discards the pending change of TIK id in locale and
+// returns the original message it restored.
+func (a *App) resetMessage(id, locale string) (string, error) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
-	id := signals.ResetTIKID
-	locale := signals.ResetLocale
-
 	if id == "" || locale == "" {
-		return httperr.BadRequest
+		return "", datapages.ErrBadRequest
 	}
 
 	iCatalog := slices.IndexFunc(a.catalogs, func(c *template.Catalog) bool {
 		return c.Locale == locale
 	})
 	if iCatalog == -1 {
-		return httperr.BadRequest
+		return "", datapages.ErrBadRequest
 	}
 	iTIK := slices.IndexFunc(a.tiks, func(t *template.TIK) bool {
 		return t.ID == id
 	})
 	if iTIK == -1 {
-		return httperr.BadRequest
+		return "", datapages.ErrBadRequest
 	}
 	tk := a.tiks[iTIK]
 
@@ -937,7 +864,6 @@ func (a *App) POSTReset(
 	})
 	icuMsg := tk.ICU[iICUMsg]
 
-	resetEditorID := fmt.Sprintf("editor-%s-%s", id, locale)
 	resetValue := icuMsg.MessageOriginal
 
 	if icuMsg.Changed {
@@ -954,95 +880,72 @@ func (a *App) POSTReset(
 			_ = a.indexDB.UpdateMessage(id, locale, icuMsg.Message)
 		}
 	}
-
-	return dispatch(
-		EventUpdated{},
-		EventReset{
-			ResetEditor: resetEditorID,
-			ResetValue:  resetValue,
-			TIKID:       id,
-			Locale:      locale,
-		},
-	)
+	return resetValue, nil
 }
 
-// POSTApplyChanges is /apply-changes/{$}
-func (a *App) POSTApplyChanges(
-	r *http.Request,
-	dispatch func(EventUpdated) error,
-	signals struct{},
-) error {
-	a.lock.Lock()
-	defer a.lock.Unlock()
+// ResetSync is embedded by the pages that show ICU editors so a reset in
+// any tab puts the original message back into every editor showing it.
+type ResetSync struct{ App *App }
 
-	if !a.canApplyChangesLocked() {
-		return httperr.BadRequest
+func (ResetSync) OnReset(event EventReset, sse datapages.SSE) error {
+	if event.ResetEditor == "" {
+		return nil
 	}
-
-	changed := make([]*template.ICUMessage, len(a.changed))
-	copy(changed, a.changed)
-
-	if err := a.doBuildBundleLocked(changed); err != nil {
-		return err
-	}
-
-	return dispatch(EventUpdated{})
+	return sse.PatchSignals(struct {
+		ResetDoneTIKID  string                       `json:"resetdonetikid"`
+		ResetDoneLocale string                       `json:"resetdonelocale"`
+		Editor          map[string]map[string]string `json:"editor"`
+	}{
+		ResetDoneTIKID:  event.TIKID,
+		ResetDoneLocale: event.Locale,
+		Editor: map[string]map[string]string{
+			event.TIKID: {event.Locale: event.ResetValue},
+		},
+	})
 }
 
 // POSTRepair is /repair/{$}
 func (a *App) POSTRepair(
 	r *http.Request,
-	dispatch func(EventUpdated) error,
-) (
-	redirect string,
-	err error,
-) {
+	updated datapages.Dispatcher[EventUpdated],
+) (redirect datapages.Redirect, err error) {
 	a.lock.Lock()
-	defer a.lock.Unlock()
-
 	a.repairErr = ""
-
-	if a.numCorrupt == 0 {
-		return href.PageIndex(), nil
+	if a.numCorrupt > 0 {
+		if err := a.repairCorruptLocked(); err != nil {
+			a.repairErr = err.Error()
+		}
 	}
-
-	if err := a.repairCorruptLocked(); err != nil {
-		a.repairErr = err.Error()
-		return href.PageIndex(), nil
-	}
-
-	if err := dispatch(EventUpdated{}); err != nil {
-		return "", err
-	}
-	return href.PageIndex(), nil
+	a.lock.Unlock()
+	return toDashboard(updated)
 }
 
 // POSTRegenerate is /regenerate/{$}
 func (a *App) POSTRegenerate(
 	r *http.Request,
-	dispatch func(EventUpdated) error,
-) (
-	redirect string,
-	err error,
-) {
+	updated datapages.Dispatcher[EventUpdated],
+) (redirect datapages.Redirect, err error) {
 	a.lock.Lock()
-	defer a.lock.Unlock()
-
 	a.repairErr = ""
-
-	if a.numMissing == 0 {
-		return href.PageIndex(), nil
+	if a.numMissing > 0 {
+		if err := a.regenerateLocked(); err != nil {
+			a.repairErr = err.Error()
+		}
 	}
+	a.lock.Unlock()
+	return toDashboard(updated)
+}
 
-	if err := a.regenerateLocked(); err != nil {
-		a.repairErr = err.Error()
-		return href.PageIndex(), nil
+// toDashboard notifies every tab that the bundle changed and sends the
+// client to the dashboard, which forwards it to the project-dir page
+// while the bundle still needs attention.
+func toDashboard(
+	updated datapages.Dispatcher[EventUpdated],
+) (datapages.Redirect, error) {
+	if err := updated.Dispatch(EventUpdated{}); err != nil {
+		return datapages.Redirect{}, err
 	}
-
-	if err := dispatch(EventUpdated{}); err != nil {
-		return "", err
-	}
-	return href.PageIndex(), nil
+	return datapages.Redirect{URL: href.PageIndex()}, nil
 }
 
 // POSTOpenNewWindow is /open-new-window/{$}
@@ -1211,17 +1114,18 @@ func (a *App) ensureNativeCatalogExists(scan *codeparse.Scan) {
 // PageError404 is /error404/
 type PageError404 struct{ App *App }
 
-func (PageError404) GET(r *http.Request) (body templ.Component, err error) {
+func (PageError404) GET(r *http.Request) (body datapages.Component, err error) {
 	return template.PageNotFound(r.URL.Path), nil
 }
 
 // startBuildBundleLocked kicks off the bundle build in a background goroutine.
 // Must be called with lock held. The goroutine acquires lock itself for the heavy work.
-// dispatch is captured from StreamOpen and used to notify SSE streams when the
-// build starts and completes; the build goroutine outlives the triggering
-// request, so the dispatch's request context may be canceled before the final
-// event is emitted — the in-memory broker tolerates this.
-func (a *App) startBuildBundleLocked(dispatch func(EventUpdated) error) {
+// updated is captured from StreamOpen and notifies SSE streams when the build
+// starts and completes. The build goroutine outlives the triggering request,
+// hence it publishes through ctx, which must not be canceled with the request.
+func (a *App) startBuildBundleLocked(
+	ctx context.Context, updated datapages.Dispatcher[EventUpdated],
+) {
 	a.building = true
 	a.buildErr = ""
 	a.buildDuration = 0
@@ -1232,13 +1136,15 @@ func (a *App) startBuildBundleLocked(dispatch func(EventUpdated) error) {
 
 	// Notify all SSE streams so clients on other pages redirect
 	// to the build-bundle page.
-	_ = dispatch(EventUpdated{})
+	_ = updated.DispatchCtx(ctx, EventUpdated{})
 
-	go a.runBuildBundle(changed, dispatch)
+	go a.runBuildBundle(ctx, changed, updated)
 }
 
 func (a *App) runBuildBundle(
-	changed []*template.ICUMessage, dispatch func(EventUpdated) error,
+	ctx context.Context,
+	changed []*template.ICUMessage,
+	updated datapages.Dispatcher[EventUpdated],
 ) {
 	start := time.Now()
 
@@ -1248,7 +1154,7 @@ func (a *App) runBuildBundle(
 		a.building = false
 		a.buildDuration = time.Since(start)
 		// Notify SSE streams so the build-bundle page updates.
-		_ = dispatch(EventUpdated{})
+		_ = updated.DispatchCtx(ctx, EventUpdated{})
 	}()
 
 	if err := a.doBuildBundleLocked(changed); err != nil {
@@ -1683,10 +1589,8 @@ func (a *App) buildFilterDataIndex(
 	if pageIdx < 0 {
 		pageIdx = 0
 	}
-	totalPages := data.TotalPages()
-	if totalPages > 0 && pageIdx >= totalPages {
-		pageIdx = totalPages - 1
-	}
+	// An empty result still has its one (empty) first page.
+	pageIdx = min(pageIdx, max(data.TotalPages()-1, 0))
 	data.PageIdx = pageIdx
 
 	start := pageIdx * data.PageSize

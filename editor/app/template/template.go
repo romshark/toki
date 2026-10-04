@@ -6,7 +6,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/romshark/toki/editor/datapagesgen/action"
+	"github.com/romshark/toki/editor/app/datapagesgen/action"
 )
 
 // ActionExcludeEditor excludes the "editor" signal tree (and default
@@ -16,10 +16,26 @@ const ActionExcludeEditor = `(^_|\._|^editor\.)`
 // NoEditorSignals applies ActionExcludeEditor to an action.
 var NoEditorSignals = action.WithFilterSignals("", ActionExcludeEditor)
 
+// EditorID is the element id of the <toki-editor> editing the message of
+// TIK tikID in locale.
+func EditorID(tikID, locale string) string {
+	return "editor-" + tikID + "-" + locale
+}
+
 // EditorValueSignal returns the JS expression $editor[tikID][locale].
 // Bracket notation is required for hyphenated locales (e.g. en-US).
 func EditorValueSignal(tikID, locale string) string {
 	return fmt.Sprintf("$editor['%s']['%s']", tikID, locale)
+}
+
+// editorChangeBefore copies a <toki-editor> change into $icumsg, which the
+// set actions read, and into $editor, which the editor's data-attr:value
+// binding follows.
+func editorChangeBefore(tikID, locale string) action.Option {
+	return action.WithBefore(
+		"$icumsg=evt.detail.value;" +
+			EditorValueSignal(tikID, locale) + "=evt.detail.value",
+	)
 }
 
 // InitEditorSignals returns the JSON seed for data-signals:editor.

@@ -18,40 +18,31 @@ Toki is an i18n (internationalization) framework for Go. See [README.md](README.
 
 The following instructions apply to the Toki editor under `editor/`.
 
-There are a few general rules:
+The editor is a [Datapages](https://github.com/romshark/datapages) v0.10.1 application. Follow the Datapages and Datastar skills in `.claude/skills/`, written by `datapages init`: `datapages-architecture` before designing a feature, `datapages` for any editor work, and the task skill it points to. This section only records what is specific to Toki. Where it differs from the skills, this section wins.
 
-- **Never run `templ generate`**: The user will use `datapages watch` which automatically runs Templ generation. Running this command will cause irrecoverable race errors that will force the user to restart watch mode.
+- **Layout**: the app package is `editor/app` and its generated code is `editor/app/datapagesgen`. `editor/editor.go` holds the `datapages.NewServer` call. `cmd/editor-server` is the entry point `datapages watch` runs.
+- **Never run `templ generate`**, whether a watch runs or not: the user always runs `datapages watch`, which regenerates the templates.
 - **Run `datapages gen`** to check for compilation errors and lint feedback. Don't use `datapages lint`.
-
-### Framework
-
-This application uses the Datapages Go frontend framework, for code requirements, CLI usage, architecture and other instructions see [AGENTS.md](https://github.com/romshark/datapages/blob/main/AGENTS.md).
 
 ### Architecture
 
-The editor follows the CQRS (Command Query Responsibility Segregation) architecture as described in [The Tao of Datastar](https://data-star.dev/guide/the_tao_of_datastar). Key principles:
+The editor uses the skills' default architecture: CQRS with fat morphs, where every `OnXXX` handler re-renders its whole page from current state. On top of that:
 
-- **Server-side first**: All state and logic lives in Go on the server. The server owns the truth — page state is stored server-side (like `pageTIKsState`, `pageTIKState`) and actions are server POST/PUT/PATCH/DELETE handlers, not client-side signal manipulation.
-- **Datastar signals are sparingly used**: Signals should only hold transient UI state (e.g. form input bindings). Never build complex client-side JS expressions to manipulate signals — add a server action instead.
-- **JavaScript is a last resort**: Only use JavaScript/TypeScript for things that physically cannot be done on the server (e.g. `matchMedia` dark mode detection, clipboard access, scroll position, etc.). If you're tempted to write JS, consider whether a server POST + SSE morph / SSE signal patch can do it instead.
-- **Shared-state actions dispatch events, not patches**: Actions that mutate shared data (e.g. `POSTSet`, `POSTReset`, `POSTApplyChanges`) must use `dispatch` to emit events, not directly patch via SSE. The `OnXXX` event handlers on each active stream pick up the event and patch their respective clients (browser tabs) — this keeps all connected clients in sync. Direct SSE patching from an action handler is only acceptable for client-local view changes that don't affect other clients (e.g. filters, scroll position, UI preferences).
-- **Pages showing shared data must handle events**: Implement relevant `OnXXX` handlers on any page that displays data other clients or background processes can modify, otherwise the page goes stale.
-- **Tab identity via `instance_id`**: Each browser tab has a unique `instance_id` persisted in `sessionStorage`. It is sent as a signal with every request, allowing the server to maintain per-tab state (filters, scroll position, etc.) and to identify which tab triggered a change (to avoid echo-back during morphs).
-- **Page state lifecycle**:
-  - `GET` renders the initial page. State is recovered from URL query parameters (e.g. filter type, shown locales/domains) and cookies (e.g. UI preferences like theme, fonts via `ReadUIPrefs`), enabling bookmarkable URLs and persistent preferences without server-side storage.
-  - `StreamOpen` initializes server-side state from signals
-  - `POST*` methods mutate server state and dispatch events
-  - `OnUpdated` patch the page over SSE on events
-  - `StreamClose` cleans up. Each page type has its own state struct and maps and that state must not leak but be cleaned up once the SSE stream closes.
-- **`reflectsignal` for URL-synced state**: Use the `reflectsignal` struct tag on `GET` query parameters to keep URL query params in sync with Datastar signals. This ensures the URL stays bookmarkable as the user interacts with the page (e.g. changing filters). The server pushes updated signal values via `MarshalAndPatchSignals` after state changes.
+- **Echo suppression**: The editor pages' `POSTSet` actions put their tab's `stateID` on `EventUpdated`. `OnUpdated` compares it and leaves the source tab's changed editor out of its `$editor` patch, which keeps the tab's own echo from overwriting what is being typed. A shared `*App` action cannot take state for pages with different state types, which is why each editor page declares its own `POSTSet`.
+- **UI preferences** (theme, fonts) live in cookies read by `ReadUIPrefs`, not in server state. `POSTSetPref` dispatches `EventPrefsChanged`, which every page handles through the embedded `PrefsSync`.
 - **Avoid `templ.Raw`**: Prefer templ's native constructs over building raw HTML strings whenever possible.
-- **Offline-capable**: All assets (CSS, JS) are embedded static files — no CDN dependencies. The app must work offline.
-- **Morph safety** — Datastar patches the DOM from SSE responses by morphing elements. For this to work correctly, elements that persist across morphs must have stable `id` attributes so Datastar can match old and new elements. Use `data-ignore-morph` sparingly — only where a morph would destroy in-progress user input (e.g. editable `<toki-editor>` instances). Elements marked with it are invisible to the server's updates, so overuse creates stale UI and complexity.
+- **Offline-capable**: All assets (CSS, JS) are embedded static files — no CDN dependencies. The app must work offline. This includes Datastar itself (`static/datastar.js`, set via `datapages.WithDatastarJS`), which must match the version the Datapages release loads by default.
+- **Morph safety**: Elements that persist across morphs need stable `id` attributes for Datastar to match old and new elements. A morph re-applies every `data-signals` attribute whose value changed. Seed page signals the client owns (typed input, editor text) with `__ifmissing` and patch the ones the server owns before morphing. Editable `<toki-editor>` instances carry `data-preserve-attr="value"`: their value follows `$editor`, not the rendered markup. Use `data-ignore-morph` only when that is not enough: marked elements are invisible to the server's updates, which creates stale UI and complexity.
 - **Web components for rich client-side widgets**: Use custom elements (`editor/js/wc/`) for functionality that requires complex client-side state management and rendering (e.g. `<toki-editor>` for ICU message editing with CodeMirror). These are the exception to the server-first rule — they encapsulate self-contained interactive widgets. Web components receive inputs from the server via Datastar signals and attributes (e.g. `data-attr:theme`, `data-bind:value`), keeping the server in control of what the component displays and how it behaves.
 
 ### UI Elements
 
-The editor uses [basecoatui](https://basecoatui.com/) (CSS component library based on Tailwind CSS). When building or modifying the editor UI:
+The editor uses [Morpheus](https://github.com/romshark/morpheus) (`github.com/romshark/morpheus`), a web-component UI kit built for server-driven Go + Templ + Datastar stacks. Its assets are vendored into `editor/app/static/` (`morpheus.css`, `theme-default.css`, `morpheus.js`) to keep the editor offline-capable. When building or modifying the editor UI:
 
-- **Prefer basecoat components** (alert, badge, card, button, input, switch, sidebar, etc.) over custom CSS whenever possible.
+- **Prefer Morpheus components** (alert, badge, card, button, select, switch, sidebar, pagination, tooltip, etc.) over custom CSS whenever possible. Use the typed Templ wrappers from `github.com/romshark/morpheus/neo` — `neo.Button(neo.ButtonOpts{...})` — rather than hand-writing `<neo-*>` tags.
+- **Pass Datastar bindings through the `*Attrs` variants** — every component has a `XxxAttrs(opts, templ.Attributes)` form for `data-on:*`, `data-bind`, `id`, and classes. Merge attribute sets with the local `attrs(...)` helper.
+- **Check which events a component emits before reaching for `data-bind`.** `<neo-textinput>` dispatches native `input`/`change`, so `data-bind` works. `<neo-select>`, `<neo-switch>`, and `<neo-pagination>` report state only through their own events (`neo-select-change`, `neo-switch-change`, `neo-pagination-change`), so assign the signal from `evt.detail` inside an `action.WithBefore(...)` expression instead.
+- **Omit boolean command attributes to preserve client state.** Under Morpheus's command-attribute contract an absent boolean (e.g. `open` on `<neo-sidebar>`) means "keep current state", which is what makes fat morphs safe; setting `Open` explicitly forces the state on every patch.
+- **Respect the slot contracts.** `neo.CardHeader`/`CardBody`/`CardFooter` and `neo.SidebarHeader`/`SidebarContent()`/`SidebarFooter` must be authored as immediate children of their host. Note the two differ in the rendered DOM: sidebar slots stay direct children of `<neo-sidebar>`, but card slots are wrapped in a `<div data-neo-card-inner>`, so app CSS targeting them must use a **descendant** selector (`.my-card [data-neo-card-body]`), never `>`. Card slots are also spaced by `[data-neo-card-inner] > * + *`, so any extra element placed inside the card (an absolutely-positioned overlay, say) shifts the first slot out of first position and gives it a stray top margin — put such elements outside the card.
 - **Use modern nested CSS** — group related styles using CSS nesting instead of flat selectors. This keeps styles co-located with their parent context and reduces repetition.
+- **Use Morpheus's design tokens** — `--page-bg`, `--page-fg`, `--accent`, `--accent-fg`, `--btn-border`, `--btn-hover-bg`, `--danger-bg`, `--muted`. Per-component knobs are namespaced `--neo-<component>-*`.
