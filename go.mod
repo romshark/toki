@@ -1,6 +1,6 @@
 module github.com/romshark/toki
 
-go 1.26.5
+go 1.27.1
 
 require (
 	github.com/a-h/templ v0.3.1020
@@ -11,9 +11,9 @@ require (
 	github.com/romshark/icumsg v0.3.3
 	github.com/romshark/tik/tik-go v0.10.0
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/mod v0.38.0
+	golang.org/x/mod v0.40.0
 	golang.org/x/text v0.40.0
-	golang.org/x/tools v0.48.0
+	golang.org/x/tools v0.49.0
 )
 
 require (
