@@ -1,0 +1,37 @@
+package main
+
+import (
+	"flag"
+	"os"
+	"path/filepath"
+
+	"github.com/romshark/toki/editor"
+	"github.com/romshark/toki/internal/cli"
+	"github.com/romshark/toki/internal/log"
+)
+
+func main() {
+	server := flag.String("server", "localhost:8080", "server host address")
+	bundlePkg := flag.String("b", "tokibundle", "path to generated Go bundle package")
+	dirFlag := flag.String("dir", "", "project directory (defaults to current directory)")
+	flag.Parse()
+
+	dir := *dirFlag
+	if dir == "" {
+		dir, _ = filepath.Abs(".")
+	} else {
+		dir, _ = filepath.Abs(dir)
+	}
+	log.SetWriter(os.Stderr, false)
+
+	_, s, err := editor.Setup(
+		dir, *bundlePkg, cli.Version, os.Environ(),
+		cli.CleanGenerated, cli.GenerateBundle,
+		cli.ApplyChangesAndBuild, cli.RepairBundle,
+		cli.RegenerateBundle)
+	if err != nil {
+		log.Error("setting up editor", err)
+		os.Exit(1)
+	}
+	os.Exit(editor.RunServer(s, *server))
+}

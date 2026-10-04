@@ -1,0 +1,215 @@
+package template
+
+import (
+	"fmt"
+
+	"github.com/romshark/morpheus/neo"
+
+	"github.com/romshark/toki/editor/app/datapagesgen/action"
+	"github.com/romshark/toki/editor/app/datapagesgen/href"
+)
+
+// PageTIK renders the whole page of one TIK. It is both the GET body and
+// what PageTIK.OnUpdated morphs.
+templ PageTIK(tk *TIK, isHybrid bool) {
+	@page("page-tik", templ.Attributes{
+		"data-signals:icumsg":            "''",
+		"data-signals:resettikid":        "''",
+		"data-signals:resetlocale":       "''",
+		"data-signals:resetmodalopen":    "false",
+		"data-signals:resetdonetikid":    "''",
+		"data-signals:resetdonelocale":   "''",
+		"data-signals:editor__ifmissing": InitEditorSignalsOne(tk),
+	}) {
+		@componentSidebar("TIK navigation") {
+			@componentSidebarHeader(isHybrid)
+			@tikSidebarNav(tk)
+		}
+		@tikMainArea(tk)
+		@componentEditorModals()
+	}
+}
+
+templ tikSidebarNav(tk *TIK) {
+	<nav
+		{ neo.SidebarContent()... }
+		id="tik-sidebar-content"
+		aria-label="TIK navigation"
+	>
+		<section>
+			<ul class="sidebar-nav-list">
+				@componentSidebarNavLink("#tik-card") {
+					<span class="sidebar-nav-text">TIK</span>
+				}
+			</ul>
+			<div role="group" aria-labelledby="tik-nav-label">
+				<h3 id="tik-nav-label">ICU Messages</h3>
+				<ul class="sidebar-nav-list">
+					for _, msg := range tk.ICU {
+						@componentSidebarNavLink(fmt.Sprintf("#icu-%s-%s",
+							tk.ID, msg.Catalog.Locale,
+						)) {
+							<span class="locale-link-name sidebar-nav-text">
+								<strong class="locale-code">
+									{ msg.Catalog.Locale }
+								</strong>
+								if msg.Catalog.Name != "" {
+									– { msg.Catalog.Name }
+								}
+							</span>
+							if msg.Catalog.Default {
+								@neo.BadgeAttrs(
+									neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantSecondary)},
+									templ.Attributes{"title": "Default locale"},
+								) {
+									@iconCode()
+								}
+							}
+							if msg.Changed {
+								@neo.BadgeAttrs(neo.BadgeOpts{}, templ.Attributes{
+									"class": "badge-changed",
+									"title": "Unsaved change",
+								}) {
+									@iconPencil()
+								}
+							}
+							if msg.Message == "" {
+								@neo.BadgeAttrs(
+									neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantSecondary)},
+									templ.Attributes{"title": "Missing Translation"},
+								) {
+									@iconCircleMinus()
+								}
+							}
+							if msg.Error != "" || len(msg.IncompleteReports) > 0 {
+								@neo.BadgeAttrs(
+									neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantDanger)},
+									templ.Attributes{"title": "Invalid ICU message"},
+								) {
+									@iconAlertTriangle()
+								}
+							}
+						}
+					}
+				</ul>
+			</div>
+			if len(tk.Occurrences) > 0 {
+				<ul class="sidebar-nav-list">
+					@componentSidebarNavLink("#source-occurrences") {
+						<span class="sidebar-nav-text">Source Occurrences</span>
+					}
+				</ul>
+			}
+		</section>
+	</nav>
+}
+
+templ tikMainArea(tk *TIK) {
+	@componentMainArea(templ.Attributes{"id": "tik-main-area"}) {
+		@componentNavbar([]Breadcrumb{
+			{Label: "Dashboard", Href: href.PageIndex()},
+			{Label: "Messages", Href: href.PageTIKs(href.QueryPageTIKs{})},
+			{Label: tk.ID},
+		}, tikChangedCount(tk), true)
+		<main>
+			<div class="contents">
+				@neo.CardAttrs(neo.CardOpts{}, templ.Attributes{
+					"class": "tik-card",
+					"id":    "tik-card",
+				}) {
+					@neo.CardHeader() {
+						<span class="tik-breadcrumb">
+							if tk.Domain != "" {
+								<span class="tik-domain">{ tk.Domain }</span>
+								<span class="tik-breadcrumb-sep">/</span>
+							}
+							<span class="msg-id">{ tk.ID }</span>
+						</span>
+					}
+					@neo.CardBody() {
+						@componentCardStack() {
+							@componentFieldStack() {
+								<span class="label">
+									TIK
+									@componentCopy(tk.TIK)
+								</span>
+								<toki-editor
+									value={ tk.TIK }
+									data-attr:theme="$pref_theme_resolved"
+									readonly
+								></toki-editor>
+							}
+							if tk.Description != "" {
+								@componentFieldStack() {
+									<span class="label">Description</span>
+									<p>{ tk.Description }</p>
+								}
+							}
+						}
+					}
+				}
+				<h2 id="icu-messages">
+					@iconLanguages()
+					ICU Messages
+				</h2>
+				for _, msg := range tk.ICU {
+					@neo.CardAttrs(neo.CardOpts{}, templ.Attributes{
+						"id": fmt.Sprintf("icu-%s-%s", tk.ID, msg.Catalog.Locale),
+					}) {
+						@neo.CardHeader() {
+							<span class="icu-form-label">
+								<strong class="locale-code">
+									{ msg.Catalog.Locale }
+								</strong>
+								if msg.Catalog.Name != "" {
+									— { msg.Catalog.Name }
+								}
+								@componentICUMessageStatusButtons(msg)
+								@componentCopy(msg.Message)
+							</span>
+						}
+						@neo.CardBody() {
+							@componentICUMessageForm(tk.ID, msg, false, templ.Attributes{
+								"data-on:toki-change": action.PageTIK.Set.POST(
+									tk.ID,
+									action.PageTIK.Set.POSTQuery(msg.Catalog.Locale),
+									NoEditorSignals,
+									editorChangeBefore(tk.ID, msg.Catalog.Locale),
+								),
+							})
+						}
+					}
+				}
+				if len(tk.Occurrences) > 0 {
+					<h2 id="source-occurrences">
+						@iconCode()
+						Source Occurrences
+					</h2>
+					@neo.Card(neo.CardOpts{}) {
+						@neo.CardBody() {
+							<ul class="occurrence-list">
+								for _, occ := range tk.Occurrences {
+									<li
+										class="occurrence-item"
+										title={ fmt.Sprintf("%s:%d:%d",
+											occ.File, occ.Line, occ.Column) }
+									>
+										<code class="occurrence-file">
+											{ occ.DisplayFile }
+											<span class="occurrence-pos">
+												{ occ.Pos() }
+											</span>
+										</code>
+										@componentCopy(fmt.Sprintf(
+											"%s:%d:%d", occ.File, occ.Line, occ.Column,
+										))
+									</li>
+								}
+							</ul>
+						}
+					}
+				}
+			</div>
+		</main>
+	}
+}

@@ -1,0 +1,457 @@
+package template
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/romshark/morpheus/neo"
+
+	"github.com/romshark/toki/editor/app/datapagesgen/action"
+	"github.com/romshark/toki/editor/app/datapagesgen/href"
+	"github.com/romshark/toki/editor/app/template/strfmt"
+)
+
+// Breadcrumb represents a single breadcrumb entry. It aliases the
+// Morpheus item type so trails pass straight to neo.Breadcrumb, and an
+// empty Href still marks the current (last) item.
+type Breadcrumb = neo.BreadcrumbItem
+
+// sidebarContent renders the sidebar's scrollable middle region.
+// Morpheus requires it to be a direct child of <neo-sidebar>, next to the
+// header and footer slots.
+templ sidebarContent(data DataIndex) {
+	<nav
+		{ neo.SidebarContent()... }
+		id="sidebar-content"
+		class="sidebar-index"
+		aria-label="Editor navigation"
+	>
+		<section class="sidebar-filters">
+			if len(data.Domains) > 0 {
+				<div role="group" aria-labelledby="domains-label">
+					<h3 id="domains-label">Domains</h3>
+					@neo.ButtonGroup(neo.ButtonGroupOpts{}) {
+						@neo.ButtonAttrs(
+							neo.ButtonOpts{
+								Variant:  neo.Set(neo.ButtonVariantSecondary),
+								Size:     neo.Set("sm"),
+								Disabled: neo.Set(allDomainsInitial(data, false)),
+							},
+							templ.Attributes{
+								"data-on:click": action.PageTIKs.HideAllDomains.POST(NoEditorSignals),
+							},
+						) {
+							Hide All
+						}
+						@neo.ButtonAttrs(
+							neo.ButtonOpts{
+								Variant:  neo.Set(neo.ButtonVariantSecondary),
+								Size:     neo.Set("sm"),
+								Disabled: neo.Set(allDomainsInitial(data, true)),
+							},
+							templ.Attributes{
+								"data-on:click": action.PageTIKs.ShowAllDomains.POST(NoEditorSignals),
+							},
+						) {
+							Show All
+						}
+					}
+					<ul>
+						for _, domain := range data.Domains {
+							<li>
+								<label class="switch-label" data-keep-mobile-sidebar-open>
+									@neo.SwitchAttrs(
+										neo.SwitchOpts{
+											Checked: neo.Set(data.ShownDomains == nil ||
+												data.ShownDomains[domain.FullName]),
+											AriaLabel: neo.Set(domain.Name),
+										},
+										templ.Attributes{
+											// <neo-switch> reports state only via
+											// neo-switch-change, so the signal is
+											// assigned from the event detail rather
+											// than bound with data-bind.
+											"data-on:neo-switch-change": action.PageTIKs.Filter.POST(
+												NoEditorSignals,
+												action.WithBefore(fmt.Sprintf(
+													"$showdomains.%s=evt.detail.checked",
+													domain.SignalKey,
+												)),
+											),
+										},
+									)
+									<span>
+										<strong>{ domain.Name }</strong>
+									</span>
+								</label>
+							</li>
+						}
+					</ul>
+				</div>
+				<div role="separator"></div>
+			}
+			<div role="group" aria-labelledby="locales-label">
+				<h3 id="locales-label">Locales</h3>
+				@neo.ButtonGroup(neo.ButtonGroupOpts{}) {
+					@neo.ButtonAttrs(
+						neo.ButtonOpts{
+							Variant:  neo.Set(neo.ButtonVariantSecondary),
+							Size:     neo.Set("sm"),
+							Disabled: neo.Set(allLocalesInitial(data, false)),
+						},
+						templ.Attributes{
+							"data-on:click": action.PageTIKs.HideAllLocales.POST(NoEditorSignals),
+						},
+					) {
+						Hide All
+					}
+					@neo.ButtonAttrs(
+						neo.ButtonOpts{
+							Variant:  neo.Set(neo.ButtonVariantSecondary),
+							Size:     neo.Set("sm"),
+							Disabled: neo.Set(allLocalesInitial(data, true)),
+						},
+						templ.Attributes{
+							"data-on:click": action.PageTIKs.ShowAllLocales.POST(NoEditorSignals),
+						},
+					) {
+						Show All
+					}
+				}
+				<ul>
+					for _, catalog := range data.Catalogs {
+						<li>
+							<label class="switch-label" data-keep-mobile-sidebar-open>
+								@neo.SwitchAttrs(
+									neo.SwitchOpts{
+										Checked: neo.Set(data.ShownLocales == nil ||
+											data.ShownLocales[catalog.Locale]),
+										AriaLabel: neo.Set(catalog.Locale),
+									},
+									templ.Attributes{
+										"data-on:neo-switch-change": action.PageTIKs.Filter.POST(
+											NoEditorSignals,
+											action.WithBefore(fmt.Sprintf(
+												"$showlocales.%s=evt.detail.checked",
+												catalog.Locale,
+											)),
+										),
+									},
+								)
+								<span>
+									<strong class="locale-code">{ catalog.Locale }</strong>
+									if catalog.Name != "" {
+										– { catalog.Name }
+									}
+									if catalog.Default {
+										@neo.BadgeAttrs(
+											neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantSecondary)},
+											templ.Attributes{"title": "Default locale"},
+										) {
+											@iconCode()
+										}
+									}
+								</span>
+							</label>
+						</li>
+					}
+				</ul>
+			</div>
+			<div role="separator"></div>
+			<div role="group" aria-labelledby="filter-label">
+				<h3 id="filter-label">Filter</h3>
+				@neo.RadioGroupAttrs(
+					neo.RadioGroupOpts{
+						Value: neo.Set(normalizeFilterType(data.FilterType)),
+					},
+					templ.Attributes{
+						"aria-labelledby": "filter-label",
+						// <neo-radio-group> reports selection only through its
+						// own event, so the signal is assigned from the detail.
+						"data-on:neo-radio-group-change": action.PageTIKs.Filter.POST(
+							NoEditorSignals,
+							action.WithBefore("$filtertype=evt.detail.value"),
+						),
+					},
+				) {
+					@componentFilterRadio("", "All", data.NumAll)
+					@componentFilterRadio("changed", "Changed", data.NumChanged)
+					@componentFilterRadio("complete", "Complete", data.NumComplete)
+					@componentFilterRadio("incomplete", "Incomplete", data.NumIncomplete)
+					@componentFilterRadio("untranslated", "Untranslated", data.NumUntranslated)
+					@componentFilterRadio("invalid", "Invalid", data.NumInvalid)
+				}
+			</div>
+		</section>
+	</nav>
+}
+
+// componentSidebarFooter renders the sidebar's project-directory link.
+// It sits in Morpheus's footer slot, a direct child of <neo-sidebar>.
+templ componentSidebarFooter(dir string) {
+	@neo.SidebarFooter() {
+		@neo.LinkAttrs(
+			neo.LinkOpts{
+				Href:    neo.Set(href.PageProjectDir()),
+				Variant: neo.Set(neo.LinkVariantButtonGhost),
+			},
+			templ.Attributes{"class": "sidebar-project-dir"},
+		) {
+			@neo.Layout(neo.LayoutOpts{
+				Direction: neo.Set(neo.Column),
+				Gap:       neo.Set(neo.GapXs),
+			}) {
+				<strong>Project Directory</strong>
+				<span { neo.Item(neo.ItemOpts{Truncate: neo.Set(true)})... }>{ dir }</span>
+			}
+		}
+	}
+}
+
+// TiksContentList renders the current page of TIKs surrounded by a
+// pagination bar at the top and bottom. The whole list is morphed in
+// place on page or page-size change.
+templ TiksContentList(data DataIndex) {
+	<div id="tiks-list" class="contents">
+		if data.TotalFiltered == 0 {
+			<div class="no-results">
+				@iconCircleSlash()
+				No TIKs found for this filter.
+				@neo.Link(neo.LinkOpts{
+					Href:    neo.Set(href.PageTIKs(href.QueryPageTIKs{})),
+					Variant: neo.Set(neo.LinkVariantButtonSecondary),
+				}) {
+					Reset All Filters
+				}
+			</div>
+		} else {
+			@componentPaginationBar(data, "top")
+			for _, tik := range data.TIKs {
+				@TikSectionFull(tik)
+			}
+			@componentPaginationBar(data, "bottom")
+		}
+	</div>
+}
+
+// componentPaginationBar groups the per-page selector and the
+// pagination nav into a single bar rendered above and below the list.
+// position is "top" or "bottom" — used purely to keep ids unique.
+templ componentPaginationBar(data DataIndex, position string) {
+	@neo.LayoutAttrs(
+		neo.LayoutOpts{
+			Wrap:           neo.Set(neo.Wrap),
+			AlignItems:     neo.Set(neo.AlignItemsCenter),
+			JustifyContent: neo.Set(neo.JustifyContentSpaceBetween),
+			Gap:            neo.Set(neo.GapSm),
+		},
+		templ.Attributes{"class": "pagination-bar"},
+	) {
+		@componentPageSizeSelector(data, position)
+		@componentPaginationStatus(data)
+		@componentPagination(data)
+	}
+}
+
+// componentPageSizeSelector renders the per-page <neo-select>; changes
+// POST to /tiks/set-page-size/. The control reports selection only via
+// neo-select-change, so $pagesize is assigned from the event detail
+// (coerced back to a number, since the signal is an int server-side).
+templ componentPageSizeSelector(data DataIndex, position string) {
+	<label class="pagination-page-size">
+		<span>Per page</span>
+		@neo.SelectAttrs(
+			neo.SelectOpts{Value: neo.Set(strfmt.Int(data.PageSize))},
+			templ.Attributes{
+				"id": fmt.Sprintf("pagesize-%s", position),
+				"data-on:neo-select-change": action.PageTIKs.SetPageSize.POST(
+					NoEditorSignals,
+					action.WithBefore("$pagesize=Number(evt.detail.value)"),
+				),
+			},
+		) {
+			for _, opt := range PageSizeOptions {
+				@neo.Option(neo.OptionOpts{Value: neo.Set(strfmt.Int(opt))}) {
+					{ strfmt.Int(opt) }
+				}
+			}
+		}
+	</label>
+}
+
+// componentPaginationStatus shows the current item range out of total.
+templ componentPaginationStatus(data DataIndex) {
+	{{ first := data.PageIdx*data.PageSize + 1 }}
+	{{ last := first + len(data.TIKs) - 1 }}
+	<span class="pagination-status">
+		if data.TotalFiltered == 0 {
+			0 of 0
+		} else {
+			{ strfmt.Int(first) }–{ strfmt.Int(last) } of { strfmt.Int(data.TotalFiltered) }
+		}
+	</span>
+}
+
+// componentPagination renders the pagination nav for the TIKs list
+// page. Page changes POST to /tiks/set-page/. <neo-pagination> builds
+// and re-measures its own chip structure (prev / boundary / window /
+// boundary / next), so the page window and ellipsis collapsing are the
+// component's job rather than the server's.
+templ componentPagination(data DataIndex) {
+	{{ totalPages := data.TotalPages() }}
+	if totalPages > 1 {
+		@neo.PaginationAttrs(
+			neo.PaginationOpts{
+				Page:      neo.Set(data.PageIdx + 1),
+				Pages:     neo.Set(totalPages),
+				AriaLabel: neo.Set("pagination"),
+			},
+			templ.Attributes{
+				"class": "pagination",
+				"data-on:neo-pagination-change": action.PageTIKs.SetPage.POST(
+					NoEditorSignals,
+					action.WithBefore("$page=evt.detail.page"),
+				),
+			},
+		) {
+			<template data-neo-pagination-prev>
+				@iconChevronLeft()
+				<span>Previous</span>
+			</template>
+			<template data-neo-pagination-next>
+				<span>Next</span>
+				@iconChevronRight()
+			</template>
+		}
+	}
+}
+
+// TikSectionFull renders the full TIK card with ICU messages and editors.
+// Its id lets a morph match the card across patches.
+templ TikSectionFull(tik TIK) {
+	@neo.CardAttrs(neo.CardOpts{}, templ.Attributes{
+		"id": fmt.Sprintf("tik-%s", tik.ID),
+	}) {
+		@neo.CardHeader() {
+			<span class="tik-breadcrumb">
+				if tik.Domain != "" {
+					<span class="tik-domain">{ tik.Domain }</span>
+					<span class="tik-breadcrumb-sep">/</span>
+				}
+				<a href={ href.PageTIK(tik.ID) } class="msg-id">{ tik.ID }</a>
+				if tik.IsChanged {
+					@neo.BadgeAttrs(neo.BadgeOpts{}, templ.Attributes{
+						"class": "badge-changed",
+					}) {
+						Changed
+					}
+				}
+				if tik.IsInvalid {
+					@neo.Badge(neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantDanger)}) {
+						Invalid
+					}
+				}
+			</span>
+		}
+		@neo.CardBody() {
+			@componentCardStack() {
+				@componentFieldStack() {
+					<span class="label">
+						TIK
+						@componentCopy(tik.TIK)
+					</span>
+					<toki-editor
+						value={ tik.TIK }
+						data-attr:theme="$pref_theme_resolved"
+						readonly
+					></toki-editor>
+				}
+				if tik.Description != "" {
+					@componentFieldStack() {
+						<span class="label">Description</span>
+						<p>{ tik.Description }</p>
+					}
+				}
+				if len(tik.ICU) > 0 {
+					<ol class="icu-list">
+						for _, msg := range tik.ICU {
+							<li class="icu-message">
+								@componentICUMessageForm(tik.ID, msg, true, templ.Attributes{
+									"data-on:toki-change": action.PageTIKs.Set.POST(
+										action.PageTIKs.Set.POSTQuery(tik.ID, msg.Catalog.Locale),
+										NoEditorSignals,
+										editorChangeBefore(tik.ID, msg.Catalog.Locale),
+									),
+								})
+							</li>
+						}
+					</ol>
+				}
+			}
+		}
+	}
+}
+
+func initShowLocalesSignal(data DataIndex) string {
+	m := make(map[string]bool, len(data.Catalogs))
+	for _, c := range data.Catalogs {
+		m[c.Locale] = data.ShownLocales == nil || data.ShownLocales[c.Locale]
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		panic("unexpected marshaling error")
+	}
+	return string(b)
+}
+
+func initShowDomainsSignal(data DataIndex) string {
+	m := make(map[string]bool, len(data.Domains))
+	for _, d := range data.Domains {
+		m[d.SignalKey] = data.ShownDomains == nil || data.ShownDomains[d.FullName]
+	}
+	b, _ := json.Marshal(m)
+	return string(b)
+}
+
+// allLocalesInitial evaluates the initial server-side state for the locale
+// Hide All / Show All buttons so the disabled attribute matches before Datastar runs.
+func allLocalesInitial(data DataIndex, enabled bool) bool {
+	for _, c := range data.Catalogs {
+		shown := data.ShownLocales == nil || data.ShownLocales[c.Locale]
+		if shown != enabled {
+			return false
+		}
+	}
+	return true
+}
+
+// allDomainsInitial evaluates the initial server-side state for the domain
+// Hide All / Show All buttons so the disabled attribute matches before Datastar runs.
+func allDomainsInitial(data DataIndex, enabled bool) bool {
+	for _, d := range data.Domains {
+		shown := data.ShownDomains == nil || data.ShownDomains[d.FullName]
+		if shown != enabled {
+			return false
+		}
+	}
+	return true
+}
+
+func tikChangedCount(tk *TIK) int {
+	n := 0
+	for _, m := range tk.ICU {
+		if m.Changed {
+			n++
+		}
+	}
+	return n
+}
+
+// normalizeFilterType maps the server's filter type onto the radio value
+// the group seeds from: "all" and the empty string are the same row.
+func normalizeFilterType(t string) string {
+	if t == "all" {
+		return ""
+	}
+	return t
+}

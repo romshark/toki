@@ -78,5 +78,42 @@
 			}
 		},
 		"type": "text"
+	},
+	"msgbad1abc0cf003582": "Your score: {var0, number, integer}",
+	"@msgbad1abc0cf003582": {
+		"placeholders": {
+			"var0": {}
+		},
+		"type": "text"
+	},
+	"msgbcdb3dde88d7bbb2": "Hey {var0}, what''s up?",
+	"@msgbcdb3dde88d7bbb2": {
+		"placeholders": {
+			"var0": {
+				"type": "String",
+				"description": "arbitrary string with gender information"
+			}
+		},
+		"type": "text"
+	},
+	"msgca9572938a754c86": "Good day, {var0}. Welcome.",
+	"@msgca9572938a754c86": {
+		"placeholders": {
+			"var0": {
+				"type": "String",
+				"description": "arbitrary string with gender information"
+			}
+		},
+		"type": "text"
+	},
+	"msgd402b253f75c3b74": "See you later, {var0}!",
+	"@msgd402b253f75c3b74": {
+		"placeholders": {
+			"var0": {
+				"type": "String",
+				"description": "arbitrary string with gender information"
+			}
+		},
+		"type": "text"
 	}
 }

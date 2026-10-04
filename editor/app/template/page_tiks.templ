@@ -1,0 +1,39 @@
+package template
+
+import "github.com/romshark/toki/editor/app/datapagesgen/href"
+
+// PageTIKs renders the whole TIKs list page. It is both the GET body and
+// what every PageTIKs action and event handler morphs.
+//
+// The URL-synced signals (filter, search, page, page size) are seeded by
+// the query's reflectsignal tags, and the server patches the ones it owns
+// before each morph, which is why the seeds here don't overwrite them.
+templ PageTIKs(data DataIndex) {
+	@page("page-tiks", templ.Attributes{
+		"data-signals:icumsg":                 "''",
+		"data-signals:resettikid":             "''",
+		"data-signals:resetlocale":            "''",
+		"data-signals:resetmodalopen":         "false",
+		"data-signals:resetdonetikid":         "''",
+		"data-signals:resetdonelocale":        "''",
+		"data-signals:showlocales__ifmissing": initShowLocalesSignal(data),
+		"data-signals:showdomains__ifmissing": initShowDomainsSignal(data),
+		"data-signals:editor__ifmissing":      InitEditorSignals(data.TIKs),
+	}) {
+		@componentSidebar("Editor navigation") {
+			@componentSidebarHeader(data.IsHybrid)
+			@sidebarContent(data)
+			@componentSidebarFooter(data.Dir)
+		}
+		@componentMainArea(templ.Attributes{"id": "main-area"}) {
+			@componentNavbarSearch([]Breadcrumb{
+				{Label: "Dashboard", Href: href.PageIndex()},
+				{Label: "Messages"},
+			}, data.TotalChanges, data.CanApplyChanges)
+			<main>
+				@TiksContentList(data)
+			</main>
+		}
+		@componentEditorModals()
+	}
+}

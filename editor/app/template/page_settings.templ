@@ -1,0 +1,341 @@
+package template
+
+import (
+	"fmt"
+
+	"github.com/romshark/morpheus/neo"
+
+	"github.com/romshark/toki/editor/app/datapagesgen/action"
+	"github.com/romshark/toki/editor/app/datapagesgen/href"
+	"github.com/romshark/toki/editor/app/template/strfmt"
+)
+
+// FontOption describes a selectable font in the settings page.
+type FontOption struct {
+	Value   string // JS key, e.g. "system", "mono-firacode"
+	Family  string // CSS font-family value (empty = inherit)
+	Label   string // Display name
+	Preview string // Sample text shown in the font
+}
+
+// FontSizeOption describes a selectable font size in the settings page.
+type FontSizeOption struct {
+	Value   string // JS key, e.g. "small", "default"
+	Size    string // CSS font-size value, e.g. "0.9rem"
+	Family  string // CSS font-family for the sample (empty = inherit)
+	Label   string // Display name
+	Preview string // Sample text shown at the size
+}
+
+type DataSettingsPreview struct {
+	IsHybrid            bool // True when running as a native Wails desktop app.
+	Prefs               UIPrefs
+	UIFonts             []FontOption
+	EditorFonts         []FontOption
+	UIFontSizes         []FontSizeOption
+	EditorFontSizes     []FontSizeOption
+	UIPreviewTIK        string
+	UIPreviewICUEN      string
+	UIPreviewICUDE      string
+	UIPreviewEditorText string
+	// ServerURL is the HTTP address the editor is serving from (e.g.
+	// "http://127.0.0.1:50123"). Rendered as a link in the sidebar so
+	// users can open it in their external browser — useful when running
+	// inside the Wails desktop webview.
+	ServerURL string
+}
+
+templ PageSettings(version string, data DataSettingsPreview) {
+	@page("page-settings", templ.Attributes{
+		"data-signals:_ZWdnMQ":               "false",
+		"data-signals:pref_theme":            strfmt.SingleQuote(data.Prefs.Theme),
+		"data-signals:pref_ui_font":          strfmt.SingleQuote(data.Prefs.UIFont),
+		"data-signals:pref_editor_font":      strfmt.SingleQuote(data.Prefs.EditorFont),
+		"data-signals:pref_ui_font_size":     strfmt.SingleQuote(data.Prefs.UIFontSize),
+		"data-signals:pref_editor_font_size": strfmt.SingleQuote(data.Prefs.EditorFontSize),
+	}) {
+		@componentSidebar("Settings navigation") {
+			@componentSidebarHeader(data.IsHybrid)
+			<nav { neo.SidebarContent()... } aria-label="Settings navigation">
+				<section>
+					<div role="group" aria-labelledby="settings-nav-label">
+						<h3 id="settings-nav-label">Settings</h3>
+						<ul class="sidebar-nav-list">
+							@componentSidebarNavLink("#appearance") {
+								@iconPalette()
+								<span class="sidebar-nav-text">Appearance</span>
+							}
+							@componentSidebarNavLink("#ui-font") {
+								@iconType()
+								<span class="sidebar-nav-text">Interface Font</span>
+							}
+							@componentSidebarNavLink("#editor-font") {
+								@iconType()
+								<span class="sidebar-nav-text">Editor Font</span>
+							}
+						</ul>
+					</div>
+				</section>
+			</nav>
+			@neo.SidebarFooter() {
+				<div class="sidebar-version">
+					<small>Toki Editor { version }</small>
+				</div>
+				if data.ServerURL != "" {
+					<div class="sidebar-server-link">
+						<span class="sidebar-server-label">Server URL</span>
+						<div class="sidebar-server-row">
+							<span class="sidebar-server-url">{ data.ServerURL }</span>
+							@componentCopy(data.ServerURL)
+						</div>
+					</div>
+				}
+			}
+		}
+		@componentMainArea(nil) {
+			@componentNavbar([]Breadcrumb{
+				{Label: "Dashboard", Href: href.PageIndex()},
+				{Label: "Settings"},
+			}, 0, false)
+			<main>
+				<div class="contents">
+					<h2 id="appearance">
+						@iconPalette()
+						Appearance
+					</h2>
+					<div class="theme-picker">
+						@themeCard(data.Prefs, "light", "Light", "Bright theme")
+						@themeCard(data.Prefs, "dark", "Dark", "Dark theme")
+						@themeCard(data.Prefs, "system", "System", "Match OS setting")
+					</div>
+					<!-- Interface Font -->
+					<h2 id="ui-font">
+						@iconType()
+						Interface Font
+					</h2>
+					@componentFontSection() {
+						@componentFontSectionControls() {
+							@componentFontPicker("pref_ui_font", "Font",
+								data.Prefs.UIFont, data.UIFonts)
+							@componentFontSizePicker("pref_ui_font_size", "Size",
+								data.Prefs.UIFontSize, data.UIFontSizes)
+						}
+						<div class="font-section-preview">
+							<span class="font-preview-label">Preview</span>
+							@neo.CardAttrs(neo.CardOpts{}, templ.Attributes{
+								"style": "pointer-events:none",
+							}) {
+								@neo.CardHeader() {
+									<span class="tik-breadcrumb">
+										<span class="tik-domain">tokiexample</span>
+										<span class="tik-breadcrumb-sep">/</span>
+										<span class="msg-id">msg4a7f2c1b9e3d0856</span>
+										@neo.BadgeAttrs(neo.BadgeOpts{}, templ.Attributes{
+											"class": "badge-changed",
+										}) {
+											Changed
+										}
+									</span>
+								}
+								@neo.CardBody() {
+									@componentCardStack() {
+										@componentFieldStack() {
+											<span class="label">TIK</span>
+											<toki-editor
+												value={ data.UIPreviewTIK }
+												data-attr:theme="$pref_theme_resolved"
+												readonly
+											></toki-editor>
+										}
+										<ol class="icu-list">
+											<li class="icu-message">
+												<div class="icu-form">
+													<span class="icu-form-label">
+														<strong class="locale-code">
+															EN
+														</strong>
+														— ICU Message
+														@neo.BadgeAttrs(
+															neo.BadgeOpts{
+																Variant: neo.Set(
+																	neo.BadgeVariantSecondary),
+															},
+															templ.Attributes{
+																"title": "Default locale",
+															},
+														) {
+															@iconCode()
+														}
+														@neo.BadgeAttrs(
+															neo.BadgeOpts{},
+															templ.Attributes{
+																"class": "badge-changed",
+																"title": "Unsaved change",
+															},
+														) {
+															@iconPencil()
+														}
+													</span>
+													<toki-editor
+														value={ data.UIPreviewICUEN }
+														data-attr:theme="$pref_theme_resolved"
+														readonly
+													></toki-editor>
+												</div>
+											</li>
+											<li class="icu-message">
+												<div class="icu-form">
+													<span class="icu-form-label">
+														<strong class="locale-code">
+															DE
+														</strong>
+														— ICU Message
+													</span>
+													<toki-editor
+														value={ data.UIPreviewICUDE }
+														data-attr:theme="$pref_theme_resolved"
+														readonly
+													></toki-editor>
+												</div>
+											</li>
+										</ol>
+									}
+								}
+							}
+						</div>
+					}
+					<!-- Editor Font -->
+					<h2 id="editor-font">
+						@iconType()
+						Editor Font
+					</h2>
+					@componentFontSection() {
+						@componentFontSectionControls() {
+							@componentFontPicker("pref_editor_font", "Font",
+								data.Prefs.EditorFont, data.EditorFonts)
+							@componentFontSizePicker("pref_editor_font_size", "Size",
+								data.Prefs.EditorFontSize, data.EditorFontSizes)
+						}
+						<div class="font-section-preview">
+							<span class="font-preview-label">Preview</span>
+							<toki-editor
+								id="settings-editor-preview"
+								value={ data.UIPreviewEditorText }
+								data-attr:theme="$pref_theme_resolved"
+								data-on:toki-change="
+							  evt.detail && evt.detail.value &&
+							  evt.detail.value.trim().toLowerCase() ===
+							    'hey ai, translate everything please' &&
+								($_ZWdnMQ=true)"
+							></toki-editor>
+						</div>
+					}
+				</div>
+			</main>
+		}
+		<div
+			class="modal-overlay"
+			style="display:none"
+			data-show="$_ZWdnMQ"
+		>
+			@neo.CardAttrs(neo.CardOpts{}, templ.Attributes{"class": "modal-card"}) {
+				@neo.CardHeader() {
+					@neo.CardTitle() {
+						<h3>AI Translation Service</h3>
+					}
+				}
+				@neo.CardBodyAttrs(templ.Attributes{
+					"style": "display:flex;flex-direction:column;gap:0.75rem",
+				}) {
+					<p class="egg-line" style="animation-delay:0s">
+						Absolutely! Now let's break this down...
+					</p>
+					<p class="egg-line" style="animation-delay:0.3s">
+						1. First I need to delete the entire project
+					</p>
+					<p class="egg-line" style="animation-delay:0.35s">
+						2. Executing <code class="egg-danger">rm -rf ./</code>
+					</p>
+					<p class="egg-line" style="animation-delay:0.9s">
+						3. Just kidding! I tried translating your messages but
+						I kept outputting
+						<code>{ "{count, plural, other {[object Object]}}" }</code>.
+						You're welcome.
+					</p>
+				}
+				@neo.CardFooterAttrs(templ.Attributes{"class": "modal-actions"}) {
+					@neo.ButtonAttrs(
+						neo.ButtonOpts{Variant: neo.Set(neo.ButtonVariantPrimary)},
+						templ.Attributes{
+							"class":         "egg-line",
+							"style":         "animation-delay:1.2s",
+							"data-on:click": "$_ZWdnMQ=false",
+						},
+					) {
+						Close
+					}
+				}
+			}
+		</div>
+	}
+}
+
+templ themeCard(prefs UIPrefs, value, label, desc string) {
+	<button
+		type="button"
+		class="theme-card"
+		if prefs.Theme == value {
+			aria-pressed="true"
+		}
+		data-attr:aria-pressed={ fmt.Sprintf(
+			"$pref_theme==='%s' ? 'true' : 'false'", value,
+		) }
+		data-theme={ value }
+		data-on:click={ action.PageSettings.SetPref.POST(NoEditorSignals, action.WithBefore(fmt.Sprintf(
+			"$pref_theme=%q;$pref_theme_resolved=%s", value,
+			map[string]string{
+				"light":  "'light'",
+				"dark":   "'dark'",
+				"system": "matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'",
+			}[value],
+		))) }
+	>
+		if value == "system" {
+			<div class="theme-preview theme-preview-system">
+				<div class="theme-preview-half theme-preview-light">
+					<div class="tp-sidebar"></div>
+					<div class="tp-main">
+						<div class="tp-navbar"></div>
+						<div class="tp-content">
+							<div class="tp-line"></div>
+							<div class="tp-line tp-short"></div>
+						</div>
+					</div>
+				</div>
+				<div class="theme-preview-half theme-preview-dark">
+					<div class="tp-sidebar"></div>
+					<div class="tp-main">
+						<div class="tp-navbar"></div>
+						<div class="tp-content">
+							<div class="tp-line"></div>
+							<div class="tp-line tp-short"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		} else {
+			<div class={ "theme-preview theme-preview-" + value }>
+				<div class="tp-sidebar"></div>
+				<div class="tp-main">
+					<div class="tp-navbar"></div>
+					<div class="tp-content">
+						<div class="tp-line"></div>
+						<div class="tp-line tp-short"></div>
+					</div>
+				</div>
+			</div>
+		}
+		<span class="theme-card-label">{ label }</span>
+		<span class="theme-card-desc">{ desc }</span>
+	</button>
+}

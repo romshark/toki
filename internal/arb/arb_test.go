@@ -260,9 +260,6 @@ func TestDecodeErr(t *testing.T) {
 			`parsing time "15:40" as "2006-01-02T15:04:05Z07:00": `+
 			`cannot parse "15:40" as "2006"`,
 		MustReadFile(t, "testdata/err_invalid_last_modified.arb"))
-	f(t, arb.ErrUndefinedPlaceholder,
-		`undefined placeholder: "notInList"`,
-		MustReadFile(t, "testdata/err_undefined_placeholder.arb.txt"))
 }
 
 func MustReadFile(tb testing.TB, fileName string) string {

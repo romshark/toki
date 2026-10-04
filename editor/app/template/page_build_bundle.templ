@@ -1,0 +1,112 @@
+package template
+
+import (
+	"github.com/romshark/morpheus/neo"
+
+	"github.com/romshark/toki/editor/app/datapagesgen/href"
+	"github.com/romshark/toki/editor/app/template/strfmt"
+)
+
+// PageBuildBundle renders the whole build page. It is both the GET body
+// and what PageBuildBundle.OnUpdated morphs as the build progresses.
+templ PageBuildBundle(state BuildBundleState) {
+	@page("page-build-bundle", nil) {
+		<div class="page-center">
+			@buildBundleStatus(state)
+		</div>
+	}
+}
+
+// buildBundleCard renders the page's single status card. Every build
+// state shows the same title-over-body shape, so only the heading and
+// the body content differ.
+templ buildBundleCard(title string) {
+	@neo.Card(neo.CardOpts{}) {
+		@neo.CardHeader() {
+			@neo.CardTitle() {
+				<h1>{ title }</h1>
+			}
+		}
+		@neo.CardBody() {
+			{ children... }
+		}
+	}
+}
+
+// componentDashboardLink renders the "Go to Dashboard" call to action
+// shared by the build page's terminal states.
+templ componentDashboardLink() {
+	@neo.Link(neo.LinkOpts{
+		Href:    neo.Set(href.PageIndex()),
+		Variant: neo.Set(neo.LinkVariantButtonPrimary),
+	}) {
+		Go to Dashboard
+	}
+}
+
+// buildBundleStatus renders the card of the current build state.
+templ buildBundleStatus(state BuildBundleState) {
+	<div id="build-bundle-content">
+		if state.Building {
+			@buildBundleCard("Building Bundle") {
+				<div class="loading-screen">
+					@componentLoadingDots()
+					<p>
+						Writing .arb files and generating Go code&hellip;
+					</p>
+					<p class="loading-hint">
+						This may take a moment for large codebases.
+					</p>
+				</div>
+			}
+		} else if state.Err != "" {
+			@buildBundleCard("Build Failed") {
+				<div class="build-result">
+					@componentAlertDanger() {
+						{ state.Err }
+					}
+					if state.Duration > 0 {
+						<p class="build-duration">
+							Failed after { FmtDuration(state.Duration) }
+						</p>
+					}
+					@componentDashboardLink()
+				</div>
+			}
+		} else if state.Duration > 0 {
+			@buildBundleCard("Build Successful") {
+				<div class="build-result">
+					@neo.AlertAttrs(
+						neo.AlertOpts{Variant: neo.Set(neo.AlertVariantSuccess)},
+						templ.Attributes{"role": "status"},
+					) {
+						@neo.AlertContent() {
+							@neo.AlertDescription() {
+								Bundle built successfully. The .arb files and Go code
+								have been updated.
+							}
+						}
+					}
+					<p class="build-duration">
+						Completed in { FmtDuration(state.Duration) }
+					</p>
+					@componentDashboardLink()
+				</div>
+			}
+		} else {
+			@buildBundleCard("Build Bundle") {
+				<div class="build-result">
+					if state.TotalChanges == 0 {
+						<p>No unsaved changes to build.</p>
+					} else {
+						<p>
+							{ strfmt.Int(state.TotalChanges) } unsaved
+							change(s) ready to build.
+						</p>
+					}
+					@componentDashboardLink()
+				</div>
+			}
+		}
+	</div>
+}

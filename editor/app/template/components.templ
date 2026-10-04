@@ -1,0 +1,878 @@
+package template
+
+import (
+	"fmt"
+
+	"github.com/romshark/morpheus/neo"
+
+	"github.com/romshark/toki/editor/app/datapagesgen/action"
+	"github.com/romshark/toki/editor/app/datapagesgen/href"
+	"github.com/romshark/toki/editor/app/template/strfmt"
+)
+
+// resolvedThemeExpr returns a JS expression that evaluates to "dark" or "light"
+// based on the current state of the document element.
+func resolvedThemeExpr() string {
+	return "document.documentElement.classList.contains('dark') ? 'dark' : 'light'"
+}
+
+// componentIconButton renders an icon-only secondary button. Morpheus has
+// no icon-only button variant, so the square sizing comes from the
+// app's own .btn-icon rule.
+templ componentIconButton(ariaLabel string, extra templ.Attributes) {
+	@neo.ButtonAttrs(
+		neo.ButtonOpts{Variant: neo.Set(neo.ButtonVariantSecondary)},
+		attrs(templ.Attributes{
+			"class":      "btn-icon",
+			"aria-label": ariaLabel,
+		}, extra),
+	) {
+		{ children... }
+	}
+}
+
+// --- Navbar ---
+templ componentNavbarBuildBtn(totalChanges int, canApplyChanges bool) {
+	if totalChanges > 0 {
+		@neo.Link(neo.LinkOpts{
+			Href:     neo.Set(href.PageBuildBundle()),
+			Variant:  neo.Set(neo.LinkVariantButtonPrimary),
+			Disabled: neo.Set(!canApplyChanges),
+		}) {
+			@iconSave()
+			<span class="navbar-desktop-only">Build Bundle</span>
+			@neo.BadgeAttrs(neo.BadgeOpts{}, templ.Attributes{"class": "badge-changed"}) {
+				{ strfmt.Int(totalChanges) }
+			}
+		}
+	}
+}
+
+templ componentNavbarCore(breadcrumbs []Breadcrumb) {
+	<!-- Desktop: burger + history nav + breadcrumbs -->
+	@neo.LayoutAttrs(
+		neo.LayoutOpts{
+			AlignItems: neo.Set(neo.AlignItemsCenter),
+			Gap:        neo.Set(neo.GapSm),
+		},
+		templ.Attributes{"class": "navbar-left navbar-desktop-only"},
+	) {
+		@componentIconButton("Toggle sidebar", templ.Attributes{
+			"data-on:click": "toggleSidebar()",
+		}) {
+			@iconMenu()
+		}
+		@neo.ButtonGroupAttrs(neo.ButtonGroupOpts{}, templ.Attributes{
+			"data-signals:_history.canback": "!!(window.navigation&&navigation.canGoBack)",
+			"data-signals:_history.canfwd":  "!!(window.navigation&&navigation.canGoForward)",
+		}) {
+			@neo.ButtonAttrs(
+				neo.ButtonOpts{
+					Variant:  neo.Set(neo.ButtonVariantSecondary),
+					Disabled: neo.Set(true),
+				},
+				templ.Attributes{
+					"class":              "btn-icon",
+					"aria-label":         "Go back",
+					"data-on:click":      "history.back()",
+					"data-attr:disabled": "!$_history.canback",
+				},
+			) {
+				@iconArrowLeft()
+			}
+			@neo.ButtonAttrs(
+				neo.ButtonOpts{
+					Variant:  neo.Set(neo.ButtonVariantSecondary),
+					Disabled: neo.Set(true),
+				},
+				templ.Attributes{
+					"class":              "btn-icon",
+					"aria-label":         "Go forward",
+					"data-on:click":      "history.forward()",
+					"data-attr:disabled": "!$_history.canfwd",
+				},
+			) {
+				@iconArrowRight()
+			}
+		}
+		@neo.Breadcrumb(breadcrumbs)
+	}
+	<!-- Mobile: burger + page name dropdown -->
+	@neo.LayoutAttrs(
+		neo.LayoutOpts{
+			AlignItems: neo.Set(neo.AlignItemsCenter),
+			Gap:        neo.Set(neo.GapSm),
+		},
+		templ.Attributes{"class": "navbar-left navbar-mobile-only"},
+	) {
+		@componentIconButton("Toggle sidebar", templ.Attributes{
+			"data-on:click": "toggleSidebar()",
+		}) {
+			@iconMenu()
+		}
+		// Popover rather than Menu: these rows are page navigations, so
+		// they stay native anchors. <neo-menuitem> is action-oriented
+		// (it reports a value on select) and carries no href.
+		@neo.Popover(neo.PopoverOpts{}) {
+			@neo.ButtonAttrs(
+				neo.ButtonOpts{Variant: neo.Set(neo.ButtonVariantGhost)},
+				attrs(templ.Attributes{"class": "navbar-page-btn"}, neo.PopoverTrigger()),
+			) {
+				if len(breadcrumbs) > 0 {
+					{ breadcrumbs[len(breadcrumbs)-1].Label }
+				}
+				@iconChevronDown()
+			}
+			<div { neo.PopoverContent()... }>
+				@neo.NavGroupAttrs(
+					neo.NavGroupOpts{Orientation: neo.Set(neo.OrientationVertical)},
+					templ.Attributes{"class": "navbar-page-menu"},
+				) {
+					for _, bc := range breadcrumbs {
+						if bc.Href != "" {
+							<a
+								href={ templ.SafeURL(bc.Href) }
+								{ neo.NavGroupItem()... }
+								{ neo.PopoverClose()... }
+							>{ bc.Label }</a>
+						} else {
+							<span aria-current="page">{ bc.Label }</span>
+						}
+					}
+				}
+			</div>
+		}
+	}
+}
+
+templ componentNavbar(breadcrumbs []Breadcrumb, totalChanges int, canApplyChanges bool) {
+	<nav class="navbar">
+		@componentNavbarCore(breadcrumbs)
+		@neo.LayoutAttrs(
+			neo.LayoutOpts{
+				AlignItems: neo.Set(neo.AlignItemsCenter),
+				Gap:        neo.Set(neo.GapSm),
+			},
+			templ.Attributes{"class": "navbar-right"},
+		) {
+			@componentNavbarBuildBtn(totalChanges, canApplyChanges)
+		}
+	</nav>
+}
+
+templ componentNavbarSearch(
+	breadcrumbs []Breadcrumb, totalChanges int, canApplyChanges bool,
+) {
+	<nav
+		class="navbar"
+		data-signals:_navsearch="false"
+	>
+		<!-- Normal mode -->
+		<div class="navbar-normal" data-show="!$_navsearch">
+			@componentNavbarCore(breadcrumbs)
+			@neo.LayoutAttrs(
+				neo.LayoutOpts{
+					AlignItems: neo.Set(neo.AlignItemsCenter),
+					Gap:        neo.Set(neo.GapSm),
+				},
+				templ.Attributes{"class": "navbar-right"},
+			) {
+				<!-- Desktop search (always visible) -->
+				<div class="navbar-search navbar-desktop-only">
+					@iconSearch()
+					@neo.TextInputAttrs(
+						neo.TextInputOpts{
+							Type:        neo.Set(neo.TextInputTypeSearch),
+							Placeholder: neo.Set("Search..."),
+						},
+						templ.Attributes{
+							"data-bind:searchquery": true,
+							"data-on:focus": `
+								$_navsearch=true;
+								requestAnimationFrame(() => document.getElementById(
+									'navsearch-input')?.focus())
+							`,
+							"data-on:input__debounce.300ms": action.PageTIKs.Filter.POST(NoEditorSignals),
+						},
+					)
+				</div>
+				<!-- Mobile search button -->
+				@componentIconButton("Search", templ.Attributes{
+					"class": "btn-icon navbar-mobile-only",
+					"data-on:click": `
+						$_navsearch=true;
+						requestAnimationFrame(() => document.getElementById(
+							'navsearch-input')?.focus())
+					`,
+				}) {
+					@iconSearch()
+				}
+				@componentNavbarBuildBtn(totalChanges, canApplyChanges)
+			}
+		</div>
+		<!-- Mobile search mode (replaces navbar content) -->
+		<div class="navbar-search-mode" style="display:none" data-show="$_navsearch">
+			@componentIconButton("Close search", templ.Attributes{
+				"data-on:click": "$_navsearch=false",
+			}) {
+				@iconX()
+			}
+			<div class="navbar-search" style="flex:1">
+				@iconSearch()
+				@neo.TextInputAttrs(
+					neo.TextInputOpts{
+						Type:        neo.Set(neo.TextInputTypeSearch),
+						Placeholder: neo.Set("Search..."),
+					},
+					templ.Attributes{
+						"id":                    "navsearch-input",
+						"data-bind:searchquery": true,
+						"data-on:input__debounce.300ms": action.PageTIKs.Filter.POST(
+							NoEditorSignals,
+						),
+					},
+				)
+			</div>
+		</div>
+	</nav>
+}
+
+// --- Page shell ---
+
+// componentPageShell lays the sidebar and main area out as a row. It has
+// to be a real flex container rather than display:contents, because
+// <neo-sidebar> picks in-flow vs overlay mode from its parent's measured
+// width and a contents box measures zero.
+templ componentPageShell() {
+	@neo.LayoutAttrs(
+		neo.LayoutOpts{Direction: neo.Set(neo.Row)},
+		templ.Attributes{"class": "page-shell"},
+	) {
+		{ children... }
+	}
+}
+
+// componentMainArea is the column beside the sidebar: a fixed navbar
+// above a single scrolling <main>. MinWidth0 is the flex min-size fix —
+// without it the column refuses to shrink below its content and the
+// page overflows horizontally.
+templ componentMainArea(extra templ.Attributes) {
+	@neo.LayoutAttrs(
+		neo.LayoutOpts{Direction: neo.Set(neo.Column)},
+		attrs(
+			templ.Attributes{"class": "main-area"},
+			neo.Item(neo.ItemOpts{
+				Grow:      neo.Set(true),
+				MinWidth0: neo.Set(true),
+				Height:    neo.Set(neo.ItemSizeFull),
+			}),
+			extra,
+		),
+	) {
+		{ children... }
+	}
+}
+
+// --- Sidebar ---
+
+// componentSidebar renders the <neo-sidebar> host shared by every page.
+// Children supply the header/content/footer slots, which Morpheus
+// requires to be direct children of the host. The open attribute is
+// deliberately omitted: under Morpheus's command-attribute contract an
+// absent boolean leaves the client's current state alone, so a fat
+// morph never slams the sidebar open or shut.
+templ componentSidebar(ariaLabel string) {
+	@neo.SidebarAttrs(
+		neo.SidebarOpts{
+			Side:      neo.Set(neo.SideLeft),
+			AriaLabel: neo.Set(ariaLabel),
+		},
+		templ.Attributes{"id": "editor-sidebar"},
+	) {
+		{ children... }
+	}
+}
+
+// componentSidebarNavLink renders one sidebar navigation row as a
+// full-width ghost button, so every row in every sidebar shares the
+// kit's control padding, hover and focus treatment.
+templ componentSidebarNavLink(hrefURL string) {
+	<li>
+		@neo.LinkAttrs(
+			neo.LinkOpts{
+				Href:    neo.Set(hrefURL),
+				Variant: neo.Set(neo.LinkVariantButtonGhost),
+			},
+			templ.Attributes{
+				"class":               "sidebar-nav-link",
+				"data-ignore-current": true,
+			},
+		) {
+			{ children... }
+		}
+	</li>
+}
+
+templ componentSidebarHeader(isHybrid bool) {
+	@neo.SidebarHeader() {
+		@neo.LayoutAttrs(
+			neo.LayoutOpts{
+				AlignItems:     neo.Set(neo.AlignItemsCenter),
+				JustifyContent: neo.Set(neo.JustifyContentSpaceBetween),
+			},
+			templ.Attributes{"class": "sidebar-title"},
+		) {
+			<a href={ href.PageIndex() } class="sidebar-app-name">Toki Editor</a>
+			@neo.LayoutAttrs(
+				neo.LayoutOpts{
+					AlignItems: neo.Set(neo.AlignItemsCenter),
+					Gap:        neo.Set(neo.GapXs),
+				},
+				templ.Attributes{"class": "sidebar-actions"},
+			) {
+				if isHybrid {
+					@componentIconButton("Open new window", templ.Attributes{
+						"title":         "Open new window",
+						"data-on:click": action.App.OpenNewWindow.POST(NoEditorSignals),
+					}) {
+						@iconAppWindow()
+					}
+				}
+				@neo.LinkAttrs(
+					neo.LinkOpts{
+						Href:    neo.Set(href.PageSettings()),
+						Variant: neo.Set(neo.LinkVariantButtonSecondary),
+					},
+					templ.Attributes{
+						"class":      "btn-icon",
+						"aria-label": "Settings",
+					},
+				) {
+					@iconSettings()
+				}
+			}
+		}
+	}
+}
+
+// componentFilterRadio renders one row of the filter <neo-radio-group>.
+// The wrapping <label> is what makes a click anywhere on the row select
+// the radio — the same pattern <neo-switch> uses.
+templ componentFilterRadio(value, label string, count int) {
+	<label class="filter-option" data-keep-mobile-sidebar-open>
+		@neo.Radio(neo.RadioOpts{Value: neo.Set(value)})
+		<span class="filter-option-label">{ label }</span>
+		@neo.Badge(neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantOutline)}) {
+			{ strfmt.Int(count) }
+		}
+	</label>
+}
+
+// --- ICU message ---
+
+// componentICUMessageStatusButtons renders the status of an ICU message as
+// icon buttons, each opening a popover that explains what it means. The
+// labels match the sidebar filters that count the same states.
+templ componentICUMessageStatusButtons(msg *ICUMessage) {
+	if msg.Catalog.Default {
+		@componentStatusButton("Default locale", neo.ButtonVariantSecondary, "", iconCode()) {
+			<p>
+				The TIKs in the source code are written in this locale. Other locales
+				fall back to its messages wherever they have no translation.
+			</p>
+		}
+	}
+	if msg.IsReadOnly {
+		@componentStatusButton("Read only", neo.ButtonVariantSecondary, "", iconLock()) {
+			<p>
+				Toki generates this message from the TIK in full, which leaves
+				nothing to translate for this locale.
+			</p>
+			<p>To change it, edit the TIK in the source code.</p>
+		}
+	}
+	if msg.Changed {
+		@componentStatusButton("Unsaved change", neo.ButtonVariantSecondary, "btn-changed", iconPencil()) {
+			<p>You edited this message, and the change isn't in the bundle yet.</p>
+			<p>
+				Build Bundle writes it to the locale's .arb file and regenerates the
+				Go code. Reset restores the original message.
+			</p>
+		}
+	}
+	if msg.Message == "" {
+		@componentStatusButton("Untranslated", neo.ButtonVariantSecondary, "", iconCircleMinus()) {
+			if msg.Catalog.Default {
+				<p>
+					The default locale needs a message for every TIK: other locales
+					fall back to it, and the bundle panics when it's missing.
+				</p>
+			} else {
+				<p>
+					This locale has no translation for this message yet. Until it has
+					one, the bundle falls back to the default locale's message.
+				</p>
+			}
+		}
+	}
+	if msg.Error != "" {
+		@componentStatusButton("Invalid", neo.ButtonVariantDanger, "", iconAlertTriangle()) {
+			<p>
+				This isn't a valid ICU message. The error below the editor shows
+				where parsing failed.
+			</p>
+			if msg.Changed {
+				<p>The bundle can't be built until you fix or reset this change.</p>
+			}
+		}
+	} else if len(msg.IncompleteReports) > 0 {
+		@componentStatusButton("Incomplete", neo.ButtonVariantDanger, "", iconAlertTriangle()) {
+			<p>
+				This message lacks plural or select options that this locale needs,
+				or uses an option it doesn't allow. The notes below the editor list
+				what to add or fix.
+			</p>
+		}
+	}
+}
+
+// componentStatusButton renders a status as an icon button opening a popover
+// that explains it. label names the status: it is the button's accessible
+// name and hover title and the popover's heading. class adds to btn-icon.
+// Children explain the status.
+templ componentStatusButton(
+	label string, variant neo.ButtonVariant, class string, icon templ.Component,
+) {
+	{{ classes := "btn-icon" }}
+	if class != "" {
+		{{ classes += " " + class }}
+	}
+	@neo.Popover(neo.PopoverOpts{}) {
+		@neo.ButtonAttrs(
+			neo.ButtonOpts{Variant: neo.Set(variant)},
+			attrs(templ.Attributes{
+				"class":      classes,
+				"title":      label,
+				"aria-label": label,
+			}, neo.PopoverTrigger()),
+		) {
+			@icon
+		}
+		<div class="status-popover" { neo.PopoverContent()... }>
+			<strong>{ label }</strong>
+			{ children... }
+		</div>
+	}
+}
+
+// componentICUMessageForm renders the editor of one ICU message. onChange
+// carries the data-on:toki-change handler of an editable message: each
+// page passes its own set action, which reports the editing tab.
+templ componentICUMessageForm(
+	tikID string, msg *ICUMessage, showLabel bool, onChange templ.Attributes,
+) {
+	@neo.LayoutAttrs(
+		neo.LayoutOpts{
+			Direction: neo.Set(neo.Column),
+			Gap:       neo.Set(neo.GapSm),
+		},
+		templ.Attributes{"class": "icu-form"},
+	) {
+		if showLabel {
+			<span class="icu-form-label">
+				<strong class="locale-code">{ msg.Catalog.Locale }</strong> — ICU Message
+				@componentICUMessageStatusButtons(msg)
+				@componentCopy(msg.Message)
+			</span>
+		}
+		// data-preserve-attr keeps the morph off the value: it follows
+		// $editor alone, which the server patches for every editor but the
+		// one the tab is typing in. A morph would set the rendered value,
+		// which lags behind the typing.
+		<toki-editor
+			id={ EditorID(tikID, msg.Catalog.Locale) }
+			value={ msg.Message }
+			data-attr:value={ EditorValueSignal(tikID, msg.Catalog.Locale) }
+			data-preserve-attr="value"
+			data-attr:theme="$pref_theme_resolved"
+			data-tikid={ tikID }
+			data-locale={ msg.Catalog.Locale }
+			if msg.IsReadOnly {
+				readonly
+			} else {
+				{ onChange... }
+			}
+		></toki-editor>
+		if msg.Changed {
+			<div class="icu-original">
+				<span class="icu-original-label">Original</span>
+				<toki-editor
+					value={ msg.MessageOriginal }
+					data-attr:theme="$pref_theme_resolved"
+					readonly
+				></toki-editor>
+				@neo.ButtonAttrs(
+					neo.ButtonOpts{Variant: neo.Set(neo.ButtonVariantDanger)},
+					templ.Attributes{
+						"style": "align-self:start",
+						"data-on:click": fmt.Sprintf(
+							"$resettikid='%s';$resetlocale='%s';$resetdonetikid='';"+
+								"$resetdonelocale='';$resetmodalopen=true",
+							tikID, msg.Catalog.Locale,
+						),
+					},
+				) {
+					Reset
+				}
+			</div>
+		}
+		if msg.Error != "" {
+			@componentAlertDanger() {
+				{ msg.Error }
+			}
+		}
+		if len(msg.IncompleteReports) > 0 {
+			for _, r := range msg.IncompleteReports {
+				@componentAlertDanger() {
+					{ r }
+				}
+			}
+		}
+	}
+}
+
+// componentAlert renders a Morpheus alert with an optional leading
+// icon. Children fill the content slot, so callers compose
+// neo.AlertTitle / neo.AlertDescription as the message needs.
+templ componentAlert(variant neo.AlertVariant, role string, icon templ.Component) {
+	@neo.AlertAttrs(
+		neo.AlertOpts{Variant: neo.Set(variant)},
+		templ.Attributes{"role": role},
+	) {
+		if icon != nil {
+			@neo.AlertIcon() {
+				@icon
+			}
+		}
+		@neo.AlertContent() {
+			{ children... }
+		}
+	}
+}
+
+// componentAlertDanger renders a destructive, icon-less alert whose
+// children are the whole message.
+templ componentAlertDanger() {
+	@componentAlert(neo.AlertVariantDanger, "alert", nil) {
+		@neo.AlertDescription() {
+			{ children... }
+		}
+	}
+}
+
+// --- Modals ---
+templ componentEditorModals() {
+	@componentResetModal()
+}
+
+templ componentResetModal() {
+	<div
+		id="reset-modal"
+		class="modal-overlay"
+		style="display:none"
+		data-show="
+			$resetmodalopen && (
+				$resettikid !== $resetdonetikid || $resetlocale !== $resetdonelocale)"
+	>
+		@neo.CardAttrs(neo.CardOpts{}, templ.Attributes{"class": "modal-card"}) {
+			@neo.CardHeader() {
+				@neo.CardTitle() {
+					<h3>Reset to original?</h3>
+				}
+			}
+			@neo.CardBody() {
+				<p>
+					This will discard your changes and restore the original ICU message.
+				</p>
+			}
+			@neo.CardFooterAttrs(templ.Attributes{"class": "modal-actions"}) {
+				@neo.ButtonAttrs(
+					neo.ButtonOpts{Variant: neo.Set(neo.ButtonVariantGhost)},
+					templ.Attributes{"data-on:click": "$resetmodalopen=false"},
+				) {
+					Cancel
+				}
+				@neo.ButtonAttrs(
+					neo.ButtonOpts{Variant: neo.Set(neo.ButtonVariantDanger)},
+					templ.Attributes{
+						"data-on:click": action.App.Reset.POST(
+							NoEditorSignals,
+							action.WithBefore("$resetmodalopen=false"),
+						),
+					},
+				) {
+					Delete Change
+				}
+			}
+		}
+	</div>
+}
+
+// --- Generic ---
+
+// componentCopy renders a copy-to-clipboard button. Morpheus's
+// <neo-clipcopy> owns the clipboard write and the transient `copied`
+// state, so each instance stays independently scoped without signals.
+templ componentCopy(text string) {
+	@neo.ClipcopyAttrs(
+		neo.ClipcopyOpts{Value: neo.Set(text)},
+		templ.Attributes{"class": "copy-btn"},
+	) {
+		@neo.ButtonAttrs(
+			neo.ButtonOpts{
+				Variant:  neo.Set(neo.ButtonVariantSecondary),
+				Disabled: neo.Set(text == ""),
+			},
+			templ.Attributes{
+				"class":      "btn-icon",
+				"aria-label": "Copy to clipboard",
+			},
+		) {
+			<span data-neo-clipcopy-idle>
+				@iconCopy()
+			</span>
+			<span data-neo-clipcopy-copied>
+				@iconClipboardCheck()
+			</span>
+		}
+	}
+}
+
+templ componentLoadingDots() {
+	<div class="loading-dots">
+		<span></span>
+		<span></span>
+		<span></span>
+	</div>
+}
+
+// componentCardStack stacks the contents of a card body at a uniform gap.
+// Author it as the only child of neo.CardBody.
+templ componentCardStack() {
+	@neo.Layout(neo.LayoutOpts{
+		Direction: neo.Set(neo.Column),
+		Gap:       neo.Set(neo.GapMd),
+	}) {
+		{ children... }
+	}
+}
+
+// componentFieldStack stacks a field's label above its content, at the same
+// gap as an ICU message form's label above its editor.
+templ componentFieldStack() {
+	@neo.LayoutAttrs(
+		neo.LayoutOpts{
+			Direction: neo.Set(neo.Column),
+			Gap:       neo.Set(neo.GapSm),
+		},
+		templ.Attributes{"class": "field"},
+	) {
+		{ children... }
+	}
+}
+
+// --- Settings page ---
+// componentFontSection stacks a font section's controls above its preview.
+templ componentFontSection() {
+	@neo.LayoutAttrs(
+		neo.LayoutOpts{
+			Direction: neo.Set(neo.Column),
+			Gap:       neo.Set(neo.GapMd),
+		},
+		templ.Attributes{"class": "font-section"},
+	) {
+		{ children... }
+	}
+}
+
+// componentFontSectionControls puts the font and size pickers side by side,
+// each taking half the row and collapsing to a column on a narrow section.
+templ componentFontSectionControls() {
+	@neo.LayoutAttrs(
+		neo.LayoutOpts{
+			Direction: neo.Set(neo.Row),
+			Gap:       neo.Set(neo.GapSm),
+			Container: neo.Set(true),
+			Collapse:  neo.Set(neo.CollapseSm),
+		},
+		templ.Attributes{"class": "font-section-controls"},
+	) {
+		{ children... }
+	}
+}
+
+// componentFontPicker renders a font choice as a <neo-combobox>. Both the
+// listbox rows and the trigger face are rich: the sample sentence is set in
+// the font being offered, while the font's name sits underneath it in the
+// interface font so the list stays readable whatever the sample looks like.
+templ componentFontPicker(signalName, label, currentValue string, fonts []FontOption) {
+	@componentField(signalName, label) {
+		@neo.ComboboxAttrs(
+			neo.ComboboxOpts{
+				Value:             neo.Set(currentValue),
+				SearchPlaceholder: neo.Set("Search fonts…"),
+				PopoverFitContent: neo.Set(true),
+			},
+			templ.Attributes{
+				"class":           "font-picker",
+				"aria-labelledby": fieldLabelID(signalName),
+				// <neo-combobox> reports selection only through its own event.
+				"data-on:neo-combobox-change": action.PageSettings.SetPref.POST(
+					NoEditorSignals,
+					action.WithBefore(fmt.Sprintf("$%s=evt.detail.value", signalName)),
+				),
+			},
+		) {
+			for _, f := range fonts {
+				@neo.Option(neo.OptionOpts{Value: neo.Set(f.Value)}) {
+					// The class stays inside the marker, not on it: the kit
+					// hides [data-neo-option-trigger] in the list, and styling
+					// the marker itself would override that and render every
+					// row twice.
+					@neo.OptionTrigger() {
+						@componentFontSample(f)
+					}
+					@componentFontSample(f)
+				}
+			}
+		}
+	}
+}
+
+// componentFontSample is the two-line face shared by a font option's
+// listbox row and its trigger.
+templ componentFontSample(f FontOption) {
+	<span class="font-option">
+		<span class="font-option-preview" style={ fontFamilyStyle(f.Family) }>
+			{ f.Preview }
+		</span>
+		<span class="font-option-name">{ f.Label }</span>
+	</span>
+}
+
+// componentFontSizePicker renders a font-size choice as a <neo-combobox>,
+// mirroring componentFontPicker: the sample is set at the size being
+// offered, with the step's name underneath it at the interface size.
+templ componentFontSizePicker(signalName, label, currentValue string, sizes []FontSizeOption) {
+	@componentField(signalName, label) {
+		@neo.ComboboxAttrs(
+			neo.ComboboxOpts{
+				Value:             neo.Set(currentValue),
+				SearchPlaceholder: neo.Set("Search sizes…"),
+				PopoverFitContent: neo.Set(true),
+			},
+			templ.Attributes{
+				"class":           "font-picker",
+				"aria-labelledby": fieldLabelID(signalName),
+				"data-on:neo-combobox-change": action.PageSettings.SetPref.POST(
+					NoEditorSignals,
+					action.WithBefore(fmt.Sprintf("$%s=evt.detail.value", signalName)),
+				),
+			},
+		) {
+			for _, sz := range sizes {
+				@neo.Option(neo.OptionOpts{Value: neo.Set(sz.Value)}) {
+					@neo.OptionTrigger() {
+						@componentFontSizeSample(sz)
+					}
+					@componentFontSizeSample(sz)
+				}
+			}
+		}
+	}
+}
+
+// componentField stacks a visible label above a control. <neo-combobox>
+// is not a labelable element, so the control points at the label with
+// aria-labelledby rather than the label wrapping or targeting it.
+templ componentField(signalName, label string) {
+	@neo.Layout(neo.LayoutOpts{
+		Direction: neo.Set(neo.Column),
+		Gap:       neo.Set(neo.GapXs),
+	}) {
+		<span class="field-label" id={ fieldLabelID(signalName) }>{ label }</span>
+		{ children... }
+	}
+}
+
+// componentFontSizeSample is the two-line face shared by a size option's
+// listbox row and its trigger.
+templ componentFontSizeSample(sz FontSizeOption) {
+	<span class="font-option">
+		<span class="font-option-preview" style={ fontSizeStyle(sz) }>
+			{ sz.Preview }
+		</span>
+		<span class="font-option-name">{ sz.Label }</span>
+	</span>
+}
+
+// --- Dashboard ---
+templ componentCompletenessBar(completeness float64) {
+	<div class="locale-stats">
+		<div class="locale-stat-row">
+			<span>Completeness</span>
+			<strong>{ strfmt.Percent(completeness) }</strong>
+		</div>
+		<div class="locale-progress">
+			<div
+				class="locale-progress-bar"
+				style={ fmt.Sprintf("inline-size:%.1f%%", completeness*100) }
+			></div>
+		</div>
+	</div>
+}
+
+// componentStatLinkCard renders a whole card as one navigation target:
+// a styled anchor wrapping a <neo-card>, with the hover affordance
+// arrow in the corner. Children supply the card's header and body.
+templ componentStatLinkCard(hrefURL, extraClass string) {
+	<a href={ templ.SafeURL(hrefURL) } class={ "dashboard-stat-link " + extraClass }>
+		// The arrow lives outside the card: Morpheus spaces card slots with
+		// `[data-neo-card-inner] > * + *`, so an extra first child would push
+		// the header out of first position and give it a stray top margin.
+		// It is absolutely positioned against the link, which is relative.
+		<span class="stat-link-arrow">
+			@iconArrowUpRight()
+		</span>
+		@neo.Card(neo.CardOpts{}) {
+			{ children... }
+		}
+	</a>
+}
+
+// componentDomainStat renders one figure in a domain card's stat grid,
+// linking to the TIKs list filtered down to that figure.
+templ componentDomainStat(hrefURL, value, label string, icon templ.Component) {
+	<a href={ templ.SafeURL(hrefURL) } class="domain-stat">
+		<span class="stat-link-arrow">
+			@iconArrowUpRight()
+		</span>
+		<span class="domain-stat-value">{ value }</span>
+		<span class="domain-stat-label">
+			@icon
+			{ label }
+		</span>
+	</a>
+}
+
+templ componentDashboardCard(title, value, description string) {
+	@neo.Card(neo.CardOpts{}) {
+		@neo.CardHeader() {
+			<span class="dashboard-stat-value">{ value }</span>
+			<span class="dashboard-stat-label">{ title }</span>
+		}
+		@neo.CardBody() {
+			<p class="dashboard-stat-desc">{ description }</p>
+		}
+	}
+}
