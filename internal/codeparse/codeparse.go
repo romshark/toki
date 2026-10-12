@@ -159,8 +159,13 @@ func (p *Parser) Parse(
 		Catalogs:      sync.NewSlice[*Catalog](1),
 	}
 
-	bundlePkg := filepath.Base(bundlePkgPath)
-	pkgBundle := findBundlePkg(bundlePkg, pkgs)
+	// packages.Load runs go list in the current directory.
+	// Resolving against it yields the same path as the bundle's Dir.
+	bundleDir, err := filepath.Abs(bundlePkgPath)
+	if err != nil {
+		return nil, fmt.Errorf("resolving bundle package path: %w", err)
+	}
+	pkgBundle := findBundlePkg(bundleDir, pkgs)
 	if pkgBundle != nil {
 		log.Verbose("bundle detected", slog.String("directory", pkgBundle.Dir))
 		scan.TokiVersion = getConstantValue(pkgBundle, "TokiVersion")
@@ -188,14 +193,14 @@ func (p *Parser) Parse(
 		scan.Domains = domains
 	}
 
-	p.collectTexts(fset, pkgs, bundlePkg, pathPattern, trimpath, scan)
+	p.collectTexts(fset, pkgs, bundleDir, pathPattern, trimpath, scan)
 
 	return scan, nil
 }
 
-func findBundlePkg(bundlePkg string, pkgs []*packages.Package) *packages.Package {
+func findBundlePkg(bundleDir string, pkgs []*packages.Package) *packages.Package {
 	for _, pkg := range pkgs {
-		if isPkgBundle(bundlePkg, pkg) {
+		if isPkgBundle(bundleDir, pkg) {
 			return pkg
 		}
 	}
@@ -317,12 +322,12 @@ func IsMsgIncomplete(
 
 func (p *Parser) collectTexts(
 	fset *token.FileSet, pkgs []*packages.Package,
-	bundlePkg, pathPattern string, trimpath bool,
+	bundleDir, pathPattern string, trimpath bool,
 	scan *Scan,
 ) {
 	seenFiles := make(map[string]struct{})
 	for _, pkg := range pkgs {
-		if isPkgBundle(bundlePkg, pkg) {
+		if isPkgBundle(bundleDir, pkg) {
 			continue
 		}
 		for iFile, file := range pkg.Syntax {
@@ -834,16 +839,10 @@ func moduleDir(pkgs []*packages.Package) string {
 	return ""
 }
 
-func isPkgBundle(bundlePkg string, pkg *packages.Package) bool {
-	if pkg.Module == nil {
-		return false
-	}
-	if c, ok := strings.CutPrefix(pkg.Dir, pkg.Module.Dir); ok {
-		if len(c) > 1 && c[0] == '/' && strings.HasSuffix(c[1:], bundlePkg) {
-			return true
-		}
-	}
-	return false
+// isPkgBundle reports whether pkg is the bundle package or one of its test variants.
+// bundleDir must be absolute and clean, like the Dir reported by go list.
+func isPkgBundle(bundleDir string, pkg *packages.Package) bool {
+	return pkg.Dir == bundleDir
 }
 
 func mustTrimPath(basePattern, s string) string {

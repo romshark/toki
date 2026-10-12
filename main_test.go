@@ -633,6 +633,95 @@ func TestGenerateSameTIKDifferentDomains(t *testing.T) {
 	})
 }
 
+// TestGenerateSimilarlyNamedPackage verifies that a package whose path ends
+// in the bundle package name is scanned and isn't mistaken for the bundle.
+func TestGenerateSimilarlyNamedPackage(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, ModName)
+	_ = initBundle(t, dir, language.English, "tokibundle", io.Discard, io.Discard)
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/internal/mytokibundle"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				fmt.Println(mytokibundle.Greet(r))
+			}
+		`,
+		"internal/mytokibundle/mytokibundle.go": `
+			package mytokibundle
+			import "tstmod/tokibundle"
+			func Greet(r tokibundle.Reader) string { return r.String("hello") }
+		`,
+	})
+
+	runInDir(t, dir, func() {
+		args := []string{"toki", "generate"}
+		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		require.NoError(t, result.Err)
+		require.Zero(t, exitCode)
+	})
+
+	requireRunOutput(t, dir, ".", "hello")
+}
+
+// TestGenerateBundlesWithSameName verifies that -b selects the bundle package
+// by its path when several bundles in a module share a package name.
+func TestGenerateBundlesWithSameName(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, ModName)
+	_ = initBundle(t, dir, language.English, "app1/tokibundle", io.Discard, io.Discard)
+	_ = initBundle(t, dir, language.English, "app2/tokibundle", io.Discard, io.Discard)
+	writeFiles(t, dir, map[string]string{
+		"app1/main.go": `
+			package main
+			import "fmt"
+			import "tstmod/app1/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				fmt.Println(r.String("app one"))
+			}
+		`,
+		"app2/main.go": `
+			package main
+			import "fmt"
+			import "tstmod/app2/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				fmt.Println(r.String("app two"))
+			}
+		`,
+	})
+
+	runInDir(t, dir, func() {
+		for _, bundle := range []string{"app1/tokibundle", "app2/tokibundle"} {
+			args := []string{"toki", "generate", "-b", bundle}
+			result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+			require.NoError(t, result.Err, bundle)
+			require.Zero(t, exitCode, bundle)
+		}
+	})
+
+	requireRunOutput(t, dir, "./app1", "app one")
+	requireRunOutput(t, dir, "./app2", "app two")
+}
+
+// requireRunOutput runs the main package pkg in dir and requires it to print expect.
+func requireRunOutput(tb testing.TB, dir, pkg, expect string) {
+	tb.Helper()
+
+	cmd := exec.Command("go", "run", pkg)
+	cmd.Dir, cmd.Env = dir, osEnv()
+	out, err := cmd.CombinedOutput()
+	require.NoError(tb, err, "go run %s; output: %s", pkg, out)
+	require.Equal(tb, expect, strings.TrimSpace(string(out)))
+}
+
 type SourceError struct {
 	ExpectPosition string
 	ExpectErr      require.ErrorAssertionFunc
