@@ -33,7 +33,7 @@ func (w *Writer) writeFunc(id, icuMsg string, tokens []icumsg.Token) {
 func (w *Writer) writeExpr(endIndex int) {
 	if s := w.literalConcat(endIndex); s != "" {
 		w.println("_ = args")
-		w.printf("n, err = wrs(w, %q);\n", s)
+		w.printf("n, err = wrs(w, %q);\n", unescapeICULiteral(s))
 		w.println("if err != nil {return written, err}; written += n;")
 		return
 	}
@@ -264,8 +264,8 @@ func (w *Writer) writePluralOption(arg argName, offset uint64) {
 		t := w.t[w.i]
 		switch t.Type {
 		case icumsg.TokenTypeLiteral:
-			for s := range iterPluralLiteralParts(t.String(w.m, w.t)) {
-				if s == "#" {
+			for s, numberSign := range iterLiteralParts(t.String(w.m, w.t), true) {
+				if numberSign {
 					if offset != 0 {
 						w.printf(
 							"n, err = fmt.Fprintf(w, %q, subtract(args[%d], %d));\n",
@@ -282,7 +282,7 @@ func (w *Writer) writePluralOption(arg argName, offset uint64) {
 						continue
 					}
 				}
-				w.printf("n, err = wrs(w, %q);\n", unescapeICULiteral(s))
+				w.printf("n, err = wrs(w, %q);\n", s)
 				w.println("if err != nil {return written, err}; written += n;")
 			}
 			w.i++

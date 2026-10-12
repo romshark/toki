@@ -284,49 +284,61 @@ func isTokenArgStyle(t icumsg.TokenType) bool {
 	return t >= icumsg.TokenTypeArgStyleShort && t <= icumsg.TokenTypeArgStyleSkeleton
 }
 
-func iterPluralLiteralParts(s string) iter.Seq[string] {
-	return func(yield func(string) bool) {
-		for {
-			i := strings.IndexByte(s, '#')
-			if i == -1 {
-				if s != "" {
-					yield(s) // Yield last part.
+// iterLiteralParts yields the text of raw, the source of an ICU literal token.
+// Like icumsg, it follows ICU's DOUBLE_OPTIONAL apostrophe mode: a doubled
+// apostrophe is a literal apostrophe, and a single apostrophe starts quoted text
+// only before a syntax character (see startsQuote). Quoted text ends at the next
+// single apostrophe. Any other apostrophe is literal.
+// pluralStyle must be true only in plural and selectordinal options,
+// where each unquoted '#' yields "", true.
+func iterLiteralParts(raw string, pluralStyle bool) iter.Seq2[string, bool] {
+	return func(yield func(string, bool) bool) {
+		var b strings.Builder
+		inQuote := false
+		for i := 0; i < len(raw); i++ {
+			c := raw[i]
+			switch {
+			case c == '\'' && i+1 < len(raw) && raw[i+1] == '\'':
+				i++ // Write one of the two apostrophes.
+			case c == '\'' && inQuote:
+				inQuote = false
+				continue
+			case c == '\'' && i+1 < len(raw) && startsQuote(raw[i+1], pluralStyle):
+				inQuote = true
+				continue
+			case c == '#' && pluralStyle && !inQuote:
+				if b.Len() > 0 {
+					if !yield(b.String(), false) {
+						return
+					}
+					b.Reset()
 				}
-				return
-			}
-			if i > 0 {
-				if !yield(s[:i]) { // Yield part before #.
+				if !yield("", true) {
 					return
 				}
+				continue
 			}
-			if !yield("#") {
-				return
-			}
-			s = s[i+1:] // Continue after #.
+			b.WriteByte(c)
+		}
+		if b.Len() > 0 {
+			yield(b.String(), false)
 		}
 	}
 }
 
+// startsQuote reports whether an apostrophe before c starts quoted text.
+// '#' is a syntax character only in plural and selectordinal options.
+func startsQuote(c byte, pluralStyle bool) bool {
+	return c == '{' || c == '}' || (pluralStyle && c == '#')
+}
+
+// unescapeICULiteral returns the text of raw, the source of an ICU literal token
+// outside of plural and selectordinal options.
 func unescapeICULiteral(raw string) string {
 	var b strings.Builder
 	b.Grow(len(raw))
-	inQuote := false
-	for i := 0; i < len(raw); {
-		switch raw[i] {
-		case '\'':
-			// doubled quote to single quote
-			if i+1 < len(raw) && raw[i+1] == '\'' {
-				b.WriteByte('\'')
-				i += 2
-				continue
-			}
-			// toggle quoted section (ICU rule)
-			inQuote = !inQuote
-			i++
-		default:
-			b.WriteByte(raw[i])
-			i++
-		}
+	for s := range iterLiteralParts(raw, false) {
+		b.WriteString(s)
 	}
 	return b.String()
 }

@@ -248,6 +248,77 @@ func TestGenerateAndRunNoTranslationFallback(t *testing.T) {
 	require.Equal(t, expect, actual)
 }
 
+// TestGenerateAndRunApostrophes makes sure apostrophes in catalogs
+// edited by translators are unescaped like ICU does.
+func TestGenerateAndRunApostrophes(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, ModName)
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				fmt.Println(r.String("apostrophe"))
+				fmt.Println(r.String("doubled apostrophe"))
+				fmt.Println(r.String("quoted braces"))
+				fmt.Println(r.String("number sign"))
+				fmt.Println(r.String("plural {# files}", 2))
+				fmt.Println(r.String("select {text}", "a"))
+			}
+		`,
+	})
+
+	generate := func() {
+		runInDir(t, dir, func() {
+			args := []string{"toki", "generate", "-l=en"}
+			result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+			require.NoError(t, result.Err)
+			require.Zero(t, exitCode)
+		})
+	}
+	generate()
+
+	catalog := filepath.Join(dir, "tokibundle", "catalog_en.arb")
+	contents, err := os.ReadFile(catalog)
+	require.NoError(t, err)
+	patched := string(contents)
+	for _, r := range [...]struct{ old, new string }{
+		{"apostrophe", "He's here"},
+		{"doubled apostrophe", "It''s fine"},
+		{"quoted braces", "'{'braces'}'"},
+		{"number sign", "Use '#' here"},
+		{
+			"plural {var0, plural, other {# files}}",
+			"{var0, plural, other {# files, '#'1, it's ok}}",
+		},
+		{"select {var0}", "{var0, select, a {He''s} other {They''re}}"},
+	} {
+		before := patched
+		patched = strings.Replace(patched, `"`+r.old+`"`, `"`+r.new+`"`, 1)
+		require.NotEqual(t, before, patched, "%q not found in %s", r.old, catalog)
+	}
+	require.NoError(t, os.WriteFile(catalog, []byte(patched), 0o644))
+	generate()
+
+	cmd := exec.Command("go", "run", ".")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %q", string(out))
+	expect := stripLeadingSpaces(strings.TrimSpace(`
+		He's here
+		It's fine
+		{braces}
+		Use '#' here
+		2 files, #1, it's ok
+		He's
+	`))
+	actual := stripLeadingSpaces(strings.TrimSpace(string(out)))
+	require.Equal(t, expect, actual)
+}
+
 // TestGenerateCrossCompile makes sure the generated bundle
 // compiles for targets where int and uint are 32 bits wide.
 func TestGenerateCrossCompile(t *testing.T) {
