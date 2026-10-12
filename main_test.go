@@ -543,6 +543,32 @@ func TestGenerate(t *testing.T) {
 			},
 			args: []string{"-l=en"},
 		},
+		{
+			name: "require completeness with empty messages of removed TIK",
+			setup: Setup{
+				InitGoMod: true, InitBundle: true,
+				Files: map[string]string{
+					"main.go": `
+						package main
+						import "tstmod/tokibundle"
+						func main() { print(tokibundle.Default().String("translated")) }
+					`,
+				},
+				FilesAfterInit: map[string]string{
+					"tokibundle/catalog_en.arb": `{
+						"@@locale": "en",
+						"msg9d21e6c2519b8be9": "translated",
+						"msg0123456789abcdef": ""
+					}`,
+					"tokibundle/catalog_de.arb": `{
+						"@@locale": "de",
+						"msg9d21e6c2519b8be9": "übersetzt",
+						"msg0123456789abcdef": ""
+					}`,
+				},
+			},
+			args: []string{"-require-complete"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -923,6 +949,75 @@ func TestGenerateErr(t *testing.T) {
 			expectErr: func(tt require.TestingT, err error, i ...any) {
 				require.ErrorIs(tt, err, app.ErrBundleIncomplete)
 				require.Equal(t, "bundle contains incomplete catalogs", err.Error())
+			},
+		},
+		{
+			name: "require completeness with empty translation",
+			setup: Setup{
+				InitGoMod: true, InitBundle: true,
+				Files: map[string]string{
+					"main.go": `
+						package main
+						import "tstmod/tokibundle"
+						func main() { print(tokibundle.Default().String("translated")) }
+					`,
+				},
+				FilesAfterInit: map[string]string{
+					"tokibundle/catalog_de.arb": `{
+						"@@locale": "de",
+						"msg9d21e6c2519b8be9": ""
+					}`,
+				},
+			},
+			args:           []string{"-require-complete"},
+			expectExitCode: 1,
+			expectErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorIs(tt, err, app.ErrBundleIncomplete)
+			},
+		},
+		{
+			name: "require completeness with empty native message",
+			setup: Setup{
+				InitGoMod: true, InitBundle: true,
+				Files: map[string]string{
+					"main.go": `
+						package main
+						import "tstmod/tokibundle"
+						func main() { print(tokibundle.Default().String("translated")) }
+					`,
+				},
+				FilesAfterInit: map[string]string{
+					"tokibundle/catalog_en.arb": `{
+						"@@locale": "en",
+						"msg9d21e6c2519b8be9": ""
+					}`,
+				},
+			},
+			args:           []string{"-require-complete"},
+			expectExitCode: 1,
+			expectErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorIs(tt, err, app.ErrBundleIncomplete)
+			},
+		},
+		{
+			name: "require completeness with message missing in catalog",
+			setup: Setup{
+				InitGoMod: true, InitBundle: true,
+				Files: map[string]string{
+					"main.go": `
+						package main
+						import "tstmod/tokibundle"
+						func main() { print(tokibundle.Default().String("translated")) }
+					`,
+				},
+				FilesAfterInit: map[string]string{
+					"tokibundle/catalog_de.arb": `{"@@locale": "de"}`,
+				},
+			},
+			args:           []string{"-require-complete"},
+			expectExitCode: 1,
+			expectErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorIs(tt, err, app.ErrBundleIncomplete)
 			},
 		},
 	}

@@ -299,6 +299,9 @@ func (p *Parser) CollectARBFiles(bundlePkgDir string, scan *Scan) error {
 func IsMsgIncomplete(
 	scan *Scan, arbFile *arb.File, fileName string, msg *arb.Message,
 ) bool {
+	if msg.ICUMessage == "" {
+		return true // The bundle treats empty messages as missing translations.
+	}
 	incomplete := false
 	_, _ = icumsg.Analyze(
 		arbFile.Locale, msg.ICUMessage, msg.ICUMessageTokens,

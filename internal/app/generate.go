@@ -236,6 +236,7 @@ func (g *Generate) Run(
 				Context:          newMsg.Context,
 				CustomAttributes: newMsg.CustomAttributes,
 			}
+			catalog.MessagesIncomplete.Add(1)
 		}
 	}
 
@@ -250,9 +251,16 @@ func (g *Generate) Run(
 			slog.String("id", text.IDHash),
 			slog.String("pos", log.FmtPos(text.Position)),
 		)
-		delete(nativeARB.Messages, id)
-		// Delete message in all other catalogs too.
+		// Delete the message in all catalogs, including the native one.
 		for c := range scan.Catalogs.Seq() {
+			msg, ok := c.ARB.Messages[id]
+			if !ok {
+				continue
+			}
+			// Undo the count from reading the catalog.
+			if codeparse.IsMsgIncomplete(scan, c.ARB, c.ARBFilePath, &msg) {
+				c.MessagesIncomplete.Add(-1)
+			}
 			delete(c.ARB.Messages, id)
 		}
 		result.RemovedTexts = append(result.RemovedTexts, text)
