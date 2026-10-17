@@ -36,6 +36,7 @@ var (
 	ErrUnsupportedSelectOption    = errors.New("unsupported select option")
 	ErrCantUnpackCompositeLiteral = errors.New("can't unpack composite literal")
 	ErrTIKCollision               = errors.New("TIK collision")
+	ErrTIKInMultipleDomains       = errors.New("TIK used in multiple domains")
 )
 
 type Statistics struct {
@@ -329,6 +330,7 @@ func (p *Parser) collectTexts(
 	scan *Scan,
 ) {
 	seenFiles := make(map[string]struct{})
+	textIndexByTIK := make(map[string]int)
 	for _, pkg := range pkgs {
 		if isPkgBundle(bundleDir, pkg) {
 			continue
@@ -422,6 +424,17 @@ func (p *Parser) collectTexts(
 							}
 							return nil
 						}
+						// Each domain gives the TIK a different ID, but the bundle
+						// looks up translations by TIK and can't tell them apart.
+						if existingIdx, ok := textIndexByTIK[tikVal.Raw]; ok {
+							existing := scan.Texts.At(existingIdx)
+							scan.SourceErrors.Append(SourceError{
+								Position: posCall,
+								Err: fmt.Errorf("%w: %q (also at %s)",
+									ErrTIKInMultipleDomains, tikVal.Raw, existing.Position),
+							})
+							return nil
+						}
 						index := scan.Texts.Append(Text{
 							Position: posCall,
 							IDHash:   id,
@@ -430,6 +443,7 @@ func (p *Parser) collectTexts(
 							Domain:   fileDomain,
 						})
 						s[id] = index
+						textIndexByTIK[tikVal.Raw] = index
 						return nil
 					})
 
