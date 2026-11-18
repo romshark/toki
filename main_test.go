@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	editorapp "github.com/romshark/toki/editor/app"
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/cli"
 
@@ -320,6 +321,63 @@ func TestGenerateAndRunSelectOrdinal(t *testing.T) {
 	`))
 	actual := stripLeadingSpaces(strings.TrimSpace(string(out)))
 	require.Equal(t, expect, actual)
+}
+
+// TestApplyChangesAndBuild makes sure editor builds render edited
+// messages and leave all files untouched when an edit isn't valid ICU.
+func TestApplyChangesAndBuild(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, "tstmod")
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.German)
+				fmt.Println(r.String("Hello {text}!", "Welt"))
+			}
+		`,
+	})
+
+	runInDir(t, dir, func() {
+		args := []string{"toki", "generate", "-l=en", "-t=de"}
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		require.NoError(t, result.Err)
+		require.Zero(t, exitCode)
+	})
+
+	f, err := os.Open(filepath.Join(dir, "tokibundle", "catalog_de.arb"))
+	require.NoError(t, err)
+	catalog, err := arb.NewDecoder().Decode(f)
+	require.NoError(t, f.Close())
+	require.NoError(t, err)
+	require.Len(t, catalog.Messages, 1)
+	var id string
+	for k := range catalog.Messages {
+		id = k
+	}
+
+	build := func(message string) error {
+		_, err := cli.ApplyChangesAndBuild(
+			osEnv(), dir, "tokibundle", language.English,
+			[]editorapp.BundleEdit{{Locale: "de", TIKID: id, Message: message}},
+		)
+		return err
+	}
+
+	ss := snapshotFiles(t, dir)
+	require.Error(t, build("Hallo {var0!"))
+	ss.RequireUnchanged(t, dir)
+
+	require.NoError(t, build("Hallo {var0}!"))
+
+	cmd := exec.Command("go", "run", ".")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %q", string(out))
+	require.Equal(t, "Hallo Welt!", strings.TrimSpace(string(out)))
 }
 
 // TestGenerateCrossCompile makes sure the generated bundle

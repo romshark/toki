@@ -594,7 +594,8 @@ func WriteARBFiles(bundlePkgPath string, catalogs *sync.Slice[*codeparse.Catalog
 // updated .arb files to disk, cleans stale generated Go, re-parses the
 // source (picking up the new ARB content), and regenerates the Go bundle.
 // Returns the post-build scan so callers (the editor) can refresh their
-// in-memory state.
+// in-memory state. Returns an error without touching any files
+// if an edit isn't a valid ICU message.
 //
 // modDir is the absolute path to the Go module root.
 // bundlePkgPath is the bundle package path relative to modDir (e.g. "tokibundle").
@@ -603,6 +604,21 @@ func ApplyChangesAndBuild(
 	env []string, modDir, bundlePkgPath string, defaultLocale language.Tag,
 	edits []editorapp.BundleEdit,
 ) (*codeparse.Scan, error) {
+	// Generation renders messages from their tokens, not their text.
+	var tokenizer icumsg.Tokenizer
+	editTokens := make([][]icumsg.Token, len(edits))
+	for i, e := range edits {
+		locale, err := language.Parse(e.Locale)
+		if err != nil {
+			return nil, fmt.Errorf("parsing locale of edit %q: %w", e.TIKID, err)
+		}
+		editTokens[i], err = tokenizer.Tokenize(locale, nil, e.Message)
+		if err != nil {
+			return nil, fmt.Errorf("parsing edited message %q (%s): %w",
+				e.TIKID, e.Locale, err)
+		}
+	}
+
 	absBundlePkg := filepath.Join(modDir, bundlePkgPath)
 
 	// Clean stale generated Go so codeparse can succeed.
@@ -634,11 +650,12 @@ func ApplyChangesAndBuild(
 			AbsolutePath: c.ARBFilePath,
 		}
 	}
-	for _, e := range edits {
+	for i, e := range edits {
 		af := arbFiles[e.Locale]
 		af.Changed = true
 		msg := af.Messages[e.TIKID]
 		msg.ICUMessage = e.Message
+		msg.ICUMessageTokens = editTokens[i]
 		af.Messages[e.TIKID] = msg
 		arbFiles[e.Locale] = af
 	}
