@@ -17,9 +17,9 @@ type Result struct {
 	Config       *config.ConfigGenerate
 	Start        time.Time
 	Scan         *codeparse.Scan
-	NewTexts     []codeparse.Text
-	RemovedTexts []codeparse.Text
-	Err          error
+	NewTexts   []codeparse.Text
+	RemovedIDs []string // IDs of the TIKs removed from the source.
+	Err        error
 }
 
 type ResultJSONCatalog struct {
@@ -118,7 +118,7 @@ func (r Result) Print() {
 			slog.Int("tiks.total", r.Scan.Texts.Len()),
 			slog.Int("tiks.unique", r.Scan.TextIndexByID.Len()),
 			slog.Int("tiks.new", len(r.NewTexts)),
-			slog.Int("tiks.removed", len(r.RemovedTexts)),
+			slog.Int("tiks.removed", len(r.RemovedIDs)),
 			slog.Int64("scan.files", r.Scan.FilesTraversed.Load()),
 			slog.String("scan.duration", time.Since(r.Start).String()),
 			slog.Int64("catalogs", int64(r.Scan.Catalogs.Len())),

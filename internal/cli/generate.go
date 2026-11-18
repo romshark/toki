@@ -266,22 +266,21 @@ func (g *Generate) Run(
 	}
 
 	// Delete unused messages.
-	for id := range nativeARB.Messages {
-		index, ok := scan.TextIndexByID.Get(id)
-		if ok {
+	for id, msg := range nativeARB.Messages {
+		if _, ok := scan.TextIndexByID.Get(id); ok {
 			continue
 		}
-		text := scan.Texts.At(index)
+		// The TIK is gone from the source, which leaves only its catalog entry.
 		log.Verbose("unused TIK",
-			slog.String("id", text.IDHash),
-			slog.String("pos", log.FmtPos(text.Position)),
+			slog.String("id", id),
+			slog.String("message", msg.ICUMessage),
 		)
 		delete(nativeARB.Messages, id)
 		// Delete message in all other catalogs too.
 		for c := range scan.Catalogs.Seq() {
 			delete(c.ARB.Messages, id)
 		}
-		result.RemovedTexts = append(result.RemovedTexts, text)
+		result.RemovedIDs = append(result.RemovedIDs, id)
 	}
 
 	// (Re-)Generate .arb files.

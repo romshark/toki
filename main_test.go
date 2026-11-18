@@ -586,6 +586,39 @@ func TestGenerate(t *testing.T) {
 			},
 		},
 		{
+			name: "remove last TIK",
+			setup: Setup{
+				InitGoMod: true, InitBundle: true,
+				Files: map[string]string{
+					"main.go": `
+						package main
+						import "fmt"
+						import "tstmod/tokibundle"
+						import "golang.org/x/text/language"
+						func main() {
+							r, _ := tokibundle.Match(language.English)
+							fmt.Println(r.String("removed later"))
+						}
+					`,
+				},
+				FilesAfterInit: map[string]string{
+					"main.go": `
+						package main
+						func main() {}
+					`,
+				},
+			},
+			expectFiles: map[string]string{
+				"tokibundle/catalog_en.arb": fmt.Sprintf(`{
+					"@@locale": "en",
+					"@@last_modified": %q,
+					"@@x-generator": "github.com/romshark/toki",
+					"@@x-generator-version": %q
+				}`,
+					TimeNow.Format(time.RFC3339), cli.Version),
+			},
+		},
+		{
 			name: "same TIK at multiple call sites",
 			setup: Setup{
 				InitGoMod: true,
