@@ -55,6 +55,10 @@ func TestGenerateAndRun(t *testing.T) {
 				_, _ = r.Write(os.Stdout, "write to stdout writer")
 
 				fmt.Println(r.String("text: {text}", "something"))
+				fmt.Println(r.String(
+					"texts: {text}|{text}|{text}|{text}|{text}|{text}|{text}|{text}|{text}|{text}|{text}",
+					"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+				))
 
 				fmt.Println(r.String("number: {number}", 3.1415912))
 				fmt.Println(r.String("number: {number}", float64(10.1000)))
@@ -104,6 +108,7 @@ func TestGenerateAndRun(t *testing.T) {
 		just text
 		It's okay!
 		write to stdout writertext: something
+		texts: 0|1|2|3|4|5|6|7|8|9|10
 		number: 3.1415912
 		number: 10.1
 		number: 123
