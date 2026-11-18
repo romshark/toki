@@ -50,9 +50,9 @@ func (w *Writer) writeExpr(endIndex int) {
 			w.i++ // Advance.
 		case icumsg.TokenTypeSimpleArg:
 			w.writeSimpleArg()
-		case icumsg.TokenTypePlural, icumsg.TokenTypeSelectOrdinal:
+		case icumsg.TokenTypePlural:
 			w.writePlural(false)
-		case icumsg.TokenTypeArgTypeOrdinal:
+		case icumsg.TokenTypeSelectOrdinal:
 			w.writePlural(true)
 		case icumsg.TokenTypeSelect:
 			w.writeSelect()

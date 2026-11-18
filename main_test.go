@@ -248,6 +248,75 @@ func TestGenerateAndRunNoTranslationFallback(t *testing.T) {
 	require.Equal(t, expect, actual)
 }
 
+// TestGenerateAndRunSelectOrdinal makes sure selectordinal messages
+// pick their option by the locale's ordinal plural rules.
+func TestGenerateAndRunSelectOrdinal(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, "tstmod")
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				for _, n := range []int{1, 2, 3, 4, 11, 12, 13, 21, 22, 23} {
+					fmt.Println(r.String("You finished {ordinal}!", n))
+				}
+			}
+		`,
+	})
+
+	generate := func() {
+		runInDir(t, dir, func() {
+			args := []string{"toki", "generate", "-l=en"}
+			result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+			require.NoError(t, result.Err)
+			require.Zero(t, exitCode)
+		})
+	}
+	generate()
+
+	// Add the English ordinal options the TIK can't produce.
+	catalogPath := filepath.Join(dir, "tokibundle", "catalog_en.arb")
+	f, err := os.Open(catalogPath)
+	require.NoError(t, err)
+	catalog, err := arb.NewDecoder().Decode(f)
+	require.NoError(t, f.Close())
+	require.NoError(t, err)
+	require.Len(t, catalog.Messages, 1)
+	for id, msg := range catalog.Messages {
+		msg.ICUMessage = "{var0, selectordinal, " +
+			"one {You finished #st!} two {You finished #nd!} " +
+			"few {You finished #rd!} other {You finished #th!}}"
+		catalog.Messages[id] = msg
+	}
+	var buf bytes.Buffer
+	require.NoError(t, arb.Encode(&buf, catalog, "\t"))
+	require.NoError(t, os.WriteFile(catalogPath, buf.Bytes(), 0o644))
+	generate()
+
+	cmd := exec.Command("go", "run", ".")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %q", string(out))
+	expect := stripLeadingSpaces(strings.TrimSpace(`
+		You finished 1st!
+		You finished 2nd!
+		You finished 3rd!
+		You finished 4th!
+		You finished 11th!
+		You finished 12th!
+		You finished 13th!
+		You finished 21st!
+		You finished 22nd!
+		You finished 23rd!
+	`))
+	actual := stripLeadingSpaces(strings.TrimSpace(string(out)))
+	require.Equal(t, expect, actual)
+}
+
 // TestGenerateCrossCompile makes sure the generated bundle
 // compiles for targets where int and uint are 32 bits wide.
 func TestGenerateCrossCompile(t *testing.T) {
