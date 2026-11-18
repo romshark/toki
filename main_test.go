@@ -274,34 +274,14 @@ func TestGenerateAndRunSelectOrdinal(t *testing.T) {
 		`,
 	})
 
-	generate := func() {
-		runInDir(t, dir, func() {
-			args := []string{"toki", "generate", "-l=en"}
-			result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
-			require.NoError(t, result.Err)
-			require.Zero(t, exitCode)
-		})
-	}
-	generate()
+	_ = initBundle(t, dir, language.English, "tokibundle", io.Discard, io.Discard)
 
 	// Add the English ordinal options the TIK can't produce.
-	catalogPath := filepath.Join(dir, "tokibundle", "catalog_en.arb")
-	f, err := os.Open(catalogPath)
-	require.NoError(t, err)
-	catalog, err := arb.NewDecoder().Decode(f)
-	require.NoError(t, f.Close())
-	require.NoError(t, err)
-	require.Len(t, catalog.Messages, 1)
-	for id, msg := range catalog.Messages {
-		msg.ICUMessage = "{var0, selectordinal, " +
-			"one {You finished #st!} two {You finished #nd!} " +
-			"few {You finished #rd!} other {You finished #th!}}"
-		catalog.Messages[id] = msg
-	}
-	var buf bytes.Buffer
-	require.NoError(t, arb.Encode(&buf, catalog, "\t"))
-	require.NoError(t, os.WriteFile(catalogPath, buf.Bytes(), 0o644))
-	generate()
+	setOnlyMessage(t, filepath.Join(dir, "tokibundle", "catalog_en.arb"),
+		"{var0, selectordinal, "+
+			"one {You finished #st!} two {You finished #nd!} "+
+			"few {You finished #rd!} other {You finished #th!}}")
+	_ = initBundle(t, dir, language.English, "tokibundle", io.Discard, io.Discard)
 
 	cmd := exec.Command("go", "run", ".")
 	cmd.Dir = dir
@@ -318,6 +298,47 @@ func TestGenerateAndRunSelectOrdinal(t *testing.T) {
 		You finished 21st!
 		You finished 22nd!
 		You finished 23rd!
+	`))
+	actual := stripLeadingSpaces(strings.TrimSpace(string(out)))
+	require.Equal(t, expect, actual)
+}
+
+// TestGenerateAndRunPluralExactAndOffset makes sure plurals match =n options
+// against the argument and pick the plural rule for the argument minus the offset.
+func TestGenerateAndRunPluralExactAndOffset(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, "tstmod")
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				for _, n := range []int{0, 1, 2, 3} {
+					fmt.Println(r.String("{# people} liked this", n))
+				}
+			}
+		`,
+	})
+
+	_ = initBundle(t, dir, language.English, "tokibundle", io.Discard, io.Discard)
+	setOnlyMessage(t, filepath.Join(dir, "tokibundle", "catalog_en.arb"),
+		"{var0, plural, offset:1 "+
+			"=0 {Nobody liked this} =1 {You liked this} "+
+			"one {You and # other liked this} other {You and # others liked this}}")
+	_ = initBundle(t, dir, language.English, "tokibundle", io.Discard, io.Discard)
+
+	cmd := exec.Command("go", "run", ".")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %q", string(out))
+	expect := stripLeadingSpaces(strings.TrimSpace(`
+		Nobody liked this
+		You liked this
+		You and 1 other liked this
+		You and 2 others liked this
 	`))
 	actual := stripLeadingSpaces(strings.TrimSpace(string(out)))
 	require.Equal(t, expect, actual)
@@ -1110,6 +1131,24 @@ func writeFiles(tb testing.TB, dir string, files map[string]string) {
 		err = os.WriteFile(path, contents, 0o644)
 		require.NoError(tb, err)
 	}
+}
+
+// setOnlyMessage sets the ICU message of the only message in the catalog file at path.
+func setOnlyMessage(tb testing.TB, path, icuMessage string) {
+	tb.Helper()
+	f, err := os.Open(path)
+	require.NoError(tb, err)
+	catalog, err := arb.NewDecoder().Decode(f)
+	require.NoError(tb, f.Close())
+	require.NoError(tb, err)
+	require.Len(tb, catalog.Messages, 1)
+	for id, msg := range catalog.Messages {
+		msg.ICUMessage = icuMessage
+		catalog.Messages[id] = msg
+	}
+	var buf bytes.Buffer
+	require.NoError(tb, arb.Encode(&buf, catalog, "\t"))
+	require.NoError(tb, os.WriteFile(path, buf.Bytes(), 0o644))
 }
 
 type Setup struct {

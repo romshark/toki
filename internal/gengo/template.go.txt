@@ -61,100 +61,59 @@ const (
 	maxUint53 uint64 = 1 << 53
 )
 
-func pluralRuleCardinal(t locales.Translator, quantity any) (locales.PluralRule) {
-	var q float64
-	switch n := quantity.(type) {
+// pluralQuantity converts a plural argument to float64.
+// ok is false for non-numeric arguments and for integers
+// beyond ±2^53, which float64 can't hold without loss.
+func pluralQuantity(v any) (q float64, ok bool) {
+	switch n := v.(type) {
 	case uint:
-		if uint64(n) >= maxUint53 {
-			return locales.PluralRuleOther // Lossy conversion.
-		}
-		q = float64(n)
+		return float64(n), uint64(n) < maxUint53
 	case uint8:
-		q = float64(n)
+		return float64(n), true
 	case uint16:
-		q = float64(n)
+		return float64(n), true
 	case uint32:
-		q = float64(n)
+		return float64(n), true
 	case uint64:
-		if n >= maxUint53 {
-			return locales.PluralRuleOther // Lossy conversion.
-		}
-		q = float64(n)
+		return float64(n), n < maxUint53
 	case int:
-		if int64(n) >= maxInt53 || int64(n) <= minInt53 {
-			return locales.PluralRuleOther // Lossy conversion.
-		}
-		q = float64(n)
+		return float64(n), int64(n) < maxInt53 && int64(n) > minInt53
 	case int8:
-		q = float64(n)
+		return float64(n), true
 	case int16:
-		q = float64(n)
+		return float64(n), true
 	case int32:
-		q = float64(n)
+		return float64(n), true
 	case int64:
-		if n >= maxInt53 || n <= minInt53 {
-			return locales.PluralRuleOther // Lossy conversion.
-		}
-		q = float64(n)
+		return float64(n), n < maxInt53 && n > minInt53
 	case float32:
-		q = float64(n)
+		return float64(n), true
 	case float64:
-		q = float64(n)
-	default:
-		// Incorrect input type, fallback to other rule.
-		return locales.PluralRuleOther
+		return n, true
 	}
-	return t.CardinalPluralRule(float64(q), 0)
+	return 0, false
 }
 
-func pluralRuleOrdinal(t locales.Translator, quantity any) (locales.PluralRule) {
-	var q float64
-	switch n := quantity.(type) {
-	case uint:
-		if uint64(n) >= maxUint53 {
-			// Lossy conversion.
-			return locales.PluralRuleOther
-		}
-		q = float64(n)
-	case uint8:
-		q = float64(n)
-	case uint16:
-		q = float64(n)
-	case uint32:
-		q = float64(n)
-	case uint64:
-		if n >= maxUint53 {
-			// Lossy conversion.
-			return locales.PluralRuleOther
-		}
-		q = float64(n)
-	case int:
-		if int64(n) >= maxInt53 || int64(n) <= minInt53 {
-			// Lossy conversion.
-			return locales.PluralRuleOther
-		}
-		q = float64(n)
-	case int8:
-		q = float64(n)
-	case int16:
-		q = float64(n)
-	case int32:
-		q = float64(n)
-	case int64:
-		if n >= maxInt53 || n <= minInt53 {
-			// Lossy conversion.
-			return locales.PluralRuleOther
-		}
-		q = float64(n)
-	case float32:
-		q = float64(n)
-	case float64:
-		q = float64(n)
-	default:
-		// Incorrect input type, fallback to default form.
+func pluralRuleCardinal(t locales.Translator, quantity any) locales.PluralRule {
+	q, ok := pluralQuantity(quantity)
+	if !ok {
 		return locales.PluralRuleOther
 	}
-	return t.OrdinalPluralRule(float64(q), 0)
+	return t.CardinalPluralRule(q, 0)
+}
+
+func pluralRuleOrdinal(t locales.Translator, quantity any) locales.PluralRule {
+	q, ok := pluralQuantity(quantity)
+	if !ok {
+		return locales.PluralRuleOther
+	}
+	return t.OrdinalPluralRule(q, 0)
+}
+
+// pluralExact reports whether quantity equals the value of an =n option.
+func pluralExact(quantity any, value float64) bool {
+	q, ok := pluralQuantity(quantity)
+	return ok && q == value
 }
 
 // amount is uint64 because the generator emits plural offsets as untyped
@@ -194,6 +153,7 @@ func subtract(number any, amount uint64) any {
 var (
 	_ = pluralRuleCardinal(nil, maxInt53)
 	_ = pluralRuleOrdinal(nil, maxInt53)
+	_ = pluralExact(0, 0)
 	_ = subtract(0, 0)
 	_, _ = sv(nil)
 )
