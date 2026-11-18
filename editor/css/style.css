@@ -81,46 +81,11 @@ body {
 	font-family: var(--font-ui);
 }
 
-/* Morpheus v0.1.0's component defaults hardcode light values (#ffffff,
-   #111827, black alphas) instead of consuming the --btn-* tokens that its own
-   theme-default.css switches per colour scheme. Bind the component knobs to
-   the themed tokens so default controls — buttons, and the text/textarea
-   fields that chain off --neo-button-* — follow the active theme. */
+/* Morpheus mixes the secondary background and hover overlays from --page-fg
+   but keeps a black active overlay, which darkens a pressed secondary button
+   on a dark page. Mix it from --page-fg too, a step above the hover. */
 :root {
-	--neo-button-bg: var(--btn-bg);
-	--neo-button-color: var(--btn-fg);
-	--neo-button-border-color: var(--btn-border);
-	--neo-button-hover-bg: var(--btn-hover-bg);
-
-	/* The selected listbox row defaults to the popover background as its
-	   text colour, which on a dark popover renders dark-on-dark. Use the
-	   themed accent pair, which inverts correctly in both schemes. */
-	--neo-select-option-selected-bg: var(--accent);
-	--neo-select-option-selected-color: var(--accent-fg);
-
-	/* Morpheus themes the popover from a bare `@media (prefers-color-scheme:
-	   dark) { :root { … } }` block with no .light guard, so picking Light
-	   while the OS is dark leaves popovers dark on a light page. Drive them
-	   from the theme tokens, which honour the explicit choice. */
-	--neo-popover-bg: var(--btn-bg);
-	--neo-popover-color: var(--page-fg);
-	--neo-popover-border-color: var(--btn-border);
-}
-
-/* The secondary tokens are alpha overlays with no dark counterpart, which
-   renders secondary badges and buttons near-invisible on a dark page. */
-:root.dark {
-	--neo-button-secondary-bg: rgba(255, 255, 255, 0.08);
-	--neo-button-secondary-hover-bg: rgba(255, 255, 255, 0.14);
-	--neo-button-secondary-active-bg: rgba(255, 255, 255, 0.2);
-}
-
-@media (prefers-color-scheme: dark) {
-	:root:not(.light):not(.dark) {
-		--neo-button-secondary-bg: rgba(255, 255, 255, 0.08);
-		--neo-button-secondary-hover-bg: rgba(255, 255, 255, 0.14);
-		--neo-button-secondary-active-bg: rgba(255, 255, 255, 0.2);
-	}
+	--neo-button-secondary-active-bg: color-mix(in srgb, var(--page-fg) 20%, transparent);
 }
 
 /* Changed accent color */

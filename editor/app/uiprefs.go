@@ -207,6 +207,11 @@ func applyUIPrefsScript(p UIPrefs) string {
 	script.WriteString("document.documentElement.classList.toggle('dark',")
 	script.WriteString(p.IsDark())
 	script.WriteString(");")
+	// theme-default.css applies the OS dark preference to a root without
+	// either class. An explicit light theme sets "light", as the head script
+	// does on page load.
+	fmt.Fprintf(&script, "document.documentElement.classList.toggle('light',%t);",
+		p.Theme == "light")
 	writeRootStyleScript(&script, "--font-ui", p.UIFontFamily())
 	writeRootStyleScript(&script, "--font-editor", p.EditorFontFamily())
 	writeRootStyleScript(&script, "--font-size-ui", p.UIFontSizeCSS())

@@ -33,7 +33,7 @@ func (PageOffline) GET(r *http.Request) (body datapages.Component, err error) {
 ```go
 opts := []datapages.ServerOption{
 	// Self-host Datastar: the CDN is unreachable offline.
-	datapages.WithDatastarJS(assets.Path("datastar.js")),
+	datapages.WithDatastarJS(assets.Path("datastar-1.0.5.js")),
 	datapagesgen.WithOffline(app.OfflineConfig()),
 }
 ```
@@ -51,7 +51,7 @@ func OfflineConfig() offline.Config {
 		WorkerVersion: OfflineWorkerVersion,
 		// Precache the files required to render cached pages offline.
 		Assets: []string{
-			assets.Path("style.css"), assets.Path("datastar.js"),
+			assets.Path("style.css"), assets.Path("datastar-1.0.5.js"),
 		},
 	}
 }
@@ -78,9 +78,9 @@ Style offline state in CSS, no Go code:
 .is-offline [data-needs-network] { opacity: .5; pointer-events: none }
 ```
 
-Register a compressing middleware before `WithOffline`. Middleware runs in the order it is given, and the offline middleware rewrites the HTML it receives. A response that already carries a `Content-Encoding` passes through unchanged, which leaves the page without the worker registration.
+Datapages compresses after `WithOffline`, so compressed pages keep the worker registration. Put a custom compressing middleware before `WithOffline`. An already encoded response passes through `WithOffline` unchanged and gets no worker registration.
 
-Offline support writes inline scripts: the connectivity script, the worker registration and queued cache writes. Each script uses the nonce from `WithCSPNonce`. `WithOffline` reads the nonce when each request arrives, independent of option order. Set `offline.Config.CSPNonce` to use a different nonce for these scripts.
+Offline support writes inline scripts: the connectivity script, the worker registration and queued cache writes. Each script uses the nonce from `WithCSPNonce`. `WithOffline` reads the nonce when each request arrives, independent of option order. Set `offline.Config.CSPNonce` to use a different nonce for the connectivity and registration scripts. The queued cache writes always use the nonce from `WithCSPNonce`.
 
 When `offline.Config.CSPNonce` is nil, `offline.WithServiceWorker` uses the nonce from `WithCSPNonce`. Calling `offline.Middleware` through `datapages.WithMiddleware` does not copy the server nonce. A nonce-only policy blocks the middleware scripts.
 
@@ -99,7 +99,7 @@ The parameter is optional on `GET` methods and on page or `*App` actions.
 | `Version()` | the version the client holds for **this request's URL**, 0 if none |
 | `Set(url, body, version)` | cache `body` for `url`, served only while offline |
 | `SetShim(url, body, version)` | cache `body` for `url`, served online too |
-| `Clear(url)` | remove one entry |
+| `Clear(url)` | remove 1 entry |
 | `ClearAll()` | remove every page cache entry |
 
 `url` comes from the generated `href` package. Writes remain queued until the handler returns without error. The worker then applies them together, with `ClearAll` first.
@@ -133,7 +133,7 @@ A `GET` can cache its own page when visited. An action can cache other URLs, suc
 
 ## Shims
 
-A shim renders the navigation and layout with placeholders for slow content. The worker returns the cached shim immediately and fetches the live page in parallel. Datapages adds the trigger that replaces the shim's head and body through Datastar. The shim contains no Datastar attributes.
+A shim renders the navigation and layout with placeholders for slow content. The worker returns the cached shim immediately and fetches the live page in parallel. Datapages adds the trigger that replaces the shim's head and body through Datastar and applies the attributes of the live `<html>` element. The shim contains no Datastar attributes.
 
 A shim renders with no session and contains no CSRF script. Do not put actions in the placeholder content.
 
@@ -160,7 +160,7 @@ A shim is also shown online. It must not make an offline-only claim. If the live
 ## Rules
 
 - **Pass the page body, not a document.** Datapages adds the same `<head>`, stylesheets and Datastar bundle used by a live page. Adding `<!DOCTYPE html>` to the body would nest one document inside another.
-- **A cached page is only as complete as its assets.** Its stylesheets, scripts, fonts and images must be cached too. `Config.Assets` is precached on install. Everything else is cached on its first load while online: same-origin files other than what Datastar requests (actions, hydrates and event streams always come from the network) and other than `Config.ExcludePaths`, plus cross-origin requests whose destination is in `Config.CrossOriginDestinations`. An asset that is neither listed nor ever loaded online is missing offline. A cached same-origin asset is refreshed behind the copy it serves: a file redeployed at the same URL lands on the next visit, with no `WorkerVersion` bump.
+- **A cached page is only as complete as its assets.** Its stylesheets, scripts, fonts and images must be cached too. `Config.Assets` is precached on install. Everything else is cached on its first load while online: same-origin files other than what Datastar requests (actions, hydrates and event streams always come from the network) and other than `Config.ExcludePaths`, plus cross-origin requests whose destination is in `Config.CrossOriginDestinations`. An asset that is neither listed nor ever loaded online is missing offline. A cached same-origin asset is refreshed behind the copy it serves once it is past its `max-age` or has none. A file redeployed at the same URL then lands on the next visit, with no `WorkerVersion` bump.
 - **Version by everything the body depends on.** A constant version caches once and never refreshes. Include the content state, such as an item count or an ownership flag.
 
   ```go
@@ -171,7 +171,7 @@ A shim is also shown online. It must not make an offline-only claim. If the live
   }
   ```
 - **Use `!=`, not `<`, for an unordered version key** such as a hash. `<` re-caches only on an increase and silently keeps a stale entry.
-- **Use `ClearAll()` when one change invalidates many pages.** Examples include locale, permission and session changes. Entries return only after a handler calls `Set` again. Call `ClearAll()` during sign-in and sign-out.
+- **Use `ClearAll()` when 1 change invalidates many pages.** Examples include locale, permission and session changes. Entries return only after a handler calls `Set` again. Call `ClearAll()` during sign-in and sign-out.
 - **Update invalidated entries.** A page cached by its `GET` updates on the next online visit. An action that changes another cached page should call `Set` for that page.
 
 ## What may be cached
@@ -193,8 +193,10 @@ The generated code picks how queued writes reach the worker from the handler sig
 | action taking `sse` | sent over that stream |
 | action returning `redirect` | sent in its `text/javascript` response; navigation waits up to 500ms for the worker. This applies even when the action also returns a body |
 | action returning only a body | embedded in the rendered document |
-| action returning neither | sent over an SSE stream opened for that purpose, readable only by a Datastar request |
+| action returning neither | sent over an SSE stream opened for that purpose |
+
+An action that takes `datapages.PageCacheWriter` answers 406 to a request without `Datastar-Request: true`. Call it through a Datastar action, not a plain form: an HTTP redirect cannot carry the writes.
 
 `newSession` and `closeSession` cannot be combined with `sse`. Sign-in and sign-out therefore take `pageCache` and return a `redirect`. Navigation waits up to 500ms for the worker to apply `ClearAll` before loading the destination.
 
-<!-- written by datapages v0.10.1 sha256:09292e5e7f3057ff -->
+<!-- written by datapages v0.11.4 sha256:64821e2c6232acdf -->

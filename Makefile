@@ -1,3 +1,7 @@
+# all regenerates the templates, then runs every check. As the first target,
+# it is what a plain `make` runs.
+all: templ test vulncheck
+
 vulncheck:
 	CGO_ENABLED=0 go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
@@ -19,7 +23,7 @@ test: fmtcheck lint
 	go test -coverpkg=./... -v .
 
 templ:
-	go run github.com/a-h/templ/cmd/templ@v0.3.1020 generate
+	go run github.com/a-h/templ/cmd/templ@v0.3.1118 generate
 
 # TEMPL_DEV_MODE_WATCH_ROOT scopes templ's hot-reload string lookup to this repository.
 # Templier runs the app with TEMPL_DEV_MODE=true, which makes the templ runtime resolve
@@ -29,7 +33,7 @@ templ:
 dev-editor: templ
 	cd editor/js && npm install
 	TEMPL_DEV_MODE_WATCH_ROOT=$(CURDIR) \
-		go run github.com/romshark/datapages/cmd/datapages@v0.10.1 watch
+		go run github.com/romshark/datapages/cmd/datapages@v0.11.4 watch
 
 gen-example-large:
 	go run ./cmd/genexamplelarge

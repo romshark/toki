@@ -6,7 +6,6 @@ import "C"
 import (
 	"context"
 	"fmt"
-	"net"
 	"time"
 
 	"github.com/romshark/datapages"
@@ -27,15 +26,13 @@ const windowCascadeOffset = 32
 // acts as an implicit build constraint); edit_nocgo.go provides a stub
 // used under CGO_ENABLED=0 (e.g. the govulncheck CI job).
 func RunHybridApp(a *app.App, s datapages.Server) error {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return fmt.Errorf("finding free port: %w", err)
-	}
-	addr := ln.Addr().String()
-	_ = ln.Close()
-
 	serverCtx, serverCancel := context.WithCancel(context.Background())
 	defer serverCancel()
+
+	addr, err := startServer(serverCtx, s)
+	if err != nil {
+		return err
+	}
 
 	DisableAutomaticWindowTabbing()
 
@@ -73,25 +70,6 @@ func RunHybridApp(a *app.App, s datapages.Server) error {
 		wailsApp.Window.NewWithOptions(opts)
 	}
 
-	serverErr := make(chan error, 1)
-	go func() {
-		serverErr <- s.ListenAndServe(serverCtx, addr)
-	}()
-
-	// Wait until the server is accepting connections (or fails).
-	for {
-		select {
-		case err := <-serverErr:
-			return fmt.Errorf("server failed to start: %w", err)
-		default:
-		}
-		conn, dialErr := net.DialTimeout("tcp", addr, 100*time.Millisecond)
-		if dialErr == nil {
-			_ = conn.Close()
-			break
-		}
-	}
-
 	wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:     "Toki Editor",
 		Width:     1200,
@@ -105,4 +83,25 @@ func RunHybridApp(a *app.App, s datapages.Server) error {
 		return fmt.Errorf("wails: %w", err)
 	}
 	return nil
+}
+
+// startServer serves s on a port of 127.0.0.1 that the OS picks and returns
+// the address once the port is bound, from when it accepts connections.
+// ListenAndServe binds before it serves and reports the bound address through Addr.
+func startServer(ctx context.Context, s datapages.Server) (string, error) {
+	serverErr := make(chan error, 1)
+	go func() { serverErr <- s.ListenAndServe(ctx, "127.0.0.1:0") }()
+
+	tick := time.NewTicker(time.Millisecond)
+	defer tick.Stop()
+	for {
+		if addr := s.Addr(); addr != "" {
+			return addr, nil
+		}
+		select {
+		case err := <-serverErr:
+			return "", fmt.Errorf("server failed to start: %w", err)
+		case <-tick.C:
+		}
+	}
 }

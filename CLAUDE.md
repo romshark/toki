@@ -18,10 +18,10 @@ Toki is an i18n (internationalization) framework for Go. See [README.md](README.
 
 The following instructions apply to the Toki editor under `editor/`.
 
-The editor is a [Datapages](https://github.com/romshark/datapages) v0.10.1 application. Follow the Datapages and Datastar skills in `.claude/skills/`, written by `datapages init`: `datapages-architecture` before designing a feature, `datapages` for any editor work, and the task skill it points to. This section only records what is specific to Toki. Where it differs from the skills, this section wins.
+The editor is a [Datapages](https://github.com/romshark/datapages) v0.11.4 application. Follow the Datapages and Datastar skills in `.claude/skills/`, written by `datapages init`: `datapages-architecture` before designing a feature, `datapages` for any editor work, and the task skill it points to. This section only records what is specific to Toki. Where it differs from the skills, this section wins.
 
 - **Layout**: the app package is `editor/app` and its generated code is `editor/app/datapagesgen`. `editor/editor.go` holds the `datapages.NewServer` call. `cmd/editor-server` is the entry point `datapages watch` runs.
-- **Never run `templ generate`**, whether a watch runs or not: the user always runs `datapages watch`, which regenerates the templates.
+- **Never run `templ generate`**, whether a watch runs or not: the user always runs `datapages watch`, which regenerates the templates. This includes `make`, `make all`, `make templ` and `make dev-editor`, which run it.
 - **Run `datapages gen`** to check for compilation errors and lint feedback. Don't use `datapages lint`.
 
 ### Architecture

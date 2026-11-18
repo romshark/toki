@@ -130,6 +130,7 @@ templ componentNavbarCore(breadcrumbs []Breadcrumb) {
 				) {
 					for _, bc := range breadcrumbs {
 						if bc.Href != "" {
+							//datapages:nolint // bc.Href comes from Breadcrumb items built with the href package.
 							<a
 								href={ templ.SafeURL(bc.Href) }
 								{ neo.NavGroupItem()... }
@@ -832,37 +833,36 @@ templ componentCompletenessBar(completeness float64) {
 	</div>
 }
 
-// componentStatLinkCard renders a whole card as one navigation target:
-// a styled anchor wrapping a <neo-card>, with the hover affordance
-// arrow in the corner. Children supply the card's header and body.
-templ componentStatLinkCard(hrefURL, extraClass string) {
-	<a href={ templ.SafeURL(hrefURL) } class={ "dashboard-stat-link " + extraClass }>
-		// The arrow lives outside the card: Morpheus spaces card slots with
-		// `[data-neo-card-inner] > * + *`, so an extra first child would push
-		// the header out of first position and give it a stray top margin.
-		// It is absolutely positioned against the link, which is relative.
-		<span class="stat-link-arrow">
-			@iconArrowUpRight()
-		</span>
-		@neo.Card(neo.CardOpts{}) {
-			{ children... }
-		}
-	</a>
+// componentStatLinkCard renders the content of a card that is one navigation
+// target: a <neo-card> with the hover affordance arrow in the corner.
+// Children supply the card's header and body. The caller wraps it in an
+// <a class="dashboard-stat-link"> and writes its href with the href package,
+// which the Datapages linter can verify only at the anchor.
+templ componentStatLinkCard() {
+	// The arrow lives outside the card: Morpheus spaces card slots with
+	// `[data-neo-card-inner] > * + *`, so an extra first child would push
+	// the header out of first position and give it a stray top margin.
+	// It is absolutely positioned against the link, which is relative.
+	<span class="stat-link-arrow">
+		@iconArrowUpRight()
+	</span>
+	@neo.Card(neo.CardOpts{}) {
+		{ children... }
+	}
 }
 
-// componentDomainStat renders one figure in a domain card's stat grid,
-// linking to the TIKs list filtered down to that figure.
-templ componentDomainStat(hrefURL, value, label string, icon templ.Component) {
-	<a href={ templ.SafeURL(hrefURL) } class="domain-stat">
-		<span class="stat-link-arrow">
-			@iconArrowUpRight()
-		</span>
-		<span class="domain-stat-value">{ value }</span>
-		<span class="domain-stat-label">
-			@icon
-			{ label }
-		</span>
-	</a>
+// componentDomainStat renders one figure in a domain card's stat grid.
+// The caller wraps it in an <a class="domain-stat"> linking to the TIKs list
+// filtered down to that figure.
+templ componentDomainStat(value, label string, icon templ.Component) {
+	<span class="stat-link-arrow">
+		@iconArrowUpRight()
+	</span>
+	<span class="domain-stat-value">{ value }</span>
+	<span class="domain-stat-label">
+		@icon
+		{ label }
+	</span>
 }
 
 templ componentDashboardCard(title, value, description string) {

@@ -8,7 +8,7 @@ description: >-
 
 # Datastar
 
-Datastar provides client-side reactivity through `data-*` attributes. Datapages serves Datastar v1.0.4 and manages its script tag and SSE streams. Docs: https://data-star.dev/docs.md
+Datastar provides client-side reactivity through `data-*` attributes. Datapages serves Datastar v1.0.5 and manages its script tag and SSE streams. Docs: https://data-star.dev/docs.md
 
 Signals are reactive variables written as `$name`. In an expression, Datastar replaces `$signal` references and binds `el` to the current element. The sandbox allows calls only to `@name()` action helpers.
 
@@ -28,7 +28,7 @@ Datastar applies attributes depth first in DOM order. It applies them again when
 | `data-computed:foo="$a + $b"` | read-only derived signal |
 | `data-effect="$a = $b"` | runs on load and whenever a signal it reads changes |
 | `data-ignore` | skip the element and its subtree; `__self` for the element alone |
-| `data-ignore-morph` | skip it while morphing |
+| `data-ignore-morph` | a morph skips the element, its attributes and its children when the old and the new element both carry it |
 | `data-indicator:fetching` | true while a fetch is in flight; put it on the element that triggers one |
 | `data-init="@get('/x')"` | runs when the attribute initializes; `__delay.500ms` |
 | `data-json-signals` | dumps signals as JSON for debugging; `__terse` |
@@ -47,7 +47,7 @@ Datastar applies attributes depth first in DOM order. It applies them again when
 
 ## Actions
 
-`@get(url, opts)`, `@post`, `@put`, `@patch` and `@delete` send a fetch request. In a Datapages app, use them through the generated `action` package. See `datapages-templates`.
+`@get(url, opts)`, `@post`, `@put`, `@patch`, `@delete` and `@query` send a fetch request. In a Datapages app, use them through the generated `action` package. See `datapages-templates`.
 
 `@peek(fn)` reads signals without subscribing to them. `@setAll(value, {include, exclude})` and `@toggleAll({include, exclude})` write every matching signal. The filters are regular expressions over signal paths.
 
@@ -64,7 +64,7 @@ Request options:
 | `retry` | `auto` for network errors, `error` for 4xx and 5xx, `always` or `never` |
 | `retryInterval` | defaults to 1000 ms |
 | `retryScaler` | defaults to 2 |
-| `retryMaxWaitMs` | defaults to 30000 ms |
+| `retryMaxWait` | defaults to 30000 ms |
 | `retryMaxCount` | defaults to 10 |
 | `requestCancellation` | `auto`, `cleanup`, `disabled` or an `AbortController` |
 
@@ -83,8 +83,8 @@ Each request fires `datastar-fetch` events. `evt.detail.type` is `started`, `fin
 
 ## Practice
 
-- Keep authoritative state on the server and transient UI state in signals. Use signals only when needed. Keep expressions to one statement and put application logic in Go.
-- Patch elements instead of signals. Prefer one complete fragment over several small targeted updates.
+- Keep authoritative state on the server and interaction state in local signals, whose `_` prefix keeps them out of requests. Leave the prefix off only when an action must send the signal. Use signals only when needed. Keep expressions to 1 statement and put application logic in Go.
+- Patch elements instead of signals. Prefer 1 complete fragment over several small targeted updates.
 - Encode a value with `json.Marshal` before putting it in an attribute, or wrap the element in `data-ignore`. The browser decodes Templ's escaping before the expression is parsed, hence an apostrophe in the value ends the string and what follows runs as script.
 - Never put a secret in a signal. The browser can read signals, and requests send them to the server.
 - Put `data-indicator` on the element that sends the request to show a loading state without JavaScript.
@@ -92,4 +92,4 @@ Each request fires `datastar-fetch` events. `evt.detail.type` is `started`, `fin
 
 A misused attribute logs `Uncaught datastar runtime error: <name>` with a link to a page explaining it.
 
-<!-- written by datapages v0.10.1 sha256:9e51c94d570fee7f -->
+<!-- written by datapages v0.11.4 sha256:f2e8fc154ad4d5c9 -->

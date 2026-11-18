@@ -10,7 +10,7 @@ description: >-
 
 Read `datapages` first for the build loop, hard rules and naming conventions.
 
-Define one struct, one route doc comment and one `GET` method for each page. `PageIndex` for `/` is required. `App *App` is the only named field a page may declare. Put dependencies on `App`.
+Define 1 struct, 1 route doc comment and 1 `GET` method for each page. `PageIndex` for `/` is required. `App *App` is the only named field a page may declare. Put dependencies on `App`.
 
 ```go
 // PageIndex is /
@@ -21,14 +21,14 @@ func (PageIndex) GET(r *http.Request) (body datapages.Component, err error) {
 }
 ```
 
-Routes use `net/http.ServeMux` patterns. `/item/{id}` captures one segment. `/{path...}` captures the remaining path. `/{$}` matches only that path. Datapages serves a page's SSE stream below `_$`. Do not define a route that claims that path.
+Routes use `net/http.ServeMux` patterns. `/item/{id}` captures 1 segment. `/{path...}` captures the remaining path. `/{$}` matches only that path. Datapages serves a page's SSE stream below `_$`. Do not define a route that claims that path. A page whose route ends in `{$}` or `{name...}` serves only `GET`: it cannot have actions or an SSE stream. Leave out `{$}` to give a page actions or a stream: the page keeps its URL.
 
 If a route comment has a description, separate it from the route with a blank `//` line:
 
 ```go
 // PageItem is /item/{id}
 //
-// Shows one item.
+// Shows 1 item.
 ```
 
 ## GET parameters
@@ -43,12 +43,16 @@ If a route comment has a description, separate it from the route with a blank `/
 | ---- | ------ |
 | `datapages.Component` | the body |
 | `datapages.Head` | extra `<head>` content for this page |
+| `datapages.DocumentAttrs` | attributes of the `<html>` element by name |
 | `datapages.Redirect` | `{URL, Status}`, sent instead of the body |
 | `datapages.NewSession[Data]` | opens a session |
 | `datapages.CloseSession` | ends the session |
 | `datapages.EnableBackgroundStreaming` | keep the stream open while the tab is hidden; only a page with a stream may return it |
 | `datapages.DisableRefreshAfterHidden` | no refresh when the tab is shown again; only a page with a stream may return it |
 | `error` | reports an error |
+
+A `GETXXX` method is a file action, not the page's `GET`. See
+`datapages-actions`. The page's `GET` cannot return `datapages.File`.
 
 ## Path variables
 
@@ -88,7 +92,9 @@ It also rejects a JSON type mismatch between a query field and its signal. The c
 ## Special pages
 
 `PageError404`, `PageError500` and `PageOffline` are reserved page names. All
-three are optional. Datapages serves defaults when they are absent.
+3 are optional. Datapages serves defaults when they are absent.
+
+`PageError404` renders with status 404 for a URL that no route matches and for a page load whose handler returns `datapages.ErrNotFound`. `PageError500` renders with status 500 for a page load whose handler panics or returns an error without a sentinel.
 
 ```go
 // PageError404 is /not-found
@@ -99,11 +105,9 @@ func (PageError404) GET(r *http.Request) (datapages.Component, error) {
 }
 ```
 
-`PageError500` and `PageOffline` have the same form and each needs a `GET`
-method. Both render with a zero `Session`. `PageOffline` is the service worker
-fallback; see `datapages-offline`.
+`PageError500` and `PageOffline` have the same form and each needs a `GET` method. `PageOffline` is the service worker fallback; see `datapages-offline`. The worker precaches 1 copy for every visitor, so the page renders without the CSRF script and must not depend on who is signed in.
 
-Neither may return `newSession` or `closeSession` because the same `GET` serves the page route and its error path. Both may accept a session parameter, which an error page can use to render the document.
+The `GET` of `PageError404` and `PageError500` may not return `newSession` or `closeSession` because it serves both the page route and the error path. It may accept a session parameter to render the document for the visitor.
 
 ## Global head
 
@@ -115,11 +119,53 @@ func (*App) Head(r *http.Request, session Session) datapages.Head {
 
 `session` is optional. It applies to every page, so a per-page `head` return value only adds to it.
 
+## The html element
+
+`<html>` gets only the attributes returned by its `GET` handler. They are a `datapages.DocumentAttrs`, which is a `map[string]string`. There are no app-wide defaults.
+
+If every request uses the same attributes, create 1 map and return it from each handler. Datapages only reads the map:
+
+```go
+var documentAttrs = datapages.DocumentAttrs{"lang": "en", "dir": "ltr"}
+
+func (PageIndex) GET(r *http.Request) (
+	body datapages.Component, docAttrs datapages.DocumentAttrs, err error,
+) {
+	return indexPage(), documentAttrs, nil
+}
+```
+
+If the attributes have a few fixed combinations, such as 1 per theme, create those maps once and select the right one in the handler:
+
+```go
+var themeAttrs = map[string]datapages.DocumentAttrs{
+	"light": {"lang": "en", "class": "light"},
+	"dark":  {"lang": "en", "class": "dark"},
+}
+
+func (PageIndex) GET(r *http.Request, session Session) (
+	body datapages.Component, docAttrs datapages.DocumentAttrs, err error,
+) {
+	return indexPage(), themeAttrs[session.Data().Theme], nil
+}
+```
+
+Do not modify a shared map. Handlers run concurrently, so a write causes a data race. Clone the map first:
+
+```go
+	docAttrs = maps.Clone(themeAttrs[session.Data().Theme])
+	docAttrs["lang"] = post.Lang
+```
+
+Create a map per request only when its values depend on the request, such as the visitor's language.
+
+Datapages sorts attributes by name and writes empty values as empty attributes. A name must start with a lowercase ASCII letter and contain only lowercase ASCII letters, digits, `-`, `_`, `.` or `:`. `data-nonce` is reserved. An invalid name fails the page with 500. Page cache entries do not store attributes. A shim gets the current attributes when it hydrates.
+
 ## Sharing handlers
 
-To share a `GET`, stream hook or event handler, define it on a type without the `Page` prefix and embed that type in each page. The embedded type is not a page and has no route. It needs the same `App *App` field. Its handlers use the route of each page that embeds it.
+To share a stream hook or event handler, define it on a stream embed, a type without the `Page` prefix, and embed that type in each page. A stream embed is not a page and has no route. It needs the same `App *App` field. Its handlers run for each page that embeds it.
 
-Do not share an action by embedding it. Its doc comment defines one absolute route, so embedding it in a second page causes a route conflict. Put a shared action on `*App`, or define a separate action for each page.
+A stream embed cannot declare `GET` or actions. Give each page its own `GET`, which can call a shared function. Put an action that several pages call on `*App`, or define a separate action for each page.
 
 ```go
 type Base struct{ App *App }
@@ -137,4 +183,4 @@ type PageChat struct {
 
 A method declared on a page replaces the embedded method only for that page. The replacement can call `p.Base.OnMessageSent(event, sse)` to wrap the embedded method.
 
-<!-- written by datapages v0.10.1 sha256:bb50d329214dc0c0 -->
+<!-- written by datapages v0.11.4 sha256:ce1395517b08483b -->
