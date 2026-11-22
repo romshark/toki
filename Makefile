@@ -51,3 +51,15 @@ dev-editor: templ
 
 gen-example-large:
 	go run ./cmd/genexamplelarge
+
+DOCPAGES = go run github.com/romshark/docpages/cmd/docpages@v0.4.0
+
+# docs writes the documentation site into site/ and fails on mistakes
+# such as a broken link.
+.PHONY: docs
+docs:
+	$(DOCPAGES) -o site docs
+
+# docs-serve previews the documentation site and reloads it on changes.
+docs-serve:
+	$(DOCPAGES) -serve 127.0.0.1:7340 docs

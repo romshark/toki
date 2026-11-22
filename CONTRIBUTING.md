@@ -8,8 +8,9 @@ please follow it in all your interactions with the project.
 1. Before submitting a pull request to this repository, please first discuss the change
    you wish to make via [issues](https://github.com/romshark/toki/issues),
    unless the change is trivial.
-2. Update the README.md with details of changes to the interface, this includes new
-   environment variables, exposed ports, useful file locations and container parameters.
+2. Update the documentation in [docs/](docs/README.md) with details of changes to the
+   interface, this includes new environment variables, exposed ports, useful file
+   locations and container parameters.
 3. The versioning scheme we use is [SemVer v2.0.0](http://semver.org/).
 
 ## Development
@@ -27,6 +28,8 @@ The Makefile has these targets:
 | `make vulncheck` | Runs govulncheck |
 | `make dev-editor` | Runs `templ`, installs the editor's JavaScript dependencies and starts `datapages watch` |
 | `make gen-example-large` | Generates a Toki project with 10,000 TIKs in `examples/largecodebase` for testing the editor |
+| `make docs` | Builds the documentation site from `docs/` into `site/` with [docpages](https://github.com/romshark/docpages) and fails on mistakes such as a broken link |
+| `make docs-serve` | Previews the documentation site on http://127.0.0.1:7340 and reloads it on changes |
 
 `datapages watch` regenerates a template when its `.templ` file changes. After a templ upgrade, run `make` or `make templ` to regenerate all of them: the generated code of the old version does not compile with the new one.
 

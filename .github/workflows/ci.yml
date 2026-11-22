@@ -25,6 +25,10 @@ jobs:
       - name: Run govulncheck
         run: make vulncheck
 
+      # docpages fails on mistakes such as a broken link.
+      - name: Check the docs
+        run: make docs
+
       - name: Run tests with coverage
         run: CGO_ENABLED=0 go test -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
 
