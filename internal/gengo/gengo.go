@@ -228,7 +228,22 @@ func (w *Writer) writeCatalogType(locale language.Tag) {
 	w.print("}\n\n")
 }
 
-var ErrUnsupportedArgName = errors.New("unsupported argument name")
+var (
+	ErrUnsupportedArgName      = errors.New("unsupported argument name")
+	ErrUnsupportedGenderOption = errors.New("unsupported gender option")
+)
+
+// genderConst returns the Gender constant of the bundle that the option of a gender
+// select names. codeparse rejects other options than these and "other", the default case.
+func genderConst(option string) string {
+	switch option {
+	case "male":
+		return "GenderMale"
+	case "female":
+		return "GenderFemale"
+	}
+	panic(fmt.Errorf("%w: %q", ErrUnsupportedGenderOption, option))
+}
 
 // literalConcat returns "" if message isn't just a sequence
 // of literal tokens.

@@ -462,6 +462,70 @@ func TestGenerateAndRunSelectOrdinal(t *testing.T) {
 	require.Equal(t, expect, actual)
 }
 
+// TestGenerateAndRunSelectOnName makes sure a translation can select on
+// a {name} argument, which is a tokibundle.String, and on its gender.
+func TestGenerateAndRunSelectOnName(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		icu    string
+		expect string
+	}{
+		{
+			name: "gender",
+			icu: "{var0_gender, select, male {Herr {var0} ist bereit} " +
+				"female {Frau {var0} ist bereit} other {{var0} ist bereit}}",
+			expect: "Herr Alex ist bereit\nFrau Alex ist bereit\nKim ist bereit",
+		},
+		{
+			name:   "value",
+			icu:    "{var0, select, Alex {Alex ist da} other {{var0} ist bereit}}",
+			expect: "Alex ist da\nAlex ist da\nKim ist bereit",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			initGoMod(t, dir, "tstmod")
+			writeFiles(t, dir, map[string]string{
+				"main.go": `
+					package main
+					import "fmt"
+					import "tstmod/tokibundle"
+					import "golang.org/x/text/language"
+					func main() {
+						r, _ := tokibundle.Match(language.German)
+						for _, s := range []tokibundle.String{
+							{Value: "Alex", Gender: tokibundle.GenderMale},
+							{Value: "Alex", Gender: tokibundle.GenderFemale},
+							{Value: "Kim", Gender: tokibundle.GenderNeutral},
+						} {
+							fmt.Println(r.String("{name} is ready", s))
+						}
+					}
+				`,
+			})
+
+			generate := func(args ...string) {
+				t.Helper()
+				runInDir(t, dir, func() {
+					result, exitCode := cli.Run(append([]string{"toki", "generate"}, args...),
+						osEnv(), io.Discard, io.Discard, TimeNow)
+					require.NoError(t, result.Err)
+					require.Zero(t, exitCode)
+				})
+			}
+			generate("-l=en", "-t=de")
+			setOnlyMessage(t, filepath.Join(dir, "tokibundle", "catalog_de.arb"), tt.icu)
+			generate()
+
+			cmd := exec.Command("go", "run", ".")
+			cmd.Dir = dir
+			out, err := cmd.CombinedOutput()
+			require.NoError(t, err, "output: %q", string(out))
+			require.Equal(t, tt.expect, strings.TrimSpace(string(out)))
+		})
+	}
+}
+
 // TestGenerateAndRunApostrophes makes sure apostrophes in catalogs
 // edited by translators are unescaped like ICU does.
 func TestGenerateAndRunApostrophes(t *testing.T) {

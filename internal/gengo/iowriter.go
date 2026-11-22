@@ -342,7 +342,13 @@ func (w *Writer) writeSelect() {
 		panic(err)
 	}
 
-	w.printf("switch args[%d].(string) {\n", argIndex.Index)
+	// sv takes both a string and a String, the argument of a {name}.
+	// A varN_gender select switches on the gender of argument N.
+	if argIndex.Gender {
+		w.printf("switch _, g := sv(args[%d]); g {\n", argIndex.Index)
+	} else {
+		w.printf("switch v, _ := sv(args[%d]); v {\n", argIndex.Index)
+	}
 	for i := range icumsg.Options(w.t, w.i) {
 		if w.t[i].Type == icumsg.TokenTypeOptionOther {
 			// Default case.
@@ -353,7 +359,11 @@ func (w *Writer) writeSelect() {
 		}
 		// Named case.
 		optionValStr := w.t[i+1].String(w.m, w.t)
-		w.printf("case %q:\n", optionValStr)
+		if argIndex.Gender {
+			w.printf("case %s:\n", genderConst(optionValStr))
+		} else {
+			w.printf("case %q:\n", optionValStr)
+		}
 		w.i = i + 2
 		w.writeExpr(w.t[i].IndexEnd)
 	}

@@ -81,6 +81,7 @@ Run `toki generate` to apply these.
 - Support exact `=n` plural options and plural offsets. `=n` options were ignored, and the plural category didn't subtract the offset.
 - Unescape apostrophes in catalog messages like ICU does. "He's here" rendered as "Hes here".
 - Generate valid Go for TIKs that contain a backtick. Generation failed with a formatting error.
+- Render a translation that selects on the gender of a `{name}`, as `{var0_gender, select, ...}`, or on its value. The bundle panicked with "interface conversion: interface {} is tokibundle.String, not string".
 
 #### `toki version`
 
