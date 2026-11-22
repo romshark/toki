@@ -20,9 +20,9 @@ Toki is an i18n framework for Go and a Textual Internationalization Key ([TIK](h
   <img src="img/editor-light.webp" alt="The messages page of the Toki editor: the English, Ukrainian and Japanese messages of each TIK side by side, with the domains, locales and filters in the sidebar">
 </picture>
 
-## Why TIKs instead of keys
+## A new, better way to internationalize
 
-Key-based i18n refers to each text by a name that someone made up, and keeps the text in a file away from the code:
+Traditional key-based i18n refers to each text by an abstract key, and keeps the text in a file away from the code:
 
 ```go
 i18n.ByKey("dashboard.report.summary", numberOfMessages, dateTime)
