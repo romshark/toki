@@ -62,6 +62,7 @@ type EventPrefsChanged struct {
 	Theme          string `json:"theme"`
 	ThemeResolved  string `json:"theme_resolved"`
 	Motion         string `json:"motion"`
+	Contrast       string `json:"contrast"`
 	UIFont         string `json:"ui_font"`
 	EditorFont     string `json:"editor_font"`
 	UIFontSize     string `json:"ui_font_size"`
@@ -724,6 +725,7 @@ func (*App) Head(r *http.Request) datapages.Head {
 	return template.Head(template.UIPrefs{
 		Theme:             p.Theme,
 		Motion:            p.Motion,
+		Contrast:          p.Contrast,
 		UIFont:            p.UIFont,
 		EditorFont:        p.EditorFont,
 		UIFontSize:        p.UIFontSize,

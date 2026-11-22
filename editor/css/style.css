@@ -24,6 +24,23 @@
 	--neo-duration-scale: 1;
 }
 
+/* The contrast is high where the user or the OS asks for it, unless the
+   user picks standard contrast. Dimmed text then shows at full opacity, as
+   max(<opacity>, var(--contrast-more, 0)) makes it, and borders and
+   separators turn as strong as the text. Morpheus raises the contrast of
+   its own components. */
+:root[data-pref-contrast-more] {
+	--contrast-more: 1;
+	--btn-border: currentColor;
+}
+
+@media (prefers-contrast: more) {
+	:root:not([data-pref-contrast-standard]) {
+		--contrast-more: 1;
+		--btn-border: currentColor;
+	}
+}
+
 /* Enable cross-document view transitions on navigation */
 @view-transition {
 	navigation: auto;
@@ -182,7 +199,7 @@ neo-button.btn-changed {
 .error-dir {
 	font-family: monospace;
 	font-size: 0.9rem;
-	opacity: 0.7;
+	opacity: max(0.7, var(--contrast-more, 0));
 }
 
 /* Anchors styled as buttons don't support the :disabled attribute;
@@ -437,7 +454,7 @@ neo-radio-group {
 
 	& span {
 		font-size: 0.8rem;
-		opacity: 0.7;
+		opacity: max(0.7, var(--contrast-more, 0));
 		max-inline-size: 100%;
 	}
 }
@@ -458,7 +475,7 @@ neo-radio-group {
 
 	& .sidebar-server-label {
 		font-size: 0.7rem;
-		opacity: 0.7;
+		opacity: max(0.7, var(--contrast-more, 0));
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 	}
@@ -507,7 +524,7 @@ neo-radio-group {
 	& .source-error-pos {
 		font-family: ui-monospace, "SF Mono", "Cascadia Code", monospace;
 		font-size: 0.75rem;
-		opacity: 0.75;
+		opacity: max(0.75, var(--contrast-more, 0));
 	}
 }
 
@@ -593,7 +610,7 @@ main {
 		justify-content: center;
 		gap: 0.75rem;
 		min-block-size: 10rem;
-		opacity: 0.5;
+		opacity: max(0.5, var(--contrast-more, 0));
 
 		& > svg {
 			width: 3rem;
@@ -624,7 +641,7 @@ main {
 
 .dashboard-stat-label {
 	font-size: 0.85rem;
-	opacity: 0.6;
+	opacity: max(0.6, var(--contrast-more, 0));
 	display: flex;
 	align-items: center;
 	gap: 0.25rem;
@@ -704,7 +721,7 @@ main {
 .locale-name {
 	font-size: 1rem;
 	font-weight: 400;
-	opacity: 0.6;
+	opacity: max(0.6, var(--contrast-more, 0));
 }
 
 .info-icon {
@@ -713,11 +730,11 @@ main {
 	cursor: help;
 
 	& > svg {
-		opacity: 0.35;
+		opacity: max(0.35, var(--contrast-more, 0));
 	}
 
 	&:hover > svg {
-		opacity: 0.6;
+		opacity: max(0.6, var(--contrast-more, 0));
 	}
 
 	&::before {
@@ -827,11 +844,11 @@ main {
 }
 
 .tik-domain {
-	opacity: 0.5;
+	opacity: max(0.5, var(--contrast-more, 0));
 }
 
 .tik-breadcrumb-sep {
-	opacity: 0.3;
+	opacity: max(0.3, var(--contrast-more, 0));
 }
 
 .tik-label {
@@ -849,12 +866,12 @@ main {
 
 .msg-id {
 	text-transform: uppercase;
-	opacity: 0.5;
+	opacity: max(0.5, var(--contrast-more, 0));
 	text-decoration: underline;
 	text-underline-offset: 0.15em;
 
 	&:hover {
-		opacity: 0.8;
+		opacity: max(0.8, var(--contrast-more, 0));
 	}
 }
 
@@ -968,7 +985,7 @@ neo-card {
 .icu-original-label {
 	font-weight: bold;
 	font-size: 0.75rem;
-	opacity: 0.6;
+	opacity: max(0.6, var(--contrast-more, 0));
 }
 
 /* --- Loading screen --- */
@@ -984,7 +1001,7 @@ neo-card {
 
 .loading-hint {
 	font-size: 0.875rem;
-	opacity: 0.6;
+	opacity: max(0.6, var(--contrast-more, 0));
 }
 
 /* --- Build Bundle --- */
@@ -1011,7 +1028,7 @@ neo-card {
 
 .build-duration {
 	font-size: 0.875rem;
-	opacity: 0.6;
+	opacity: max(0.6, var(--contrast-more, 0));
 }
 
 /* --- Pagination --- */
@@ -1027,7 +1044,7 @@ neo-card {
 	font-size: 0.875rem;
 
 	& > span {
-		opacity: 0.7;
+		opacity: max(0.7, var(--contrast-more, 0));
 	}
 
 	& > neo-select {
@@ -1038,7 +1055,7 @@ neo-card {
 
 .pagination-status {
 	font-size: 0.875rem;
-	opacity: 0.7;
+	opacity: max(0.7, var(--contrast-more, 0));
 	font-variant-numeric: tabular-nums;
 }
 
@@ -1133,7 +1150,7 @@ neo-card {
 	}
 
 	& .occurrence-pos {
-		opacity: 0.5;
+		opacity: max(0.5, var(--contrast-more, 0));
 		font-variant-numeric: tabular-nums;
 		/* Flex also collapses inner whitespace text nodes */
 		display: inline-flex;
@@ -1168,7 +1185,7 @@ neo-card {
 
 .no-translation {
 	font-style: italic;
-	opacity: 0.5;
+	opacity: max(0.5, var(--contrast-more, 0));
 }
 
 /* --- #page-dashboard --- */
@@ -1244,7 +1261,7 @@ neo-card {
 		display: flex;
 		align-items: center;
 		gap: 0.25rem;
-		opacity: 0.6;
+		opacity: max(0.6, var(--contrast-more, 0));
 		font-size: 0.75rem;
 
 		& svg { width: 0.75rem; height: 0.75rem; }
@@ -1291,7 +1308,7 @@ neo-card {
 
 		& > span {
 			font-weight: 600;
-			opacity: 0.6;
+			opacity: max(0.6, var(--contrast-more, 0));
 			white-space: nowrap;
 		}
 
@@ -1383,11 +1400,15 @@ neo-card {
 		&[aria-pressed="true"] {
 			border-color: var(--accent, oklch(0.55 0.15 250));
 			background: var(--btn-hover-bg, oklch(0 0 0 / 0.04));
+			/* Under high contrast every border is as strong as the accent,
+			   which leaves an outline to mark the option. */
+			outline: calc(2px * var(--contrast-more, 0)) solid var(--accent, currentColor);
+			outline-offset: 2px;
 		}
 	}
 
 	& .pref-card-label { font-weight: 600; font-size: 0.9rem; }
-	& .pref-card-desc { font-size: 0.75rem; opacity: 0.6; }
+	& .pref-card-desc { font-size: 0.75rem; opacity: max(0.6, var(--contrast-more, 0)); }
 
 	& .pref-preview {
 		display: flex;
@@ -1432,6 +1453,36 @@ neo-card {
 		inline-size: 80%;
 		&.tp-short { inline-size: 50%; }
 	}
+
+	/* A heading and the lines of a text, faint or strong. The preview keeps
+	   its own contrast, whichever option applies. */
+	& .contrast-preview {
+		flex-direction: column;
+		justify-content: center;
+		gap: 0.3rem;
+		padding-inline: 0.6rem;
+		background: var(--page-bg, #fff);
+
+		& + .contrast-preview { border-inline-start: 1px solid oklch(0 0 0 / 0.1); }
+	}
+
+	& .cp-line {
+		block-size: 0.3rem;
+		inline-size: 80%;
+		border-radius: 0.1rem;
+		background: currentColor;
+
+		&.cp-heading { block-size: 0.45rem; inline-size: 50%; }
+		&.cp-short { inline-size: 55%; }
+	}
+
+	& .contrast-preview-standard .cp-line {
+		opacity: 0.25;
+
+		&.cp-heading { opacity: 0.6; }
+	}
+
+	& .contrast-preview-more { box-shadow: inset 0 0 0 2px currentColor; }
 
 	/* A dot that moves, with its trail, or that stands still. */
 	& .motion-preview {
@@ -1507,7 +1558,7 @@ neo-card {
 		font-size: 0.8rem;
 		font-family: var(--font-ui);
 		font-weight: 600;
-		opacity: 0.5;
+		opacity: max(0.5, var(--contrast-more, 0));
 	}
 
 	& .font-section-preview {
@@ -1523,7 +1574,7 @@ neo-card {
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		opacity: 0.5;
+		opacity: max(0.5, var(--contrast-more, 0));
 	}
 
 	& .font-preview-label {
@@ -1531,7 +1582,7 @@ neo-card {
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
-		opacity: 0.4;
+		opacity: max(0.4, var(--contrast-more, 0));
 		margin-block-end: 0.25rem;
 	}
 }

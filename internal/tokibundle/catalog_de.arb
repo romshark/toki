@@ -30,6 +30,10 @@
 		"description": "ICU syntax error. The placeholder is the byte index of the error.",
 		"type": "text"
 	},
+	"msg14d59dda038fd18b": "Dezente Rahmen und Texte",
+	"@msg14d59dda038fd18b": {
+		"type": "text"
+	},
 	"msg152537f908bccfab": "Vorschau",
 	"@msg152537f908bccfab": {
 		"type": "text"
@@ -233,6 +237,10 @@
 	},
 	"msg47b6749375b0a12d": "Suche schließen",
 	"@msg47b6749375b0a12d": {
+		"type": "text"
+	},
+	"msg4874f214657f527e": "Kontrast",
+	"@msg4874f214657f527e": {
 		"type": "text"
 	},
 	"msg49302ee4a0e443c": "TIK-Navigation",
@@ -601,6 +609,11 @@
 	"@msg943b9be1d97d1050": {
 		"type": "text"
 	},
+	"msg96b07b3aa8550333": "System",
+	"@msg96b07b3aa8550333": {
+		"context": "[contrast]",
+		"type": "text"
+	},
 	"msg97e4766ffe432da0": "Abbrechen",
 	"@msg97e4766ffe432da0": {
 		"type": "text"
@@ -736,6 +749,11 @@
 		"context": "[message]",
 		"type": "text"
 	},
+	"msgb00e55fa8e5c5db9": "Hoch",
+	"@msgb00e55fa8e5c5db9": {
+		"context": "[contrast]",
+		"type": "text"
+	},
 	"msgb157558a446242ca": "Größe",
 	"@msgb157558a446242ca": {
 		"type": "text"
@@ -750,6 +768,10 @@
 	},
 	"msgb2267d627659bfe5": "Bundle erstellen",
 	"@msgb2267d627659bfe5": {
+		"type": "text"
+	},
+	"msgb27c54df7aa26928": "Kräftige Rahmen und Texte",
+	"@msgb27c54df7aa26928": {
 		"type": "text"
 	},
 	"msgb666cc5c311077e1": "Laden der ungespeicherten Änderungen fehlgeschlagen: {var0}",
@@ -823,6 +845,11 @@
 	},
 	"msgc2e75bb8be6a83f9": "Führen Sie {var0} aus oder klicken Sie auf die Schaltfläche unten, um das Bundle zu reparieren.",
 	"@msgc2e75bb8be6a83f9": {
+		"type": "text"
+	},
+	"msgc532d14ae2c5335a": "Standard",
+	"@msgc532d14ae2c5335a": {
+		"context": "[contrast]",
 		"type": "text"
 	},
 	"msgc68b1ed9d9dbbbe": "Schließen der neuen .arb-Katalogdatei",

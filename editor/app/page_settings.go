@@ -44,6 +44,7 @@ func (p PageSettings) GET(
 		Prefs: template.UIPrefs{
 			Theme:          prefs.Theme,
 			Motion:         prefs.Motion,
+			Contrast:       prefs.Contrast,
 			UIFont:         prefs.UIFont,
 			EditorFont:     prefs.EditorFont,
 			UIFontSize:     prefs.UIFontSize,
@@ -160,6 +161,7 @@ func (p PageSettings) POSTSetPref(
 		Theme:          p2.Theme,
 		ThemeResolved:  prefSignals.PrefThemeResolved,
 		Motion:         p2.Motion,
+		Contrast:       p2.Contrast,
 		UIFont:         p2.UIFont,
 		EditorFont:     p2.EditorFont,
 		UIFontSize:     p2.UIFontSize,

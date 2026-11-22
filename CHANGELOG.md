@@ -27,6 +27,7 @@ Releases up to v0.8.5 have their notes on
 - Reorder the locales by dragging them in the sidebar. Every page shows them in that order, which `.toki/index.db` keeps. Until then, the default locale comes first.
 - Collapse the Domains, Locales and Filter sections of the sidebar. The browser remembers which ones you closed.
 - Pick the motion of the editor in the settings: Animated, Reduced Motion, or System, which follows the reduced motion setting of the OS.
+- Pick the contrast of the editor in the settings: Standard, High Contrast, or System, which follows the contrast setting of the OS. High contrast shows dimmed text at full strength and draws borders as strong as the text.
 - Show the editor in English, German, French, Russian or Ukrainian: the language you pick in the settings, else the language of the terminal in the desktop app and the language the browser prefers with `-server`.
 
 #### `toki repair`

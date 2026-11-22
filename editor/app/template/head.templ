@@ -68,6 +68,18 @@ templ Head(prefs UIPrefs) {
 				document.documentElement.setAttribute('data-pref-full-motion','')
 			</script>
 	}
+	// Set the contrast attribute before any content renders. System leaves
+	// the OS preference to the CSS.
+	switch prefs.Contrast {
+		case "more":
+			<script>
+				document.documentElement.setAttribute('data-pref-contrast-more','')
+			</script>
+		case "standard":
+			<script>
+				document.documentElement.setAttribute('data-pref-contrast-standard','')
+			</script>
+	}
 	// Inject CSS custom properties for user font preferences on :root.
 	// templ.Raw is acceptable here because templ has no native construct
 	// for <style> tags with dynamic content.

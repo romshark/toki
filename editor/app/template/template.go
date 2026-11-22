@@ -127,6 +127,7 @@ func InitEditorSignalsOne(tk *TIK) string {
 type UIPrefs struct {
 	Theme          string // "light", "dark", "system"
 	Motion         string // "animated", "reduced", "system"
+	Contrast       string // "standard", "more", "system"
 	UIFont         string
 	EditorFont     string
 	UIFontSize     string

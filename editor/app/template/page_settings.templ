@@ -57,6 +57,7 @@ templ PageSettings(tr tokibundle.Reader, version string, data DataSettingsPrevie
 		"data-signals:_ZWdnMQ":               "false",
 		"data-signals:pref_theme":            strfmt.SingleQuote(data.Prefs.Theme),
 		"data-signals:pref_motion":           strfmt.SingleQuote(data.Prefs.Motion),
+		"data-signals:pref_contrast":         strfmt.SingleQuote(data.Prefs.Contrast),
 		"data-signals:pref_ui_font":          strfmt.SingleQuote(data.Prefs.UIFont),
 		"data-signals:pref_editor_font":      strfmt.SingleQuote(data.Prefs.EditorFont),
 		"data-signals:pref_ui_font_size":     strfmt.SingleQuote(data.Prefs.UIFontSize),
@@ -160,6 +161,20 @@ templ PageSettings(tr tokibundle.Reader, version string, data DataSettingsPrevie
 								@motionCard(data.Prefs, "reduced", tr.String("[motion] Reduced Motion"),
 									tr.String("Minimal animations"))
 								@motionCard(data.Prefs, "system", tr.String("[motion] System"),
+									tr.String("Match OS setting"))
+							</div>
+						}
+						@componentField("pref_contrast", tr.String("Contrast")) {
+							<div
+								class="pref-picker"
+								role="group"
+								aria-labelledby={ fieldLabelID("pref_contrast") }
+							>
+								@contrastCard(data.Prefs, "standard", tr.String("[contrast] Standard"),
+									tr.String("Subtle borders and text"))
+								@contrastCard(data.Prefs, "more", tr.String("[contrast] High Contrast"),
+									tr.String("Bold borders and text"))
+								@contrastCard(data.Prefs, "system", tr.String("[contrast] System"),
 									tr.String("Match OS setting"))
 							</div>
 						}
@@ -418,6 +433,36 @@ templ motionCard(prefs UIPrefs, value, label, desc string) {
 				</div>
 		}
 	}
+}
+
+// contrastCard renders an option of the contrast preference. Its preview
+// keeps its own contrast, whichever option applies.
+templ contrastCard(prefs UIPrefs, value, label, desc string) {
+	@prefCard("pref_contrast", prefs.Contrast, value, label, desc,
+		fmt.Sprintf("$pref_contrast=%q", value)) {
+		switch value {
+			case "standard", "more":
+				<div class={ "pref-preview contrast-preview contrast-preview-" + value }>
+					@contrastPreviewLines()
+				</div>
+			default:
+				<div class="pref-preview pref-preview-split">
+					<div class="pref-preview-half contrast-preview contrast-preview-standard">
+						@contrastPreviewLines()
+					</div>
+					<div class="pref-preview-half contrast-preview contrast-preview-more">
+						@contrastPreviewLines()
+					</div>
+				</div>
+		}
+	}
+}
+
+// contrastPreviewLines sketches a heading and the lines of a text.
+templ contrastPreviewLines() {
+	<div class="cp-line cp-heading"></div>
+	<div class="cp-line"></div>
+	<div class="cp-line cp-short"></div>
 }
 
 // motionPreviewTrail sketches a moving dot with the trail it leaves.

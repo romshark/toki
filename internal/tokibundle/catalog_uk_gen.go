@@ -61,6 +61,9 @@ var writers_uk = map[string]func(w io.Writer, args ...any) (int, error){
 		written += n
 		return written, nil
 	},
+	msg14d59dda038fd18b: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "М’які рамки й текст")
+	},
 	msg152537f908bccfab: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Попередній перегляд")
 	},
@@ -570,6 +573,9 @@ var writers_uk = map[string]func(w io.Writer, args ...any) (int, error){
 	},
 	msg47b6749375b0a12d: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Закрити пошук")
+	},
+	msg4874f214657f527e: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Контраст")
 	},
 	msg49302ee4a0e443c: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Навігація TIK")
@@ -1157,6 +1163,9 @@ var writers_uk = map[string]func(w io.Writer, args ...any) (int, error){
 	msg943b9be1d97d1050: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Пошук…")
 	},
+	msg96b07b3aa8550333: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Системний")
+	},
 	msg97e4766ffe432da0: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Скасувати")
 	},
@@ -1414,6 +1423,9 @@ var writers_uk = map[string]func(w io.Writer, args ...any) (int, error){
 	msgaf89dc109b7a6672: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Неприпустиме")
 	},
+	msgb00e55fa8e5c5db9: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Високий")
+	},
 	msgb157558a446242ca: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Розмір")
 	},
@@ -1425,6 +1437,9 @@ var writers_uk = map[string]func(w io.Writer, args ...any) (int, error){
 	},
 	msgb2267d627659bfe5: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Зібрати бандл")
+	},
+	msgb27c54df7aa26928: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Чіткі рамки й текст")
 	},
 	msgb666cc5c311077e1: func(w io.Writer, args ...any) (written int, err error) {
 		var n int
@@ -1629,6 +1644,9 @@ var writers_uk = map[string]func(w io.Writer, args ...any) (int, error){
 		}
 		written += n
 		return written, nil
+	},
+	msgc532d14ae2c5335a: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Звичайний")
 	},
 	msgc68b1ed9d9dbbbe: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "закриття нового файлу каталогу .arb")

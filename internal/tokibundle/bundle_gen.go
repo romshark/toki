@@ -353,6 +353,7 @@ const (
 	msg13d342b142ac79ae = `Flags:`
 	msg147c4e5b7a5e7c5f = `[message] Untranslated`
 	msg149e6fc0c1d2acac = `Expected a comma at index {integer}.`
+	msg14d59dda038fd18b = `Subtle borders and text`
 	msg152537f908bccfab = `Preview`
 	msg174ae5f53bcbbdfc = `Messages`
 	msg185940bdf7df50a5 = `The source code declares {# TIKs that have} no entry in the native-locale catalog yet.`
@@ -399,6 +400,7 @@ const (
 	msg4709b18128b120f3 = `Native locale`
 	msg47463dd161059ba9 = `Usage: toki {text} [flags]`
 	msg47b6749375b0a12d = `Close search`
+	msg4874f214657f527e = `Contrast`
 	msg49302ee4a0e443c  = `TIK navigation`
 	msg4a6a833acc1ecd24 = `[changes] Unsaved`
 	msg4a9e9b56b7b5a144 = `[font size] Bigger`
@@ -480,6 +482,7 @@ const (
 	msg91ca24610763fd5b = `source`
 	msg930a54fe7092702a = `Toki Project Directory`
 	msg943b9be1d97d1050 = `Search…`
+	msg96b07b3aa8550333 = `[contrast] System`
 	msg97e4766ffe432da0 = `Cancel`
 	msg996193f83bf9e69d = `Invalid ICU message`
 	msg9ade02415f167e94 = `Reset`
@@ -511,10 +514,12 @@ const (
 	msgae9a4a462ab8e304 = `2. Executing {text}`
 	msgaea322ed423ecc80 = `Domains`
 	msgaf89dc109b7a6672 = `[message] Invalid`
+	msgb00e55fa8e5c5db9 = `[contrast] High Contrast`
 	msgb157558a446242ca = `Size`
 	msgb1b9260eba1cfa22 = `TIKs with no translation`
 	msgb211c288001b6d53 = `TIK domain scopes`
 	msgb2267d627659bfe5 = `Build Bundle`
+	msgb27c54df7aa26928 = `Bold borders and text`
 	msgb666cc5c311077e1 = `Loading the unsaved changes failed: {text}`
 	msgb70a169708dd45a7 = `create new bundle package`
 	msgb85423fbc0a4908e = `Browse for folder…`
@@ -531,6 +536,7 @@ const (
 	msgc03456d5430b02f0 = `Search sizes`
 	msgc0a2ac0e6e17a6a2 = `Absolutely! Now let's break this down…`
 	msgc2e75bb8be6a83f9 = `Run {text} or click the button below to repair the bundle.`
+	msgc532d14ae2c5335a = `[contrast] Standard`
 	msgc68b1ed9d9dbbbe  = `closing new catalog .arb file`
 	msgc6f7bae11438b0ff = `Server URL`
 	msgc71ffb01a1ed0b55 = `Building Bundle`

@@ -19,6 +19,7 @@ func (PrefsSync) OnPrefsChanged(e EventPrefsChanged, sse datapages.SSE) error {
 	prefs := UIPrefs{
 		Theme:          e.Theme,
 		Motion:         e.Motion,
+		Contrast:       e.Contrast,
 		UIFont:         e.UIFont,
 		EditorFont:     e.EditorFont,
 		UIFontSize:     e.UIFontSize,
@@ -36,6 +37,7 @@ func (PrefsSync) OnPrefsChanged(e EventPrefsChanged, sse datapages.SSE) error {
 type UIPrefs struct {
 	Theme          string `json:"theme"`            // "light", "dark", "system"
 	Motion         string `json:"motion"`           // "animated", "reduced", "system"
+	Contrast       string `json:"contrast"`         // "standard", "more", "system"
 	UIFont         string `json:"ui_font"`          // "system", "georgia", "helvetica"
 	EditorFont     string `json:"editor_font"`      // "mono-system", "mono-firacode", etc.
 	UIFontSize     string `json:"ui_font_size"`     // "default", "small", "big", etc.
@@ -48,6 +50,7 @@ type PrefSignals struct {
 	PrefTheme          string `json:"pref_theme"`
 	PrefThemeResolved  string `json:"pref_theme_resolved"`
 	PrefMotion         string `json:"pref_motion"`
+	PrefContrast       string `json:"pref_contrast"`
 	PrefUIFont         string `json:"pref_ui_font"`
 	PrefEditorFont     string `json:"pref_editor_font"`
 	PrefUIFontSize     string `json:"pref_ui_font_size"`
@@ -57,6 +60,7 @@ type PrefSignals struct {
 var uiPrefsDefaults = UIPrefs{
 	Theme:          "system",
 	Motion:         "system",
+	Contrast:       "system",
 	UIFont:         "system",
 	EditorFont:     "mono-system",
 	UIFontSize:     "default",
@@ -114,6 +118,9 @@ func ReadUIPrefs(r *http.Request) UIPrefs {
 	if c, err := r.Cookie("toki-motion"); err == nil && c.Value != "" {
 		p.Motion = c.Value
 	}
+	if c, err := r.Cookie("toki-contrast"); err == nil && c.Value != "" {
+		p.Contrast = c.Value
+	}
 	if c, err := r.Cookie("toki-ui-font"); err == nil && c.Value != "" {
 		p.UIFont = c.Value
 	}
@@ -141,6 +148,11 @@ func isValidUIPref(name, value string) bool {
 		case "animated", "reduced", "system":
 			return true
 		}
+	case "toki-contrast":
+		switch value {
+		case "standard", "more", "system":
+			return true
+		}
 	case "toki-ui-font", "toki-editor-font":
 		_, ok := fontFamilies[value]
 		return ok
@@ -155,6 +167,7 @@ func (p UIPrefs) Signals() PrefSignals {
 	return PrefSignals{
 		PrefTheme:          p.Theme,
 		PrefMotion:         p.Motion,
+		PrefContrast:       p.Contrast,
 		PrefUIFont:         p.UIFont,
 		PrefEditorFont:     p.EditorFont,
 		PrefUIFontSize:     p.UIFontSize,
@@ -166,6 +179,7 @@ func (s PrefSignals) Valid() bool {
 	return isValidUIPref("toki-theme", s.PrefTheme) &&
 		(s.PrefThemeResolved == "light" || s.PrefThemeResolved == "dark") &&
 		isValidUIPref("toki-motion", s.PrefMotion) &&
+		isValidUIPref("toki-contrast", s.PrefContrast) &&
 		isValidUIPref("toki-ui-font", s.PrefUIFont) &&
 		isValidUIPref("toki-editor-font", s.PrefEditorFont) &&
 		isValidUIPref("toki-ui-font-size", s.PrefUIFontSize) &&
@@ -176,6 +190,7 @@ func (s PrefSignals) UIPrefs() UIPrefs {
 	return UIPrefs{
 		Theme:          s.PrefTheme,
 		Motion:         s.PrefMotion,
+		Contrast:       s.PrefContrast,
 		UIFont:         s.PrefUIFont,
 		EditorFont:     s.PrefEditorFont,
 		UIFontSize:     s.PrefUIFontSize,
@@ -213,6 +228,7 @@ func applyUIPrefsScript(p UIPrefs) string {
 	var script strings.Builder
 	writeUIPrefCookieScript(&script, "toki-theme", p.Theme)
 	writeUIPrefCookieScript(&script, "toki-motion", p.Motion)
+	writeUIPrefCookieScript(&script, "toki-contrast", p.Contrast)
 	writeUIPrefCookieScript(&script, "toki-ui-font", p.UIFont)
 	writeUIPrefCookieScript(&script, "toki-editor-font", p.EditorFont)
 	writeUIPrefCookieScript(&script, "toki-ui-font-size", p.UIFontSize)
@@ -233,6 +249,15 @@ func applyUIPrefsScript(p UIPrefs) string {
 	fmt.Fprintf(&script,
 		"document.documentElement.toggleAttribute('data-pref-full-motion',%t);",
 		p.Motion == "animated")
+	// Morpheus and the app's CSS raise the contrast under
+	// data-pref-contrast-more, and under the OS preference unless
+	// data-pref-contrast-standard overrides it.
+	fmt.Fprintf(&script,
+		"document.documentElement.toggleAttribute('data-pref-contrast-more',%t);",
+		p.Contrast == "more")
+	fmt.Fprintf(&script,
+		"document.documentElement.toggleAttribute('data-pref-contrast-standard',%t);",
+		p.Contrast == "standard")
 	writeRootStyleScript(&script, "--font-ui", p.UIFontFamily())
 	writeRootStyleScript(&script, "--font-editor", p.EditorFontFamily())
 	writeRootStyleScript(&script, "--font-size-ui", p.UIFontSizeCSS())
