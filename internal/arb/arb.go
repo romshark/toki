@@ -418,41 +418,33 @@ func Encode(w io.Writer, file *File, indent string) error {
 		entries = append(entries, kv{"@" + id, metaMap})
 	}
 
-	// Output final JSON.
-	_, _ = w.Write([]byte("{\n"))
-	valBuf := &bytes.Buffer{}
-	partColon := []byte(": ")
-	partLineBreak := []byte("\n")
-	partCommaLineBreak := []byte(",\n")
-	enc := json.NewEncoder(valBuf)
+	// Output final JSON. It's built in memory and written with a single call
+	// whose error covers the whole output.
+	var out, valBuf bytes.Buffer
+	out.WriteString("{\n")
+	enc := json.NewEncoder(&valBuf)
+	enc.SetIndent(indent, indent)
 	for i, entry := range entries {
 		valBuf.Reset()
 		keyJSON, err := json.Marshal(entry.Key)
 		if err != nil {
 			return err
 		}
-
-		enc.SetIndent(indent, indent)
 		if err := enc.Encode(entry.Value); err != nil {
 			return err
 		}
 
-		lines := strings.Split(strings.TrimRight(valBuf.String(), "\n"), "\n")
-
-		_, _ = w.Write([]byte(indent))
-		_, _ = w.Write(keyJSON)
-		_, _ = w.Write(partColon)
-		_, _ = w.Write([]byte(lines[0]))
-		for _, line := range lines[1:] {
-			_, _ = fmt.Fprintf(w, "\n%s", line)
-		}
-
+		out.WriteString(indent)
+		out.Write(keyJSON)
+		out.WriteString(": ")
+		out.Write(bytes.TrimRight(valBuf.Bytes(), "\n"))
 		if i < len(entries)-1 {
-			_, _ = w.Write(partCommaLineBreak)
+			out.WriteString(",\n")
 		} else {
-			_, _ = w.Write(partLineBreak)
+			out.WriteString("\n")
 		}
 	}
-	_, err := w.Write([]byte("}\n"))
+	out.WriteString("}\n")
+	_, err := w.Write(out.Bytes())
 	return err
 }
