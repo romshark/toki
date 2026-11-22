@@ -534,17 +534,7 @@ func (a *App) populateDBFromScanLocked() error {
 
 	// Populate FTS search index.
 	for _, tk := range a.tiks {
-		var sb strings.Builder
-		sb.WriteString(tk.ID)
-		sb.WriteByte(' ')
-		sb.WriteString(tk.TIK)
-		sb.WriteByte(' ')
-		sb.WriteString(tk.Description)
-		for _, msg := range tk.ICU {
-			sb.WriteByte(' ')
-			sb.WriteString(msg.Message)
-		}
-		_ = db.InsertSearchEntry(tk.ID, sb.String()) // best-effort
+		_ = db.InsertSearchEntry(tk.ID, searchContent(tk)) // best-effort
 	}
 
 	// Store checksum.
@@ -848,11 +838,34 @@ func (a *App) setMessageLocked(id, locale, newMessage string) error {
 		a.changed = append(a.changed, icuMsg)
 	}
 
-	// Persist to index DB.
-	if a.indexDB != nil {
-		_ = a.indexDB.UpdateMessage(id, locale, newMessage)
-	}
+	a.persistMessageLocked(tk, icuMsg)
 	return nil
+}
+
+// persistMessageLocked stores msg of tk in the index DB and refreshes
+// the search entry of tk. Both writes are best-effort.
+func (a *App) persistMessageLocked(tk *template.TIK, msg *template.ICUMessage) {
+	if a.indexDB == nil {
+		return
+	}
+	_ = a.indexDB.UpdateMessage(tk.ID, msg.Catalog.Locale, msg.Message)
+	_ = a.indexDB.UpdateSearchEntry(tk.ID, searchContent(tk))
+}
+
+// searchContent returns the text the search index matches tk by:
+// its ID, TIK, description and current messages.
+func searchContent(tk *template.TIK) string {
+	var sb strings.Builder
+	sb.WriteString(tk.ID)
+	sb.WriteByte(' ')
+	sb.WriteString(tk.TIK)
+	sb.WriteByte(' ')
+	sb.WriteString(tk.Description)
+	for _, msg := range tk.ICU {
+		sb.WriteByte(' ')
+		sb.WriteString(msg.Message)
+	}
+	return sb.String()
 }
 
 // POSTReset is /reset/{$}
@@ -922,10 +935,7 @@ func (a *App) resetMessage(id, locale string) (string, error) {
 		a.changed = slices.DeleteFunc(a.changed, func(m *template.ICUMessage) bool {
 			return m == icuMsg
 		})
-		// Persist reset to index DB (restore original message).
-		if a.indexDB != nil {
-			_ = a.indexDB.UpdateMessage(id, locale, icuMsg.Message)
-		}
+		a.persistMessageLocked(tk, icuMsg)
 	}
 	return resetValue, nil
 }

@@ -17,3 +17,7 @@ func (a *App) LoadedFromIndexDB() bool { return a.scan == nil }
 func (a *App) SetMessage(id, locale, message string) error {
 	return a.setMessage(id, locale, message)
 }
+
+func (a *App) ResetMessage(id, locale string) (string, error) {
+	return a.resetMessage(id, locale)
+}

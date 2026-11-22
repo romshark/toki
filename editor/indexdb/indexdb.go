@@ -255,6 +255,19 @@ func (db *DB) InsertSearchEntry(tikID, content string) error {
 	)
 }
 
+// UpdateSearchEntry replaces a TIK's searchable content in the FTS5 index.
+// See [DB.InsertSearchEntry].
+func (db *DB) UpdateSearchEntry(tikID, content string) error {
+	return db.sq.ExecParams(
+		"UPDATE search_index SET content = ? WHERE tik_id = ?",
+		1, 2,
+		[]sqinn.Value{
+			sqinn.StringValue(content),
+			sqinn.StringValue(tikID),
+		},
+	)
+}
+
 // SearchResult holds the result of a paginated FTS search.
 type SearchResult struct {
 	TIKIDs []string // TIK IDs for the requested window
