@@ -36,6 +36,96 @@ func TestVersion(t *testing.T) {
 	require.Contains(t, stdout.String(), "Toki v"+cli.Version)
 }
 
+func TestVersionFlag(t *testing.T) {
+	for _, arg := range []string{"-version", "--version"} {
+		t.Run(arg, func(t *testing.T) {
+			var stderr, stdout bytes.Buffer
+			res, exitCode := cli.Run(
+				[]string{"toki", arg}, osEnv(), &stderr, &stdout, TimeNow,
+			)
+			require.Equal(t, 0, exitCode)
+			require.Zero(t, res)
+			require.Contains(t, stdout.String(), "Toki v"+cli.Version)
+		})
+	}
+}
+
+func TestHelp(t *testing.T) {
+	commands := []string{"generate", "lint", "edit", "repair", "version", "help"}
+
+	t.Run("no command", func(t *testing.T) {
+		var stderr, stdout bytes.Buffer
+		res, exitCode := cli.Run([]string{"toki"}, osEnv(), &stderr, &stdout, TimeNow)
+		require.Equal(t, 2, exitCode)
+		require.Zero(t, res)
+		require.Empty(t, stdout.String())
+		require.Contains(t, stderr.String(), "Usage:")
+	})
+
+	for _, args := range [][]string{
+		{"help"}, {"-h"}, {"-help"}, {"--help"}, {"help", "help"}, {"help", "-h"},
+	} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			var stderr, stdout bytes.Buffer
+			res, exitCode := cli.Run(
+				append([]string{"toki"}, args...), osEnv(), &stderr, &stdout, TimeNow,
+			)
+			require.Equal(t, 0, exitCode)
+			require.Zero(t, res)
+			require.Empty(t, stderr.String())
+			require.Contains(t, stdout.String(), "Usage:")
+			for _, c := range commands {
+				require.Contains(t, stdout.String(), "\t"+c+" ")
+			}
+		})
+	}
+
+	for _, c := range commands[:len(commands)-1] {
+		for _, args := range [][]string{
+			{"help", c}, {c, "-h"}, {c, "-help"}, {c, "--help"},
+		} {
+			t.Run(strings.Join(args, " "), func(t *testing.T) {
+				var stderr, stdout bytes.Buffer
+				res, exitCode := cli.Run(
+					append([]string{"toki"}, args...), osEnv(), &stderr, &stdout, TimeNow,
+				)
+				require.Equal(t, 0, exitCode)
+				require.Zero(t, res)
+				require.Empty(t, stderr.String())
+				require.True(t, strings.HasPrefix(stdout.String(), "Usage: toki "+c),
+					"unexpected usage: %q", stdout.String())
+			})
+		}
+	}
+}
+
+func TestCLIArgsErr(t *testing.T) {
+	tests := []struct {
+		args      []string
+		expectErr error
+	}{
+		{[]string{"unknown"}, cli.ErrUnknownCommand},
+		{[]string{"help", "unknown"}, cli.ErrUnknownCommand},
+		{[]string{"generate", "-unknown"}, cli.ErrInvalidCLIArgs},
+		{[]string{"lint", "-unknown"}, cli.ErrInvalidCLIArgs},
+		{[]string{"edit", "-unknown"}, cli.ErrInvalidCLIArgs},
+		{[]string{"repair", "-unknown"}, cli.ErrInvalidCLIArgs},
+		{[]string{"version", "-unknown"}, cli.ErrInvalidCLIArgs},
+	}
+	for _, tt := range tests {
+		t.Run(strings.Join(tt.args, " "), func(t *testing.T) {
+			var stderr, stdout bytes.Buffer
+			res, exitCode := cli.Run(
+				append([]string{"toki"}, tt.args...), osEnv(), &stderr, &stdout, TimeNow,
+			)
+			require.Equal(t, 2, exitCode)
+			require.ErrorIs(t, res.Err, tt.expectErr)
+			require.Empty(t, stderr.String())
+			require.Empty(t, stdout.String())
+		})
+	}
+}
+
 func TestGenerateAndRun(t *testing.T) {
 	dir := t.TempDir()
 	initGoMod(t, dir, "tstmod")

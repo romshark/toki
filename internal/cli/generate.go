@@ -40,12 +40,13 @@ type Generate struct {
 }
 
 func (g *Generate) Run(
-	osArgs, env []string, lintOnly bool, stderr io.Writer, now time.Time,
+	osArgs, env []string, lintOnly bool, stderr, stdout io.Writer, now time.Time,
 ) (result Result) {
 	result.Start = now
-	conf, err := config.ParseCLIArgsGenerate(osArgs)
+	flags := newFlagSet(osArgs[1])
+	conf, err := config.ParseCLIArgsGenerate(flags, osArgs[2:])
 	if err != nil {
-		result.Err = fmt.Errorf("%w: %w", ErrInvalidCLIArgs, err)
+		result.Err = flagError(flags, stdout, err)
 		return result
 	}
 	result.Config = conf
@@ -553,7 +554,7 @@ func RegenerateBundle(env []string, modDir, bundlePkgPath string) error {
 		tikICUTranslator: tik.NewICUTranslator(tik.DefaultConfig),
 	}
 	osArgs := []string{"toki", "generate", "-m", modDir, "-b", bundlePkgPath, "-q"}
-	r := g.Run(osArgs, env, false, io.Discard, time.Now())
+	r := g.Run(osArgs, env, false, io.Discard, io.Discard, time.Now())
 	return r.Err
 }
 

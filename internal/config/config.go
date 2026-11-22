@@ -24,14 +24,14 @@ type ConfigGenerate struct {
 
 var ErrLocaleNotBCP47 = errors.New("must be a valid non-und BCP 47 locale")
 
-// ParseCLIArgsGenerate parses CLI arguments for command "generate"
-func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
+// ParseCLIArgsGenerate defines the flags of the commands "generate" and "lint"
+// on cli and parses args with it.
+func ParseCLIArgsGenerate(cli *flag.FlagSet, args []string) (*ConfigGenerate, error) {
 	c := &ConfigGenerate{}
 
 	var locale string
 	var translations strArray
 
-	cli := flag.NewFlagSet(osArgs[0], flag.ExitOnError)
 	cli.StringVar(&locale, "l", "",
 		"default locale of the original source code texts in non-und BCP 47")
 	cli.Var(&translations, "t",
@@ -48,7 +48,7 @@ func ParseCLIArgsGenerate(osArgs []string) (*ConfigGenerate, error) {
 	cli.BoolVar(&c.RequireComplete, "require-complete", false,
 		"fails the command if any active catalog has a completeness < 1.0 (under 100%)")
 
-	if err := cli.Parse(osArgs[2:]); err != nil {
+	if err := cli.Parse(args); err != nil {
 		return nil, fmt.Errorf("parsing: %w", err)
 	}
 

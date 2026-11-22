@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -14,14 +13,13 @@ import (
 // Edit implements the command `toki edit`.
 type Edit struct{}
 
-func (e *Edit) Run(osArgs, env []string, stderr io.Writer) error {
-	fs := flag.NewFlagSet("edit", flag.ContinueOnError)
-	fs.SetOutput(stderr)
+func (e *Edit) Run(osArgs, env []string, stderr, stdout io.Writer) error {
+	fs := newFlagSet("edit")
 	server := fs.String("server", "",
 		"run as plain HTTP server on this address instead of the native desktop app")
 	bundlePkg := fs.String("b", "tokibundle", "path to generated Go bundle package")
-	if err := fs.Parse(osArgs[2:]); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidCLIArgs, err)
+	if err := flagError(fs, stdout, fs.Parse(osArgs[2:])); err != nil {
+		return err
 	}
 
 	log.SetWriter(stderr, false)

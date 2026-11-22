@@ -2,7 +2,6 @@ package cli
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"log/slog"
@@ -22,17 +21,16 @@ import (
 // Repair implements the command `toki repair`.
 //
 // Repair only fixes *corruption* — native-locale ARB messages that disagree
-// with the TIK in source code (locked-ICU mismatch or placeholder-metadata
-// mismatch). It does NOT add missing entries; that is `toki generate`'s job.
+// with the TIK in source code (locked-ICU mismatch or placeholder-metadata mismatch).
+// It does NOT add missing entries; that is `toki generate`'s job.
 // If the bundle is already consistent, Repair is a no-op.
 type Repair struct{}
 
-func (e *Repair) Run(osArgs, env []string, stderr io.Writer) error {
-	fs := flag.NewFlagSet("repair", flag.ContinueOnError)
-	fs.SetOutput(stderr)
+func (e *Repair) Run(osArgs, env []string, stderr, stdout io.Writer) error {
+	fs := newFlagSet("repair")
 	bundlePkg := fs.String("b", "tokibundle", "path to generated Go bundle package")
-	if err := fs.Parse(osArgs[2:]); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidCLIArgs, err)
+	if err := flagError(fs, stdout, fs.Parse(osArgs[2:])); err != nil {
+		return err
 	}
 
 	log.SetWriter(stderr, false)

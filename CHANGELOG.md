@@ -20,6 +20,14 @@ Releases up to v0.8.5 have their notes on
 
 - Add `toki repair`, which rewrites the native-locale messages that disagree with their TIK from the TIK and regenerates the bundle. `-b` sets the bundle package path.
 
+#### `toki help`
+
+- Add `toki help`, which lists the commands, and `toki help <command>`, which describes a command and its flags. `toki -h` and `toki --help` print the list too. `toki` without a command prints it to stderr and exits with code 2.
+
+#### `toki version`
+
+- Accept `toki --version` and `toki -version`.
+
 ### Changed
 
 #### `toki generate` and `toki lint`
@@ -28,6 +36,7 @@ Releases up to v0.8.5 have their notes on
 - Fill an empty native-locale message from its TIK instead of keeping it empty.
 - Count blank messages as incomplete. `-require-complete` fails on catalogs with untranslated messages, and the completeness report counts them. A blank message used to count as complete once its catalog was written.
 - Print the `-json` result to stdout instead of stderr.
+- Print the usage for `-h` to stdout and start it with what the command does instead of "Usage of toki:". Report an unknown flag in one line, without the usage.
 
 #### Requirements
 
