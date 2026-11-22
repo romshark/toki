@@ -1,6 +1,11 @@
 package app
 
-import "github.com/romshark/toki/editor/app/template"
+import (
+	"net/http"
+
+	"github.com/romshark/toki/editor/app/template"
+	"github.com/romshark/toki/internal/tokibundle"
+)
 
 // Accessors for the tests in package app_test.
 
@@ -8,6 +13,8 @@ var (
 	DomainSignalKey        = domainSignalKey
 	NormalizeDomainsSignal = normalizeDomainsSignal
 )
+
+func (a *App) ReaderFor(r *http.Request) tokibundle.Reader { return a.readerFor(r) }
 
 func (a *App) TIKs() []*template.TIK { return a.tiks }
 

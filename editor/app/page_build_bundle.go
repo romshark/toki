@@ -21,15 +21,18 @@ func (p PageBuildBundle) GET(
 ) (
 	body datapages.Component,
 	redirect datapages.Redirect,
+	docAttrs datapages.DocumentAttrs,
 	enableBackgroundStreaming datapages.EnableBackgroundStreaming,
 	disableRefreshAfterHidden datapages.DisableRefreshAfterHidden,
 	err error,
 ) {
 	enableBackgroundStreaming = true
 	disableRefreshAfterHidden = true
+	tr := p.App.readerFor(r)
+	docAttrs = documentAttrs(tr)
 
 	if p.App.IsLoading() {
-		body = template.PageLoading()
+		body = template.PageLoading(tr)
 		return
 	}
 
@@ -55,15 +58,17 @@ func (p PageBuildBundle) GET(
 		state.Building = true
 	}
 
-	body = template.PageBuildBundle(state)
+	body = template.PageBuildBundle(tr, state)
 	return
 }
 
 func (p PageBuildBundle) StreamOpen(
 	r *http.Request,
-	_ datapages.StreamID,
+	state datapages.State[StateLang],
 	updated datapages.Dispatcher[EventUpdated],
 ) error {
+	state.Values.Reader = p.App.readerFor(r)
+
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
 	// Start the build now that the SSE stream is connected.
@@ -75,11 +80,15 @@ func (p PageBuildBundle) StreamOpen(
 	return nil
 }
 
-func (p PageBuildBundle) OnUpdated(event EventUpdated, sse datapages.SSE) error {
+func (p PageBuildBundle) OnUpdated(
+	event EventUpdated, sse datapages.SSE, state datapages.State[StateLang],
+) error {
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
 
-	return sse.PatchElement(template.PageBuildBundle(p.App.buildBundleStateLocked()))
+	return sse.PatchElement(
+		template.PageBuildBundle(state.Values.Reader, p.App.buildBundleStateLocked()),
+	)
 }
 
 func (a *App) buildBundleStateLocked() template.BuildBundleState {

@@ -52,13 +52,15 @@ func (s *Server) writeHTML(
 	r *http.Request,
 	status int,
 	headGeneric, head datapages.Head,
+	docAttrs datapages.DocumentAttrs,
 	body datapages.Component,
 	writeBodyAttrs func(w http.ResponseWriter),
 	writeBodySuffix func(w http.ResponseWriter),
 ) error {
 	return s.Core.WriteHTML(w, r, httpserve.HTMLDocument{
-		Status:      status,
-		HeadGeneric: headGeneric,
+		Status:        status,
+		HeadGeneric:   headGeneric,
+		DocumentAttrs: docAttrs,
 		WriteHeadPrologue: func(io.Writer) error {
 			// The id authorizes access to 1 tab's state. The fetch wrapper keeps
 			// it in a closure. Removing the script node prevents later DOM readers,
@@ -176,6 +178,9 @@ type Server struct {
 	streams              *stream.Handler
 	app                  *dpapp.App
 
+	// stateInstancesStateLang maps a Datapages-Instance id to the live slot.
+	stateInstancesStateLang stateStore[stateSlotStateLang]
+
 	// stateInstancesStateTIK maps a Datapages-Instance id to the live slot.
 	stateInstancesStateTIK stateStore[stateSlotStateTIK]
 
@@ -256,6 +261,7 @@ const (
 
 	// Public events:
 
+	EvSubjLangChanged  = "editor.lang_changed"
 	EvSubjPrefsChanged = "editor.prefs_changed"
 	EvSubjReset        = "editor.reset"
 	EvSubjUpdated      = "editor.updated"
@@ -263,6 +269,7 @@ const (
 
 func MessageBrokerStreamSubjects() []string {
 	return []string{
+		EvSubjLangChanged,
 		EvSubjPrefsChanged,
 		EvSubjReset,
 		EvSubjUpdated,
@@ -271,31 +278,37 @@ func MessageBrokerStreamSubjects() []string {
 
 var evSubjPageBuildBundle = []string{
 	EvSubjUpdated,
+	EvSubjLangChanged,
 	EvSubjPrefsChanged,
 }
 
 var evSubjPageIndex = []string{
 	EvSubjUpdated,
+	EvSubjLangChanged,
 	EvSubjPrefsChanged,
 }
 
 var evSubjPageProjectDir = []string{
 	EvSubjUpdated,
+	EvSubjLangChanged,
 	EvSubjPrefsChanged,
 }
 
 var evSubjPageSettings = []string{
+	EvSubjLangChanged,
 	EvSubjPrefsChanged,
 }
 
 var evSubjPageTIK = []string{
 	EvSubjUpdated,
+	EvSubjLangChanged,
 	EvSubjPrefsChanged,
 	EvSubjReset,
 }
 
 var evSubjPageTIKs = []string{
 	EvSubjUpdated,
+	EvSubjLangChanged,
 	EvSubjPrefsChanged,
 	EvSubjReset,
 }
@@ -406,6 +419,45 @@ func (s *stateStore[S]) CompareAndDelete(id string, slot *S) bool {
 	}
 	delete(sh.m, id)
 	return true
+}
+
+// stateSlotStateLang belongs to 1 stream and is never reused.
+// A reconnect allocates a new slot and state value.
+type stateSlotStateLang struct {
+	state *dpapp.StateLang
+	mu    sync.Mutex // serializes all stateful handler calls on this instance
+	dead  bool
+}
+
+// allocateStateLang reserves capacity and registers state before the stream opens.
+// It returns nil at the instance limit. id must pass [wellFormedStateInstanceID].
+func (s *Server) allocateStateLang(id string) *stateSlotStateLang {
+	if !s.ReserveStateInstance() {
+		return nil
+	}
+	slot := &stateSlotStateLang{state: new(dpapp.StateLang)}
+	s.stateInstancesStateLang.Store(id, slot)
+	return slot
+}
+
+func (s *Server) lookupStateLang(id string) (*stateSlotStateLang, bool) {
+	return s.stateInstancesStateLang.Load(id)
+}
+
+// releaseStateLang drops state and capacity exactly once.
+// Passing slot preserves a replacement registered
+// under the same id while an older stream closes.
+func (s *Server) releaseStateLang(id string, slot *stateSlotStateLang) {
+	slot.mu.Lock()
+	if slot.dead {
+		slot.mu.Unlock()
+		return
+	}
+	slot.dead = true
+	slot.state = nil
+	slot.mu.Unlock()
+	s.stateInstancesStateLang.CompareAndDelete(id, slot)
+	s.ReleaseStateInstance()
 }
 
 // stateSlotStateTIK belongs to 1 stream and is never reused.
@@ -549,6 +601,9 @@ func setupHandlers(s *Server) {
 		"POST /project-dir/open/{$}",
 		pageProjectDirHandlers{s}.POSTOpen)
 	s.Mux().HandleFunc(
+		"POST /settings/set-lang/{$}",
+		pageSettingsHandlers{s}.POSTSetLang)
+	s.Mux().HandleFunc(
 		"POST /settings/set-pref/{$}",
 		pageSettingsHandlers{s}.POSTSetPref)
 	s.Mux().HandleFunc(
@@ -635,14 +690,14 @@ func (s *Server) render404(w http.ResponseWriter, r *http.Request) {
 		App: s.app,
 	}
 
-	body, err := p.GET(r)
+	body, docAttrs, err := p.GET(r)
 	if err != nil {
 		s.httpErr404(w, r, "handling PageError404.GET", err)
 		return
 	}
 	genericHead := s.app.Head(r)
 	if err := s.writeHTML(
-		w, r, http.StatusNotFound, genericHead, nil, body, nil, nil,
+		w, r, http.StatusNotFound, genericHead, nil, docAttrs, body, nil, nil,
 	); err != nil {
 		s.LogErr("rendering PageError404", err)
 		return
@@ -766,13 +821,23 @@ type pageBuildBundleHandlers struct{ *Server }
 
 func (s pageBuildBundleHandlers) GET(w http.ResponseWriter, r *http.Request) {
 	defer s.recoverPanic(w, r, nil, "PageBuildBundle.GET")
+
+	instanceID, err := newStateInstanceID()
+	if err != nil {
+		s.httpErrIntern(w, r, nil, "minting state instance", err)
+		return
+	}
+	w.Header().Set(stateInstanceIDHeader, instanceID)
+	// A shared cache would expose this bearer id to another visitor.
+	httpserve.SetNoStore(w.Header())
+
 	p := dpapp.PageBuildBundle{
 		App: s.app,
 		PrefsSync: dpapp.PrefsSync{
 			App: s.app,
 		},
 	}
-	body, redirect, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(r)
+	body, redirect, docAttrs, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(r)
 	if err != nil {
 		s.httpErrIntern(w, r, nil, "handling PageBuildBundle.GET", err)
 		return
@@ -799,7 +864,7 @@ func (s pageBuildBundleHandlers) GET(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.writeHTML(
-		w, r, http.StatusOK, genericHead, nil, body, bodyAttrs, bodySuffix,
+		w, r, http.StatusOK, genericHead, nil, docAttrs, body, bodyAttrs, bodySuffix,
 	); err != nil {
 		s.LogErr("rendering PageBuildBundle", err)
 		return
@@ -814,6 +879,22 @@ func (s pageBuildBundleHandlers) GETStream(w http.ResponseWriter, r *http.Reques
 
 	dispatchOpenUpdated := dispatcherEventUpdated{s: s.Server, ctx: context.WithoutCancel(r.Context())}
 
+	instanceID := r.Header.Get(stateInstanceIDHeader)
+	if !wellFormedStateInstanceID(instanceID) {
+		w.Header().Set(stateRetryHeader, stateRetryReconnect)
+		http.Error(w, http.StatusText(http.StatusConflict), http.StatusConflict)
+		return
+	}
+	slot := s.allocateStateLang(instanceID)
+	if slot == nil {
+		w.Header().Set("Retry-After", "5")
+		http.Error(w,
+			http.StatusText(http.StatusServiceUnavailable),
+			http.StatusServiceUnavailable)
+		return
+	}
+	defer s.releaseStateLang(instanceID, slot)
+
 	p := dpapp.PageBuildBundle{
 		App: s.app,
 		PrefsSync: dpapp.PrefsSync{
@@ -826,19 +907,24 @@ func (s pageBuildBundleHandlers) GETStream(w http.ResponseWriter, r *http.Reques
 			sse *dpsse.Stream,
 		) (err error) {
 			defer s.recoverPanicInto(&err, "PageBuildBundle.StreamOpen")
+			slot.mu.Lock()
+			defer slot.mu.Unlock()
 			return p.StreamOpen(
 				r,
-				streamID,
+				datapages.State[dpapp.StateLang]{Values: slot.state},
 				dispatchOpenUpdated,
 			)
 		},
-		nil,
+		func(streamID datapages.StreamID) {
+			s.releaseStateLang(instanceID, slot)
+		},
 		func(
 			streamID datapages.StreamID,
 			sse *dpsse.Stream, ch <-chan messaging.Message,
 		) {
 			defer s.recoverPanic(w, r, sse, "PageBuildBundle stream")
 			var eventUpdated dpapp.EventUpdated
+			var eventLangChanged dpapp.EventLangChanged
 			var eventPrefsChanged dpapp.EventPrefsChanged
 			for msg := range ch {
 				switch msg.Subject {
@@ -848,11 +934,32 @@ func (s pageBuildBundleHandlers) GETStream(w http.ResponseWriter, r *http.Reques
 						s.LogErr("unmarshaling EventUpdated JSON", err)
 						continue
 					}
-					if err := p.OnUpdated(
-						eventUpdated,
+					slot.mu.Lock()
+					if slot.dead {
+						slot.mu.Unlock()
+						continue
+					}
+					func() {
+						defer slot.mu.Unlock()
+						if err := p.OnUpdated(
+							eventUpdated,
+							sse,
+							datapages.State[dpapp.StateLang]{Values: slot.state},
+						); err != nil {
+							s.LogErr("handling PageBuildBundle.OnUpdated", err)
+						}
+					}()
+				case EvSubjLangChanged:
+					eventLangChanged = dpapp.EventLangChanged{}
+					if err := json.Unmarshal(msg.Data, &eventLangChanged); err != nil {
+						s.LogErr("unmarshaling EventLangChanged JSON", err)
+						continue
+					}
+					if err := p.OnLangChanged(
+						eventLangChanged,
 						sse,
 					); err != nil {
-						s.LogErr("handling PageBuildBundle.OnUpdated", err)
+						s.LogErr("handling PageBuildBundle.OnLangChanged", err)
 					}
 				case EvSubjPrefsChanged:
 					eventPrefsChanged = dpapp.EventPrefsChanged{}
@@ -878,7 +985,7 @@ func (s pageError404Handlers) GET(w http.ResponseWriter, r *http.Request) {
 	p := dpapp.PageError404{
 		App: s.app,
 	}
-	body, err := p.GET(r)
+	body, docAttrs, err := p.GET(r)
 	if err != nil {
 		s.httpErr404(w, r, "handling PageError404.GET", err)
 		return
@@ -886,7 +993,7 @@ func (s pageError404Handlers) GET(w http.ResponseWriter, r *http.Request) {
 	genericHead := s.app.Head(r)
 
 	if err := s.writeHTML(
-		w, r, http.StatusOK, genericHead, nil, body, nil, nil,
+		w, r, http.StatusOK, genericHead, nil, docAttrs, body, nil, nil,
 	); err != nil {
 		s.LogErr("rendering PageError404", err)
 		return
@@ -902,13 +1009,22 @@ func (s pageIndexHandlers) GET(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	instanceID, err := newStateInstanceID()
+	if err != nil {
+		s.httpErrIntern(w, r, nil, "minting state instance", err)
+		return
+	}
+	w.Header().Set(stateInstanceIDHeader, instanceID)
+	// A shared cache would expose this bearer id to another visitor.
+	httpserve.SetNoStore(w.Header())
+
 	p := dpapp.PageIndex{
 		App: s.app,
 		PrefsSync: dpapp.PrefsSync{
 			App: s.app,
 		},
 	}
-	body, redirect, err := p.GET(r)
+	body, redirect, docAttrs, err := p.GET(r)
 	if err != nil {
 		s.httpErrIntern(w, r, nil, "handling PageIndex.GET", err)
 		return
@@ -928,7 +1044,7 @@ func (s pageIndexHandlers) GET(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.writeHTML(
-		w, r, http.StatusOK, genericHead, nil, body, bodyAttrs, bodySuffix,
+		w, r, http.StatusOK, genericHead, nil, docAttrs, body, bodyAttrs, bodySuffix,
 	); err != nil {
 		s.LogErr("rendering PageIndex", err)
 		return
@@ -941,6 +1057,22 @@ func (s pageIndexHandlers) GETStream(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	instanceID := r.Header.Get(stateInstanceIDHeader)
+	if !wellFormedStateInstanceID(instanceID) {
+		w.Header().Set(stateRetryHeader, stateRetryReconnect)
+		http.Error(w, http.StatusText(http.StatusConflict), http.StatusConflict)
+		return
+	}
+	slot := s.allocateStateLang(instanceID)
+	if slot == nil {
+		w.Header().Set("Retry-After", "5")
+		http.Error(w,
+			http.StatusText(http.StatusServiceUnavailable),
+			http.StatusServiceUnavailable)
+		return
+	}
+	defer s.releaseStateLang(instanceID, slot)
+
 	p := dpapp.PageIndex{
 		App: s.app,
 		PrefsSync: dpapp.PrefsSync{
@@ -948,14 +1080,28 @@ func (s pageIndexHandlers) GETStream(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	s.handleStreamRequest(w, r, s.SSECompression(), evSubjPageIndex,
-		nil,
-		nil,
+		func(
+			streamID datapages.StreamID,
+			sse *dpsse.Stream,
+		) (err error) {
+			defer s.recoverPanicInto(&err, "PageIndex.StreamOpen")
+			slot.mu.Lock()
+			defer slot.mu.Unlock()
+			return p.StreamOpen(
+				r,
+				datapages.State[dpapp.StateLang]{Values: slot.state},
+			)
+		},
+		func(streamID datapages.StreamID) {
+			s.releaseStateLang(instanceID, slot)
+		},
 		func(
 			streamID datapages.StreamID,
 			sse *dpsse.Stream, ch <-chan messaging.Message,
 		) {
 			defer s.recoverPanic(w, r, sse, "PageIndex stream")
 			var eventUpdated dpapp.EventUpdated
+			var eventLangChanged dpapp.EventLangChanged
 			var eventPrefsChanged dpapp.EventPrefsChanged
 			for msg := range ch {
 				switch msg.Subject {
@@ -965,11 +1111,32 @@ func (s pageIndexHandlers) GETStream(w http.ResponseWriter, r *http.Request) {
 						s.LogErr("unmarshaling EventUpdated JSON", err)
 						continue
 					}
-					if err := p.OnUpdated(
-						eventUpdated,
+					slot.mu.Lock()
+					if slot.dead {
+						slot.mu.Unlock()
+						continue
+					}
+					func() {
+						defer slot.mu.Unlock()
+						if err := p.OnUpdated(
+							eventUpdated,
+							sse,
+							datapages.State[dpapp.StateLang]{Values: slot.state},
+						); err != nil {
+							s.LogErr("handling PageIndex.OnUpdated", err)
+						}
+					}()
+				case EvSubjLangChanged:
+					eventLangChanged = dpapp.EventLangChanged{}
+					if err := json.Unmarshal(msg.Data, &eventLangChanged); err != nil {
+						s.LogErr("unmarshaling EventLangChanged JSON", err)
+						continue
+					}
+					if err := p.OnLangChanged(
+						eventLangChanged,
 						sse,
 					); err != nil {
-						s.LogErr("handling PageIndex.OnUpdated", err)
+						s.LogErr("handling PageIndex.OnLangChanged", err)
 					}
 				case EvSubjPrefsChanged:
 					eventPrefsChanged = dpapp.EventPrefsChanged{}
@@ -992,13 +1159,23 @@ type pageProjectDirHandlers struct{ *Server }
 
 func (s pageProjectDirHandlers) GET(w http.ResponseWriter, r *http.Request) {
 	defer s.recoverPanic(w, r, nil, "PageProjectDir.GET")
+
+	instanceID, err := newStateInstanceID()
+	if err != nil {
+		s.httpErrIntern(w, r, nil, "minting state instance", err)
+		return
+	}
+	w.Header().Set(stateInstanceIDHeader, instanceID)
+	// A shared cache would expose this bearer id to another visitor.
+	httpserve.SetNoStore(w.Header())
+
 	p := dpapp.PageProjectDir{
 		App: s.app,
 		PrefsSync: dpapp.PrefsSync{
 			App: s.app,
 		},
 	}
-	body, redirect, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(r)
+	body, redirect, docAttrs, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(r)
 	if err != nil {
 		s.httpErrIntern(w, r, nil, "handling PageProjectDir.GET", err)
 		return
@@ -1025,7 +1202,7 @@ func (s pageProjectDirHandlers) GET(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.writeHTML(
-		w, r, http.StatusOK, genericHead, nil, body, bodyAttrs, bodySuffix,
+		w, r, http.StatusOK, genericHead, nil, docAttrs, body, bodyAttrs, bodySuffix,
 	); err != nil {
 		s.LogErr("rendering PageProjectDir", err)
 		return
@@ -1038,6 +1215,22 @@ func (s pageProjectDirHandlers) GETStream(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	instanceID := r.Header.Get(stateInstanceIDHeader)
+	if !wellFormedStateInstanceID(instanceID) {
+		w.Header().Set(stateRetryHeader, stateRetryReconnect)
+		http.Error(w, http.StatusText(http.StatusConflict), http.StatusConflict)
+		return
+	}
+	slot := s.allocateStateLang(instanceID)
+	if slot == nil {
+		w.Header().Set("Retry-After", "5")
+		http.Error(w,
+			http.StatusText(http.StatusServiceUnavailable),
+			http.StatusServiceUnavailable)
+		return
+	}
+	defer s.releaseStateLang(instanceID, slot)
+
 	p := dpapp.PageProjectDir{
 		App: s.app,
 		PrefsSync: dpapp.PrefsSync{
@@ -1045,14 +1238,28 @@ func (s pageProjectDirHandlers) GETStream(w http.ResponseWriter, r *http.Request
 		},
 	}
 	s.handleStreamRequest(w, r, s.SSECompression(), evSubjPageProjectDir,
-		nil,
-		nil,
+		func(
+			streamID datapages.StreamID,
+			sse *dpsse.Stream,
+		) (err error) {
+			defer s.recoverPanicInto(&err, "PageProjectDir.StreamOpen")
+			slot.mu.Lock()
+			defer slot.mu.Unlock()
+			return p.StreamOpen(
+				r,
+				datapages.State[dpapp.StateLang]{Values: slot.state},
+			)
+		},
+		func(streamID datapages.StreamID) {
+			s.releaseStateLang(instanceID, slot)
+		},
 		func(
 			streamID datapages.StreamID,
 			sse *dpsse.Stream, ch <-chan messaging.Message,
 		) {
 			defer s.recoverPanic(w, r, sse, "PageProjectDir stream")
 			var eventUpdated dpapp.EventUpdated
+			var eventLangChanged dpapp.EventLangChanged
 			var eventPrefsChanged dpapp.EventPrefsChanged
 			for msg := range ch {
 				switch msg.Subject {
@@ -1062,11 +1269,32 @@ func (s pageProjectDirHandlers) GETStream(w http.ResponseWriter, r *http.Request
 						s.LogErr("unmarshaling EventUpdated JSON", err)
 						continue
 					}
-					if err := p.OnUpdated(
-						eventUpdated,
+					slot.mu.Lock()
+					if slot.dead {
+						slot.mu.Unlock()
+						continue
+					}
+					func() {
+						defer slot.mu.Unlock()
+						if err := p.OnUpdated(
+							eventUpdated,
+							sse,
+							datapages.State[dpapp.StateLang]{Values: slot.state},
+						); err != nil {
+							s.LogErr("handling PageProjectDir.OnUpdated", err)
+						}
+					}()
+				case EvSubjLangChanged:
+					eventLangChanged = dpapp.EventLangChanged{}
+					if err := json.Unmarshal(msg.Data, &eventLangChanged); err != nil {
+						s.LogErr("unmarshaling EventLangChanged JSON", err)
+						continue
+					}
+					if err := p.OnLangChanged(
+						eventLangChanged,
 						sse,
 					); err != nil {
-						s.LogErr("handling PageProjectDir.OnUpdated", err)
+						s.LogErr("handling PageProjectDir.OnLangChanged", err)
 					}
 				case EvSubjPrefsChanged:
 					eventPrefsChanged = dpapp.EventPrefsChanged{}
@@ -1160,7 +1388,7 @@ func (s pageSettingsHandlers) GET(w http.ResponseWriter, r *http.Request) {
 			App: s.app,
 		},
 	}
-	body, redirect, err := p.GET(r)
+	body, redirect, docAttrs, err := p.GET(r)
 	if err != nil {
 		s.httpErrIntern(w, r, nil, "handling PageSettings.GET", err)
 		return
@@ -1180,7 +1408,7 @@ func (s pageSettingsHandlers) GET(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.writeHTML(
-		w, r, http.StatusOK, genericHead, nil, body, bodyAttrs, bodySuffix,
+		w, r, http.StatusOK, genericHead, nil, docAttrs, body, bodyAttrs, bodySuffix,
 	); err != nil {
 		s.LogErr("rendering PageSettings", err)
 		return
@@ -1207,9 +1435,22 @@ func (s pageSettingsHandlers) GETStream(w http.ResponseWriter, r *http.Request) 
 			sse *dpsse.Stream, ch <-chan messaging.Message,
 		) {
 			defer s.recoverPanic(w, r, sse, "PageSettings stream")
+			var eventLangChanged dpapp.EventLangChanged
 			var eventPrefsChanged dpapp.EventPrefsChanged
 			for msg := range ch {
 				switch msg.Subject {
+				case EvSubjLangChanged:
+					eventLangChanged = dpapp.EventLangChanged{}
+					if err := json.Unmarshal(msg.Data, &eventLangChanged); err != nil {
+						s.LogErr("unmarshaling EventLangChanged JSON", err)
+						continue
+					}
+					if err := p.OnLangChanged(
+						eventLangChanged,
+						sse,
+					); err != nil {
+						s.LogErr("handling PageSettings.OnLangChanged", err)
+					}
 				case EvSubjPrefsChanged:
 					eventPrefsChanged = dpapp.EventPrefsChanged{}
 					if err := json.Unmarshal(msg.Data, &eventPrefsChanged); err != nil {
@@ -1225,6 +1466,40 @@ func (s pageSettingsHandlers) GETStream(w http.ResponseWriter, r *http.Request) 
 				}
 			}
 		})
+}
+
+func (s pageSettingsHandlers) POSTSetLang(
+	w http.ResponseWriter, r *http.Request,
+) {
+	defer s.recoverPanic(w, r, nil, "PageSettings.SetLang")
+	if !s.CheckDatastarRequest(w, r) {
+		return
+	}
+	httpserve.LimitRequestBody(w, r, s.BodySizeLimit())
+	var signals datapages.Signals[struct {
+		Lang string `json:"lang"`
+	}]
+	if err := dpsse.ReadSignals(r, &signals.Values); err != nil {
+		s.HTTPErrBad(w, "reading signals", err)
+		return
+	}
+
+	dispatchLangChanged := dispatcherEventLangChanged{s: s.Server, ctx: r.Context()}
+	p := dpapp.PageSettings{
+		App: s.app,
+		PrefsSync: dpapp.PrefsSync{
+			App: s.app,
+		},
+	}
+	err := p.POSTSetLang(
+		r,
+		dispatchLangChanged,
+		signals,
+	)
+	if err != nil {
+		s.httpErrIntern(w, r, nil, "handling action PageSettings.SetLang", err)
+		return
+	}
 }
 
 func (s pageSettingsHandlers) POSTSetPref(
@@ -1287,7 +1562,7 @@ func (s pageTIKHandlers) GET(w http.ResponseWriter, r *http.Request) {
 			App: s.app,
 		},
 	}
-	body, redirect, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(
+	body, redirect, docAttrs, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(
 		r,
 		path,
 	)
@@ -1321,7 +1596,7 @@ func (s pageTIKHandlers) GET(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.writeHTML(
-		w, r, http.StatusOK, genericHead, nil, body, bodyAttrs, bodySuffix,
+		w, r, http.StatusOK, genericHead, nil, docAttrs, body, bodyAttrs, bodySuffix,
 	); err != nil {
 		s.LogErr("rendering PageTIK", err)
 		return
@@ -1382,6 +1657,7 @@ func (s pageTIKHandlers) GETStream(w http.ResponseWriter, r *http.Request) {
 		) {
 			defer s.recoverPanic(w, r, sse, "PageTIK stream")
 			var eventUpdated dpapp.EventUpdated
+			var eventLangChanged dpapp.EventLangChanged
 			var eventPrefsChanged dpapp.EventPrefsChanged
 			var eventReset dpapp.EventReset
 			for msg := range ch {
@@ -1408,6 +1684,18 @@ func (s pageTIKHandlers) GETStream(w http.ResponseWriter, r *http.Request) {
 							s.LogErr("handling PageTIK.OnUpdated", err)
 						}
 					}()
+				case EvSubjLangChanged:
+					eventLangChanged = dpapp.EventLangChanged{}
+					if err := json.Unmarshal(msg.Data, &eventLangChanged); err != nil {
+						s.LogErr("unmarshaling EventLangChanged JSON", err)
+						continue
+					}
+					if err := p.OnLangChanged(
+						eventLangChanged,
+						sse,
+					); err != nil {
+						s.LogErr("handling PageTIK.OnLangChanged", err)
+					}
 				case EvSubjPrefsChanged:
 					eventPrefsChanged = dpapp.EventPrefsChanged{}
 					if err := json.Unmarshal(msg.Data, &eventPrefsChanged); err != nil {
@@ -1564,7 +1852,7 @@ func (s pageTIKsHandlers) GET(w http.ResponseWriter, r *http.Request) {
 			App: s.app,
 		},
 	}
-	body, redirect, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(
+	body, redirect, docAttrs, enableBackgroundStreaming, disableRefreshAfterHidden, err := p.GET(
 		r,
 		query,
 	)
@@ -1629,7 +1917,7 @@ func (s pageTIKsHandlers) GET(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.writeHTML(
-		w, r, http.StatusOK, genericHead, nil, body, bodyAttrs, bodySuffix,
+		w, r, http.StatusOK, genericHead, nil, docAttrs, body, bodyAttrs, bodySuffix,
 	); err != nil {
 		s.LogErr("rendering PageTIKs", err)
 		return
@@ -1704,6 +1992,7 @@ func (s pageTIKsHandlers) GETStream(w http.ResponseWriter, r *http.Request) {
 		) {
 			defer s.recoverPanic(w, r, sse, "PageTIKs stream")
 			var eventUpdated dpapp.EventUpdated
+			var eventLangChanged dpapp.EventLangChanged
 			var eventPrefsChanged dpapp.EventPrefsChanged
 			var eventReset dpapp.EventReset
 			for msg := range ch {
@@ -1730,6 +2019,18 @@ func (s pageTIKsHandlers) GETStream(w http.ResponseWriter, r *http.Request) {
 							s.LogErr("handling PageTIKs.OnUpdated", err)
 						}
 					}()
+				case EvSubjLangChanged:
+					eventLangChanged = dpapp.EventLangChanged{}
+					if err := json.Unmarshal(msg.Data, &eventLangChanged); err != nil {
+						s.LogErr("unmarshaling EventLangChanged JSON", err)
+						continue
+					}
+					if err := p.OnLangChanged(
+						eventLangChanged,
+						sse,
+					); err != nil {
+						s.LogErr("handling PageTIKs.OnLangChanged", err)
+					}
 				case EvSubjPrefsChanged:
 					eventPrefsChanged = dpapp.EventPrefsChanged{}
 					if err := json.Unmarshal(msg.Data, &eventPrefsChanged); err != nil {
@@ -2288,6 +2589,29 @@ func (d dispatcherEventReset) DispatchCtx(
 	err = d.s.messageBroker.Publish(ctx, d.s.messageBrokerMetrics, EvSubjReset, j)
 	if err != nil {
 		return fmt.Errorf("publishing subject %q: %w", EvSubjReset, err)
+	}
+	return nil
+}
+
+type dispatcherEventLangChanged struct {
+	s   *Server
+	ctx context.Context
+}
+
+func (d dispatcherEventLangChanged) Dispatch(e dpapp.EventLangChanged) error {
+	return d.DispatchCtx(d.ctx, e)
+}
+
+func (d dispatcherEventLangChanged) DispatchCtx(
+	ctx context.Context, e dpapp.EventLangChanged,
+) error {
+	j, err := json.Marshal(e)
+	if err != nil {
+		return fmt.Errorf("marshaling EventLangChanged JSON: %w", err)
+	}
+	err = d.s.messageBroker.Publish(ctx, d.s.messageBrokerMetrics, EvSubjLangChanged, j)
+	if err != nil {
+		return fmt.Errorf("publishing subject %q: %w", EvSubjLangChanged, err)
 	}
 	return nil
 }

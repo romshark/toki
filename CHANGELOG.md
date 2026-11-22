@@ -10,6 +10,10 @@ Releases up to v0.8.5 have their notes on
 
 ### Added
 
+#### All commands
+
+- Print the usage, the flags, the log messages and the errors in English, German, French, Russian or Ukrainian, as the locale of the terminal sets: `LANGUAGE`, then the first of `LC_ALL`, `LC_MESSAGES` and `LANG`. The locale `C` and other languages get English. `-json` output stays English, as do the details that Go, the file system and the source scan add to an error.
+
 #### `toki generate` and `toki lint`
 
 - Write skills for AI coding agents to `.claude/skills/` and `.agents/skills/` in the module: `toki` for writing TIKs and `toki-translate` for translating the catalogs. Toki owns these files and rewrites them whenever they differ from what it writes. `-ai-skills=false` turns this off.
@@ -22,6 +26,7 @@ Releases up to v0.8.5 have their notes on
 - Cache the scan of the module in `.toki/index.db`, together with the edits not yet written to the catalogs. Add `.toki/` to `.gitignore`.
 - Reorder the locales by dragging them in the sidebar. Every page shows them in that order, which `.toki/index.db` keeps. Until then, the default locale comes first.
 - Collapse the Domains, Locales and Filter sections of the sidebar. The browser remembers which ones you closed.
+- Show the editor in English, German, French, Russian or Ukrainian: the language you pick in the settings, else the language of the terminal in the desktop app and the language the browser prefers with `-server`.
 
 #### `toki repair`
 

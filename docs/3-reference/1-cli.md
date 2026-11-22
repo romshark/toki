@@ -67,6 +67,16 @@ The desktop app needs a toki built with cgo, which `go install` and `go run` use
 | --- | --- |
 | `-full` | Also prints the build information with the module dependencies. |
 
+## Language
+
+Toki prints its usage, its log messages and its errors in English, German, French, Russian or Ukrainian, following the locale of the terminal as GNU gettext does: the first of `LC_ALL`, `LC_MESSAGES` and `LANG` that is set, preceded by the languages that `LANGUAGE` lists. The locale `C` and the languages that Toki has no translation for get English. `-json` output is always English.
+
+```sh
+LANG=de_DE.UTF-8 toki help
+```
+
+The editor that `toki edit` opens shows the language you pick in its settings. Until you pick one, the desktop app follows the terminal, and `-server` follows the language the browser prefers.
+
 ## Exit codes
 
 | Code | Meaning |

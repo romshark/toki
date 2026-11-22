@@ -7,6 +7,7 @@ import (
 
 	"github.com/romshark/toki/editor/app/datapagesgen/href"
 	"github.com/romshark/toki/editor/app/template"
+	"github.com/romshark/toki/internal/tokibundle"
 )
 
 // PageProjectDir is /project-dir
@@ -18,6 +19,7 @@ type PageProjectDir struct {
 func (p PageProjectDir) GET(r *http.Request) (
 	body datapages.Component,
 	redirect datapages.Redirect,
+	docAttrs datapages.DocumentAttrs,
 	enableBackgroundStreaming datapages.EnableBackgroundStreaming,
 	disableRefreshAfterHidden datapages.DisableRefreshAfterHidden,
 	err error,
@@ -33,24 +35,33 @@ func (p PageProjectDir) GET(r *http.Request) (
 		return
 	}
 
-	body = p.pageLocked()
+	tr := p.App.readerFor(r)
+	body, docAttrs = p.pageLocked(tr), documentAttrs(tr)
 	return
 }
 
-func (p PageProjectDir) OnUpdated(event EventUpdated, sse datapages.SSE) error {
+func (p PageProjectDir) StreamOpen(r *http.Request, state datapages.State[StateLang]) error {
+	state.Values.Reader = p.App.readerFor(r)
+	return nil
+}
+
+func (p PageProjectDir) OnUpdated(
+	event EventUpdated, sse datapages.SSE, state datapages.State[StateLang],
+) error {
 	p.App.lock.Lock()
 	defer p.App.lock.Unlock()
 
 	if p.App.building {
 		return sse.Redirect(href.PageBuildBundle())
 	}
-	return sse.PatchElement(p.pageLocked())
+	return sse.PatchElement(p.pageLocked(state.Values.Reader))
 }
 
-// pageLocked renders the page from the current project state.
-// Caller holds the App lock.
-func (p PageProjectDir) pageLocked() datapages.Component {
+// pageLocked renders the page from the current project state in the
+// language of tr. Caller holds the App lock.
+func (p PageProjectDir) pageLocked(tr tokibundle.Reader) datapages.Component {
 	return template.PageProjectDir(
+		tr,
 		p.App.dir,
 		p.App.initErr,
 		p.App.repairErr,
@@ -73,7 +84,8 @@ func (p PageProjectDir) POSTPick(
 	if p.App.PickDirectory == nil {
 		return redirect, nil
 	}
-	picked, err := p.App.PickDirectory()
+	// Title of the dialog of the operating system that picks a folder.
+	picked, err := p.App.PickDirectory(p.App.readerFor(r).String("Select Project Folder"))
 	if err != nil || picked == "" {
 		return redirect, nil
 	}

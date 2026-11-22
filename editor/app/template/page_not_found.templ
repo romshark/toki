@@ -4,9 +4,12 @@ import (
 	"github.com/romshark/morpheus/neo"
 
 	"github.com/romshark/toki/editor/app/datapagesgen/href"
+	"github.com/romshark/toki/internal/tokibundle"
 )
 
-templ PageNotFound(path string) {
+// PageNotFound shows its message as if it were an ICU message, with
+// placeholders that nothing fills.
+templ PageNotFound(tr tokibundle.Reader) {
 	@page("page-not-found", nil) {
 		<div class="page-center">
 			<header>
@@ -14,9 +17,7 @@ templ PageNotFound(path string) {
 			</header>
 			<main>
 				<toki-editor
-					value={ "Hello, {name}!\n"+
-					"The page \"{text}\" you asked for, doesn''t exist.\n"+
-					"Want to go back, or to the dashboard?" }
+					value={ notFoundText(tr) }
 					data-attr:theme="$pref_theme_resolved"
 					readonly
 				></toki-editor>
@@ -27,13 +28,13 @@ templ PageNotFound(path string) {
 						neo.ButtonOpts{Variant: neo.Set(neo.ButtonVariantSecondary)},
 						templ.Attributes{"data-on:click": "history.back()"},
 					) {
-						Previous Page
+						{ tr.String("Previous Page") }
 					}
 					@neo.Link(neo.LinkOpts{
 						Href:    neo.Set(href.PageIndex()),
 						Variant: neo.Set(neo.LinkVariantButtonPrimary),
 					}) {
-						Dashboard
+						{ tr.String("Dashboard") }
 					}
 				}
 			</main>

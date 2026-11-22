@@ -1,0 +1,22 @@
+# The TIK domain for this directory tree.
+# The description provides context for translators working on this domain.
+# Also see: https://github.com/romshark/tik/blob/main/SPECIFICATION.md#domains
+
+# This defines the name of the domain.
+name: editor
+
+# The description provides translators with additional context and instructions on
+# how to translate within a directory tree, such as the expected tone, style,
+# target audience, or terminology conventions.
+description: >-
+  The interface of the Toki editor, a desktop and web app in which developers
+  and translators review and edit the translations of a Go project.
+  Its users know software localization. Keep the terms of the localization tools
+  of the language: TIK (Textual Internationalization Key), ICU message, locale,
+  catalog, bundle, domain. Leave Toki, TIK, ICU, Go, .arb and commands such
+  as toki generate as they are. Use a neutral, concise tone and the formal
+  form of address: German "Sie", French "vous", Russian "вы", Ukrainian "ви".
+  Write labels of buttons and headings as short as the source. The context of
+  a message, as [TIKs], tells what it is about: [TIKs] labels a number of TIKs,
+  [TIK] the status of 1 TIK, [message] the status of 1 ICU message and
+  [changes] a number of unsaved changes.

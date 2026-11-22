@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/romshark/toki/internal/cli"
+	"github.com/romshark/toki/internal/tokibundle"
+	"github.com/romshark/toki/internal/uilang"
 )
 
 // Set by goreleaser via -ldflags -X.
@@ -31,7 +33,11 @@ func main() {
 	cli.Version = version
 	cli.Commit = commit
 	cli.Date = date
-	r, exitCode := cli.Run(os.Args, os.Environ(), os.Stderr, os.Stdout, time.Now())
-	r.Print(os.Stdout)
+	tokibundle.MissingTranslation = writeMissingTIK(tokibundle.MissingTranslation)
+	env := os.Environ()
+	// Speak the language of the terminal.
+	tr := uilang.Reader(uilang.FromEnv(env)...)
+	r, exitCode := cli.Run(os.Args, env, tr, os.Stderr, os.Stdout, time.Now())
+	r.Print(tr, os.Stdout)
 	os.Exit(exitCode)
 }

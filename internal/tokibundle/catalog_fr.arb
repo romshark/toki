@@ -1,0 +1,1061 @@
+{
+	"@@locale": "fr",
+	"@@last_modified": "2026-11-22T15:12:58+01:00",
+	"@@x-generator": "github.com/romshark/toki",
+	"@@x-generator-version": "(devel)",
+	"msg106e93ad6776c89d": "Paramètres",
+	"@msg106e93ad6776c89d": {
+		"type": "text"
+	},
+	"msg131ab78dfaf7f346": "Message ICU",
+	"@msg131ab78dfaf7f346": {
+		"type": "text"
+	},
+	"msg13adacf834b5648a": "le code source contient des erreurs",
+	"@msg13adacf834b5648a": {
+		"type": "text"
+	},
+	"msg13d342b142ac79ae": "Options :",
+	"@msg13d342b142ac79ae": {
+		"description": "The heading of the list of the flags of a command.",
+		"type": "text"
+	},
+	"msg147c4e5b7a5e7c5f": "Non traduit",
+	"@msg147c4e5b7a5e7c5f": {
+		"context": "[message]",
+		"type": "text"
+	},
+	"msg149e6fc0c1d2acac": "Virgule attendue à l’index {var0, number, integer}.",
+	"@msg149e6fc0c1d2acac": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg152537f908bccfab": "Aperçu",
+	"@msg152537f908bccfab": {
+		"type": "text"
+	},
+	"msg174ae5f53bcbbdfc": "Messages",
+	"@msg174ae5f53bcbbdfc": {
+		"type": "text"
+	},
+	"msg185940bdf7df50a5": "Le catalogue de la locale source n’a encore aucune entrée pour {var0, plural, one {# TIK déclaré} many {# de TIK déclarés} other {# TIK déclarés}} dans le code source.",
+	"@msg185940bdf7df50a5": {
+		"type": "text"
+	},
+	"msg1862e1c85df4011b": "Deux-points attendus à l’index {var0, number, integer}.",
+	"@msg1862e1c85df4011b": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg1979cff996e72e6d": "Le bundle ne peut pas être généré tant que vous n’avez pas corrigé ou réinitialisé cette modification.",
+	"@msg1979cff996e72e6d": {
+		"type": "text"
+	},
+	"msg1b0e9c9d7cf5f880": "mode vérification",
+	"@msg1b0e9c9d7cf5f880": {
+		"description": "Log message of toki lint, which checks without writing files.",
+		"type": "text"
+	},
+	"msg1b2ec9bba2cafae0": "3. Je plaisante ! J’ai essayé de traduire vos messages, mais je n’arrêtais pas de produire {var0}. De rien.",
+	"@msg1b2ec9bba2cafae0": {
+		"type": "text"
+	},
+	"msg1e94eb7cfa2c00d7": "le paramètre -l (« {var0} ») doit correspondre à DefaultLocale (« {var1} ») du paquet « {var2} » ou ne pas être défini du tout",
+	"@msg1e94eb7cfa2c00d7": {
+		"description": "Keep -l, a flag, and DefaultLocale, a Go constant. The placeholders are the locale of the flag, the default locale of the bundle and the path of the bundle package.",
+		"type": "text"
+	},
+	"msg20457981691d7945": "Non traduits",
+	"@msg20457981691d7945": {
+		"context": "[TIKs]",
+		"type": "text"
+	},
+	"msg2090b23ec7d104f9": "Locale par défaut",
+	"@msg2090b23ec7d104f9": {
+		"type": "text"
+	},
+	"msg210443ed66fb781a": "Par défaut",
+	"@msg210443ed66fb781a": {
+		"context": "[font size]",
+		"type": "text"
+	},
+	"msg2135dd122d53583": "Le code source contient des erreurs.",
+	"@msg2135dd122d53583": {
+		"type": "text"
+	},
+	"msg22789c2c0596bec3": "commande inconnue « {var0} », exécutez « toki help » pour la liste des commandes",
+	"@msg22789c2c0596bec3": {
+		"description": "The placeholder is the command that toki doesn't have. Keep toki help, a command.",
+		"type": "text"
+	},
+	"msg2434f9e9afdcb63f": "fermeture du fichier .arb du catalogue",
+	"@msg2434f9e9afdcb63f": {
+		"description": "Log message about an error of the file system.",
+		"type": "text"
+	},
+	"msg28884feb2e3175e7": "réparation terminée",
+	"@msg28884feb2e3175e7": {
+		"description": "Log message of toki repair, followed by the number of repaired messages.",
+		"type": "text"
+	},
+	"msg2a20de037ed9cd34": "le bundle contient des catalogues incomplets",
+	"@msg2a20de037ed9cd34": {
+		"type": "text"
+	},
+	"msg2a2380645e21c4a1": "chemin du paquet Go du bundle généré",
+	"@msg2a2380645e21c4a1": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msg2c4193b15bcd9fa0": "Occurrences dans le code source",
+	"@msg2c4193b15bcd9fa0": {
+		"type": "text"
+	},
+	"msg2c7186ff30202569": "1. D’abord, je dois supprimer tout le projet",
+	"@msg2c7186ff30202569": {
+		"type": "text"
+	},
+	"msg2d426ada71c6745d": "Jeton inattendu à l’index {var0, number, integer}.",
+	"@msg2d426ada71c6745d": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg2db3133a4f8c3686": "Bundle obsolète",
+	"@msg2db3133a4f8c3686": {
+		"type": "text"
+	},
+	"msg2ea44ad2d907465d": "Rechercher des polices",
+	"@msg2ea44ad2d907465d": {
+		"type": "text"
+	},
+	"msg3188438f52d94a13": "Échec de la réparation :",
+	"@msg3188438f52d94a13": {
+		"type": "text"
+	},
+	"msg33e0696fdbcbb90a": "locale par défaut des textes du code source, en BCP 47 autre que und",
+	"@msg33e0696fdbcbb90a": {
+		"description": "The usage of a flag. Keep BCP 47 and \"und\", the undetermined locale.",
+		"type": "text"
+	},
+	"msg352292ce24926a0c": "Il manque {var1, plural, one {# option} many {# d’options} other {# options}} à l’argument {var0} : {var2}.",
+	"@msg352292ce24926a0c": {
+		"description": "Note under an ICU message editor. The first placeholder is the name of an ICU argument, the last lists the names of the plural or select options it lacks, as \"one, few\".",
+		"type": "text"
+	},
+	"msg3678d724f6eb1d0c": "Afficher/masquer la barre latérale",
+	"@msg3678d724f6eb1d0c": {
+		"type": "text"
+	},
+	"msg38658ea1ee574ac5": "Tout afficher",
+	"@msg38658ea1ee574ac5": {
+		"type": "text"
+	},
+	"msg387f447f0cf50a46": "écrit les skills pour les agents de code IA dans .claude/skills et .agents/skills du module, en remplaçant les versions précédentes",
+	"@msg387f447f0cf50a46": {
+		"description": "The usage of a flag. Keep the paths .claude/skills and .agents/skills.",
+		"type": "text"
+	},
+	"msg3a23936b20e21661": "Navigation de l’éditeur",
+	"@msg3a23936b20e21661": {
+		"type": "text"
+	},
+	"msg3a67cca6614073a0": "locale de traduction en BCP 47 autre que und (plusieurs acceptées, doublons ignorés). Crée de nouveaux catalogues pour les locales qui n’en ont pas encore.",
+	"@msg3a67cca6614073a0": {
+		"description": "The usage of a flag. Keep BCP 47 and \"und\", the undetermined locale.",
+		"type": "text"
+	},
+	"msg3b87fd603b6c3c3d": "Dossier du projet",
+	"@msg3b87fd603b6c3c3d": {
+		"type": "text"
+	},
+	"msg3cd32ca235f7b3c2": "{var0} ms",
+	"@msg3cd32ca235f7b3c2": {
+		"description": "A duration in milliseconds, as 250 ms.",
+		"type": "text"
+	},
+	"msg3dc50b1c6e744453": "Bundle généré avec succès. Les fichiers .arb et le code Go ont été mis à jour.",
+	"@msg3dc50b1c6e744453": {
+		"type": "text"
+	},
+	"msg3e5aefcfb53c85f8": "terminé",
+	"@msg3e5aefcfb53c85f8": {
+		"description": "Log message of the report at the end of toki generate and toki lint.",
+		"type": "text"
+	},
+	"msg402c25c43688abbb": "argument {var0}=« {var1} » : doit être une locale BCP 47 valide autre que und : {var2}",
+	"@msg402c25c43688abbb": {
+		"description": "The placeholders are a flag, as l, its value and the error of parsing it in English. Keep BCP 47 and \"und\", the undetermined locale.",
+		"type": "text"
+	},
+	"msg416a0609cfda5871": "Numéro d’argument non valide à l’index {var0, number, integer}.",
+	"@msg416a0609cfda5871": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg41afbf08af4fc448": "Option non valide à l’index {var0, number, integer}.",
+	"@msg41afbf08af4fc448": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg425cb813b1635b14": "Avancer",
+	"@msg425cb813b1635b14": {
+		"type": "text"
+	},
+	"msg43343e9e4667b439": "Modifications en attente",
+	"@msg43343e9e4667b439": {
+		"type": "text"
+	},
+	"msg4369aee9fa785170": "Navigation des paramètres",
+	"@msg4369aee9fa785170": {
+		"type": "text"
+	},
+	"msg46c348538fd08a05": "erreurs dans le code source",
+	"@msg46c348538fd08a05": {
+		"description": "Log message that heads the list of the errors in the source code.",
+		"type": "text"
+	},
+	"msg4709b18128b120f3": "Locale source",
+	"@msg4709b18128b120f3": {
+		"type": "text"
+	},
+	"msg47463dd161059ba9": "Utilisation : toki {var0} [flags]",
+	"@msg47463dd161059ba9": {
+		"description": "The usage line of a command. The placeholder is the command, as generate. Keep [flags], which stands for its flags.",
+		"type": "text"
+	},
+	"msg47b6749375b0a12d": "Fermer la recherche",
+	"@msg47b6749375b0a12d": {
+		"type": "text"
+	},
+	"msg49302ee4a0e443c": "Navigation du TIK",
+	"@msg49302ee4a0e443c": {
+		"type": "text"
+	},
+	"msg4a6a833acc1ecd24": "Non enregistrées",
+	"@msg4a6a833acc1ecd24": {
+		"context": "[changes]",
+		"type": "text"
+	},
+	"msg4a9e9b56b7b5a144": "Plus grande",
+	"@msg4a9e9b56b7b5a144": {
+		"context": "[font size]",
+		"type": "text"
+	},
+	"msg4ae96107fb345768": "{var0, plural, one {# modification non enregistrée prête} many {# de modifications non enregistrées prêtes} other {# modifications non enregistrées prêtes}} pour la génération.",
+	"@msg4ae96107fb345768": {
+		"type": "text"
+	},
+	"msg4b0cc1621f891e62": "Non valides",
+	"@msg4b0cc1621f891e62": {
+		"context": "[TIKs]",
+		"type": "text"
+	},
+	"msg4d6c5cf2b3db4a32": "Ouvrir le projet",
+	"@msg4d6c5cf2b3db4a32": {
+		"type": "text"
+	},
+	"msg4eb8d8aba50d5cfb": "Commandes :",
+	"@msg4eb8d8aba50d5cfb": {
+		"description": "The heading of the list of commands.",
+		"type": "text"
+	},
+	"msg4f8ea5343f3e9117": "Accolade fermante attendue à l’index {var0, number, integer}.",
+	"@msg4f8ea5343f3e9117": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg4fcee5ca9678e971": "Vue d’ensemble",
+	"@msg4fcee5ca9678e971": {
+		"type": "text"
+	},
+	"msg5003fd56a8b020d7": "Fichier du bundle {var0} introuvable. Exécutez d’abord toki generate.",
+	"@msg5003fd56a8b020d7": {
+		"description": "The placeholder is the path of a file. Keep toki generate, a command.",
+		"type": "text"
+	},
+	"msg506954b2288eb0cd": "Réinitialiser tous les filtres",
+	"@msg506954b2288eb0cd": {
+		"type": "text"
+	},
+	"msg50bd6bb7747f5287": "Modifiés",
+	"@msg50bd6bb7747f5287": {
+		"context": "[TIKs]",
+		"type": "text"
+	},
+	"msg519db0c532769d72": "fermeture du fichier head.txt",
+	"@msg519db0c532769d72": {
+		"description": "Log message about an error of the file system.",
+		"type": "text"
+	},
+	"msg52084bebd5eaf26e": "Complets",
+	"@msg52084bebd5eaf26e": {
+		"context": "[TIKs]",
+		"type": "text"
+	},
+	"msg52676939bb47c0c": "Échec de la vérification du fichier du bundle {var0} : {var1}",
+	"@msg52676939bb47c0c": {
+		"description": "The first placeholder is the path of a file, the second an error in English.",
+		"type": "text"
+	},
+	"msg527b32738838fca3": "Exécutez « toki help \u003ccommand\u003e » pour l’utilisation d’une commande.",
+	"@msg527b32738838fca3": {
+		"description": "The last line of the usage of toki. Keep toki help \u003ccommand\u003e, a command.",
+		"type": "text"
+	},
+	"msg52d3111b67e886a4": "Rechercher des polices…",
+	"@msg52d3111b67e886a4": {
+		"type": "text"
+	},
+	"msg53459526a0e6e364": "Navigation du tableau de bord",
+	"@msg53459526a0e6e364": {
+		"type": "text"
+	},
+	"msg537d8f9aeadade90": "TIK inutilisé",
+	"@msg537d8f9aeadade90": {
+		"description": "The TIK is gone from the source, which leaves only its catalog entry. Verbose log message about a TIK that the source code no longer uses.",
+		"type": "text"
+	},
+	"msg55465a52686313c": "Accolade ouvrante attendue à l’index {var0, number, integer}.",
+	"@msg55465a52686313c": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg5ac34725eb5156e4": "Vérifier le code source et les catalogues sans écrire de fichiers",
+	"@msg5ac34725eb5156e4": {
+		"description": "The synopsis of toki lint in the list of commands.",
+		"type": "text"
+	},
+	"msg5b13d14f6f5af75a": "Non valide",
+	"@msg5b13d14f6f5af75a": {
+		"context": "[TIK]",
+		"type": "text"
+	},
+	"msg5b8955596032111d": "fait échouer la commande si un catalogue actif a une complétude \u003c 1,0 (moins de 100 %)",
+	"@msg5b8955596032111d": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msg5d6fac6bc9aadd8f": "active la journalisation détaillée dans la console",
+	"@msg5d6fac6bc9aadd8f": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msg5edbc6e02352dbb8": "Afficher l’utilisation d’une commande",
+	"@msg5edbc6e02352dbb8": {
+		"description": "The synopsis of toki help in the list of commands.",
+		"type": "text"
+	},
+	"msg5f34ba887dcde654": "Locales",
+	"@msg5f34ba887dcde654": {
+		"type": "text"
+	},
+	"msg60805665e157ae14": "Extraire les textes du code source et générer le bundle de localisation",
+	"@msg60805665e157ae14": {
+		"description": "The synopsis of toki generate in the list of commands.",
+		"type": "text"
+	},
+	"msg611bf0dab2e6777c": "Utilisation : toki {var0}",
+	"@msg611bf0dab2e6777c": {
+		"description": "The usage line of a command without flags. The placeholder is the command, as version.",
+		"type": "text"
+	},
+	"msg6169a384d0b21f0": "Fin inattendue du message à l’index {var0, number, integer}.",
+	"@msg6169a384d0b21f0": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg64031fb4721596f5": "Guillemet non fermé à l’index {var0, number, integer}.",
+	"@msg64031fb4721596f5": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg645b08afb94a99d1": "Ce message n’a pas toutes les options plural ou select dont cette locale a besoin, ou utilise une option qu’elle n’autorise pas. Les remarques sous l’éditeur indiquent ce qu’il faut ajouter ou corriger.",
+	"@msg645b08afb94a99d1": {
+		"type": "text"
+	},
+	"msg649dbf93cd4235ff": "chemin du module Go",
+	"@msg649dbf93cd4235ff": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msg6510096c731f223d": "TIK avec des traductions manquantes",
+	"@msg6510096c731f223d": {
+		"type": "text"
+	},
+	"msg674a7c81308e4e73": "Ce n’est pas un message ICU valide. L’erreur sous l’éditeur indique où l’analyse a échoué.",
+	"@msg674a7c81308e4e73": {
+		"type": "text"
+	},
+	"msg684c5db7650c469": "Ouvrir l’éditeur de traductions",
+	"@msg684c5db7650c469": {
+		"description": "The synopsis of toki edit in the list of commands.",
+		"type": "text"
+	},
+	"msg69ecef84ecc0d505": "Tout masquer",
+	"@msg69ecef84ecc0d505": {
+		"type": "text"
+	},
+	"msg6a45ce589847ac96": "Pour le changer, modifiez le TIK dans le code source.",
+	"@msg6a45ce589847ac96": {
+		"type": "text"
+	},
+	"msg6c0e8f51f7f708f": "/chemin/vers/votre/projet",
+	"@msg6c0e8f51f7f708f": {
+		"type": "text"
+	},
+	"msg6c2c8442427f2791": "Complétude",
+	"@msg6c2c8442427f2791": {
+		"type": "text"
+	},
+	"msg6f26008b4129abf5": "Réécrire les messages de la locale source qui ne correspondent pas à leur TIK",
+	"@msg6f26008b4129abf5": {
+		"description": "The synopsis of toki repair in the list of commands.",
+		"type": "text"
+	},
+	"msg6f8e3f856532ce51": "cette version de toki a été compilée sans cgo ; l’application de bureau native n’est pas disponible — exécutez plutôt `toki edit -server \u003caddr\u003e`",
+	"@msg6f8e3f856532ce51": {
+		"description": "Keep cgo, the Go feature, and toki edit -server \u003caddr\u003e, a command.",
+		"type": "text"
+	},
+	"msg70089d99139dc154": "Aucune modification non enregistrée à générer.",
+	"@msg70089d99139dc154": {
+		"type": "text"
+	},
+	"msg73129e1feb194faa": "Toki est un framework i18n pour Go.",
+	"@msg73129e1feb194faa": {
+		"description": "The first line of the usage of toki.",
+		"type": "text"
+	},
+	"msg734796f4f659ec16": "Utilisation :",
+	"@msg734796f4f659ec16": {
+		"description": "The heading of the usage line, as in \"Usage: toki \u003ccommand\u003e [flags]\".",
+		"type": "text"
+	},
+	"msg73d56c8f4903f515": "{var0, number, integer} sur {var1, plural, one {# TIK} many {# de TIK} other {# TIK}}",
+	"@msg73d56c8f4903f515": {
+		"type": "text"
+	},
+	"msg7530ff1414efed33": "Continuer",
+	"@msg7530ff1414efed33": {
+		"type": "text"
+	},
+	"msg754da36cdfbb73eb": "Selon le système",
+	"@msg754da36cdfbb73eb": {
+		"type": "text"
+	},
+	"msg776b39a06145f9b3": "Ouvrir un nouveau projet supprimera définitivement {var0, plural, one {# modification non enregistrée} many {# de modifications non enregistrées} other {# modifications non enregistrées}}.",
+	"@msg776b39a06145f9b3": {
+		"type": "text"
+	},
+	"msg7a1ce9b99505faa": "à l’écoute",
+	"@msg7a1ce9b99505faa": {
+		"description": "Log message of toki edit -server, followed by the address it serves on.",
+		"type": "text"
+	},
+	"msg7a366bd08cafc2b5": "Système",
+	"@msg7a366bd08cafc2b5": {
+		"context": "[theme]",
+		"type": "text"
+	},
+	"msg7a5cb957f30600c5": "Reconstruction de la base d’index…",
+	"@msg7a5cb957f30600c5": {
+		"type": "text"
+	},
+	"msg7a7dbfa31c4137bc": "Petite",
+	"@msg7a7dbfa31c4137bc": {
+		"context": "[font size]",
+		"type": "text"
+	},
+	"msg7b1ab3ba42f5bbc6": "Clés de traduction au total",
+	"@msg7b1ab3ba42f5bbc6": {
+		"type": "text"
+	},
+	"msg80d0eec76cc2ce49": "TIK avec des erreurs ICU",
+	"@msg80d0eec76cc2ce49": {
+		"type": "text"
+	},
+	"msg80dc77088178cce7": "head.txt introuvable, création d’un nouveau fichier",
+	"@msg80dc77088178cce7": {
+		"description": "Log message. Keep head.txt, the name of a file.",
+		"type": "text"
+	},
+	"msg82b0e16358914b62": "Police de l’éditeur",
+	"@msg82b0e16358914b62": {
+		"type": "text"
+	},
+	"msg82e3d8b1db30490d": "Navigation",
+	"@msg82e3d8b1db30490d": {
+		"type": "text"
+	},
+	"msg83905e030d72610a": "Bundle corrompu",
+	"@msg83905e030d72610a": {
+		"type": "text"
+	},
+	"msg8595536f4dad28a9": "Échec de la régénération :",
+	"@msg8595536f4dad28a9": {
+		"type": "text"
+	},
+	"msg8636124724d79890": "Modification non enregistrée",
+	"@msg8636124724d79890": {
+		"type": "text"
+	},
+	"msg86bb6f4f6d3420fb": "Aucun dossier de projet sélectionné.",
+	"@msg86bb6f4f6d3420fb": {
+		"type": "text"
+	},
+	"msg87c737103e250af6": "Sombre",
+	"@msg87c737103e250af6": {
+		"context": "[theme]",
+		"type": "text"
+	},
+	"msg8890b149f2c9fd13": "Incomplets",
+	"@msg8890b149f2c9fd13": {
+		"context": "[TIKs]",
+		"type": "text"
+	},
+	"msg88b978125da2bd55": "Cliquez sur « Régénérer le bundle » ou exécutez {var0} pour mettre à jour le bundle.",
+	"@msg88b978125da2bd55": {
+		"type": "text"
+	},
+	"msg893d5b55fa207f2a": "Abandonner les modifications",
+	"@msg893d5b55fa207f2a": {
+		"type": "text"
+	},
+	"msg89485d5f890f252e": "s’exécuter comme simple serveur HTTP à cette adresse au lieu de l’application de bureau native",
+	"@msg89485d5f890f252e": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msg895e0af8c527483b": "le bundle est cohérent, rien à réparer",
+	"@msg895e0af8c527483b": {
+		"description": "Log message of toki repair.",
+		"type": "text"
+	},
+	"msg89e314b28e6dab4b": "Filtre",
+	"@msg89e314b28e6dab4b": {
+		"type": "text"
+	},
+	"msg8a49a4ca171ca660": "Afficher les informations de version",
+	"@msg8a49a4ca171ca660": {
+		"description": "The synopsis of toki version in the list of commands.",
+		"type": "text"
+	},
+	"msg8c275afa52a9b3c2": "Très petite",
+	"@msg8c275afa52a9b3c2": {
+		"context": "[font size]",
+		"type": "text"
+	},
+	"msg8c47a42b8bfc3b9c": "Aucune police trouvée",
+	"@msg8c47a42b8bfc3b9c": {
+		"type": "text"
+	},
+	"msg8cea9d890f95722c": "Police",
+	"@msg8cea9d890f95722c": {
+		"type": "text"
+	},
+	"msg8e3a3cb2dcff18e5": "Modifications non enregistrées",
+	"@msg8e3a3cb2dcff18e5": {
+		"type": "text"
+	},
+	"msg8e7589745d4c4773": "Suivant",
+	"@msg8e7589745d4c4773": {
+		"type": "text"
+	},
+	"msg8f632e75cd449be": "La locale ne prend pas en charge cette règle de pluriel à l’index {var0, number, integer}.",
+	"@msg8f632e75cd449be": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg90b43847a6ed184d": "Pagination",
+	"@msg90b43847a6ed184d": {
+		"type": "text"
+	},
+	"msg91ca24610763fd5b": "source",
+	"@msg91ca24610763fd5b": {
+		"description": "Log message of an error in the source code, which follows in English with its position.",
+		"type": "text"
+	},
+	"msg930a54fe7092702a": "Répertoire du projet Toki",
+	"@msg930a54fe7092702a": {
+		"type": "text"
+	},
+	"msg943b9be1d97d1050": "Rechercher…",
+	"@msg943b9be1d97d1050": {
+		"type": "text"
+	},
+	"msg97e4766ffe432da0": "Annuler",
+	"@msg97e4766ffe432da0": {
+		"type": "text"
+	},
+	"msg996193f83bf9e69d": "Message ICU non valide",
+	"@msg996193f83bf9e69d": {
+		"type": "text"
+	},
+	"msg9ade02415f167e94": "Réinitialiser",
+	"@msg9ade02415f167e94": {
+		"type": "text"
+	},
+	"msg9b5a56836abcc9c1": "Traduction manquante",
+	"@msg9b5a56836abcc9c1": {
+		"type": "text"
+	},
+	"msg9dd67af80726c6af": "Ouvrir une nouvelle fenêtre",
+	"@msg9dd67af80726c6af": {
+		"type": "text"
+	},
+	"msg9ed97b2e55babc00": "Corrigez tous les messages ICU non valides avant de générer.",
+	"@msg9ed97b2e55babc00": {
+		"type": "text"
+	},
+	"msg9eeb5ae31ed4170d": "Voix ambiguë d’un cœur qui, au zéphyr, préfère les jattes de kiwis",
+	"@msg9eeb5ae31ed4170d": {
+		"description": "Sample text of the interface font picker. Write a pangram of your language, a sentence that uses every letter of its alphabet.",
+		"type": "text"
+	},
+	"msg9f6d68d78e6e55c5": "Description",
+	"@msg9f6d68d78e6e55c5": {
+		"type": "text"
+	},
+	"msga0537653566e20c1": "Langue",
+	"@msga0537653566e20c1": {
+		"type": "text"
+	},
+	"msga06696ace22cb495": "Rétablir l’original ?",
+	"@msga06696ace22cb495": {
+		"type": "text"
+	},
+	"msga0debb231d6f60ef": "Police de l’interface",
+	"@msga0debb231d6f60ef": {
+		"type": "text"
+	},
+	"msga278994566746ab": "afficher aussi les informations de compilation avec les dépendances des modules",
+	"@msga278994566746ab": {
+		"description": "The usage of a flag of toki version.",
+		"type": "text"
+	},
+	"msga2943a0cafb20b22": "Rechercher des tailles…",
+	"@msga2943a0cafb20b22": {
+		"type": "text"
+	},
+	"msga2b5d22f6626948c": "Toki génère entièrement ce message à partir du TIK : il n’y a donc rien à traduire pour cette locale.",
+	"@msga2b5d22f6626948c": {
+		"type": "text"
+	},
+	"msga2c7f39334800ae4": "analyse des sources : {var0}",
+	"@msga2c7f39334800ae4": {
+		"description": "The placeholder is the error of the analysis in English.",
+		"type": "text"
+	},
+	"msga2d542ebb22c7296": "arguments non valides : {var0}",
+	"@msga2d542ebb22c7296": {
+		"description": "The placeholder is the error of the arguments, in English unless it is one of the errors this domain translates.",
+		"type": "text"
+	},
+	"msga3930c6e225f127d": "génération d’un nouveau catalogue",
+	"@msga3930c6e225f127d": {
+		"description": "Log message about the catalog of a locale that toki generate creates.",
+		"type": "text"
+	},
+	"msga4a5052981991492": "Page {var0}",
+	"@msga4a5052981991492": {
+		"description": "The component puts the number of the page in place of {n}.",
+		"type": "text"
+	},
+	"msga56a1911a8fe9375": "L’option obligatoire other manque à l’index {var0, number, integer}.",
+	"@msga56a1911a8fe9375": {
+		"description": "ICU syntax error. Keep \"other\", the name of an ICU option. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msga60682798ecd5230": "Choisir un dossier",
+	"@msga60682798ecd5230": {
+		"type": "text"
+	},
+	"msga775843095619fd0": "head.txt introuvable",
+	"@msga775843095619fd0": {
+		"description": "Log message. Keep head.txt, the name of a file.",
+		"type": "text"
+	},
+	"msga7b8e92b9c7b0ccf": "Original",
+	"@msga7b8e92b9c7b0ccf": {
+		"type": "text"
+	},
+	"msga7f604baf053d9ae": "Sélectionner le dossier du projet",
+	"@msga7f604baf053d9ae": {
+		"description": "Title of the dialog of the operating system that picks a folder.",
+		"type": "text"
+	},
+	"msga8e10e6ca62ebf70": "Messages ICU",
+	"@msga8e10e6ca62ebf70": {
+		"type": "text"
+	},
+	"msgaa030d099aebeca6": "argument {var0}=« {var1} » : doit être une locale BCP 47 valide autre que und : c’est und",
+	"@msgaa030d099aebeca6": {
+		"description": "The placeholders are a flag, as l, and its value. Keep BCP 47 and \"und\", the undetermined locale.",
+		"type": "text"
+	},
+	"msgaa910bb8d288edf": "La locale par défaut a besoin d’un message pour chaque TIK : les autres locales s’y rabattent, et le bundle déclenche une panique s’il manque.",
+	"@msgaa910bb8d288edf": {
+		"type": "text"
+	},
+	"msgab9e0d269a473ef5": "Thème clair",
+	"@msgab9e0d269a473ef5": {
+		"type": "text"
+	},
+	"msgae3779b43fb4d9a5": "Vous avez {var0, plural, one {# modification non enregistrée} many {# de modifications non enregistrées} other {# modifications non enregistrées}}. Générez le bundle pour mettre à jour les fichiers .arb et régénérer le code Go.",
+	"@msgae3779b43fb4d9a5": {
+		"type": "text"
+	},
+	"msgae9a4a462ab8e304": "2. Exécution de {var0}",
+	"@msgae9a4a462ab8e304": {
+		"type": "text"
+	},
+	"msgaea322ed423ecc80": "Domaines",
+	"@msgaea322ed423ecc80": {
+		"type": "text"
+	},
+	"msgaf89dc109b7a6672": "Non valide",
+	"@msgaf89dc109b7a6672": {
+		"context": "[message]",
+		"type": "text"
+	},
+	"msgb157558a446242ca": "Taille",
+	"@msgb157558a446242ca": {
+		"type": "text"
+	},
+	"msgb1b9260eba1cfa22": "TIK sans traduction",
+	"@msgb1b9260eba1cfa22": {
+		"type": "text"
+	},
+	"msgb211c288001b6d53": "Portées de domaines TIK",
+	"@msgb211c288001b6d53": {
+		"type": "text"
+	},
+	"msgb2267d627659bfe5": "Générer le bundle",
+	"@msgb2267d627659bfe5": {
+		"type": "text"
+	},
+	"msgb666cc5c311077e1": "Échec du chargement des modifications non enregistrées : {var0}",
+	"@msgb666cc5c311077e1": {
+		"description": "The placeholder is an error in English.",
+		"type": "text"
+	},
+	"msgb70a169708dd45a7": "création d’un nouveau paquet de bundle",
+	"@msgb70a169708dd45a7": {
+		"description": "Verbose log message.",
+		"type": "text"
+	},
+	"msgb85423fbc0a4908e": "Choisir un dossier…",
+	"@msgb85423fbc0a4908e": {
+		"type": "text"
+	},
+	"msgb8b97743a6cc6e40": "Décalage non valide à l’index {var0, number, integer}.",
+	"@msgb8b97743a6cc6e40": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msgb93d9c05702acdad": "veuillez indiquer avec le paramètre -l une locale BCP 47 valide autre que und pour la langue par défaut de votre code source",
+	"@msgb93d9c05702acdad": {
+		"description": "Keep BCP 47, \"und\", the undetermined locale, and 'l', a flag.",
+		"type": "text"
+	},
+	"msgb94ff2aaccd9ec93": "Option en double à l’index {var0, number, integer}.",
+	"@msgb94ff2aaccd9ec93": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msgbaa76fbd98cc212d": "Page précédente",
+	"@msgbaa76fbd98cc212d": {
+		"type": "text"
+	},
+	"msgbb462eb6f42239ee": "Imbrication trop profonde à l’index {var0, number, integer}.",
+	"@msgbb462eb6f42239ee": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msgbc2385db03256648": "Échec de l’analyse du code source : {var0}",
+	"@msgbc2385db03256648": {
+		"description": "The placeholder is an error in English.",
+		"type": "text"
+	},
+	"msgbd6bd031bcc07840": "Échec après {var0}",
+	"@msgbd6bd031bcc07840": {
+		"type": "text"
+	},
+	"msgbe543c713e80306c": "(par défaut : {var0})",
+	"@msgbe543c713e80306c": {
+		"description": "Follows the usage of a flag. The placeholder is its default value, as \"tokibundle\" or true.",
+		"type": "text"
+	},
+	"msgc005958c84933ddf": "Supprimer la modification",
+	"@msgc005958c84933ddf": {
+		"type": "text"
+	},
+	"msgc03456d5430b02f0": "Rechercher des tailles",
+	"@msgc03456d5430b02f0": {
+		"type": "text"
+	},
+	"msgc0a2ac0e6e17a6a2": "Absolument ! Décomposons cela…",
+	"@msgc0a2ac0e6e17a6a2": {
+		"type": "text"
+	},
+	"msgc2e75bb8be6a83f9": "Exécutez {var0} ou cliquez sur le bouton ci-dessous pour réparer le bundle.",
+	"@msgc2e75bb8be6a83f9": {
+		"type": "text"
+	},
+	"msgc68b1ed9d9dbbbe": "fermeture du nouveau fichier .arb du catalogue",
+	"@msgc68b1ed9d9dbbbe": {
+		"description": "Log message about an error of the file system.",
+		"type": "text"
+	},
+	"msgc6f7bae11438b0ff": "URL du serveur",
+	"@msgc6f7bae11438b0ff": {
+		"type": "text"
+	},
+	"msgc71ffb01a1ed0b55": "Génération du bundle",
+	"@msgc71ffb01a1ed0b55": {
+		"type": "text"
+	},
+	"msgc7a580e00ced50c7": "Thème sombre",
+	"@msgc7a580e00ced50c7": {
+		"type": "text"
+	},
+	"msgc81ed59767eb5248": "raccourcit les chemins du code source",
+	"@msgc81ed59767eb5248": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msgc84d11054784a204": "Réparer le bundle",
+	"@msgc84d11054784a204": {
+		"type": "text"
+	},
+	"msgc9ab8b18e394542": "Par page",
+	"@msgc9ab8b18e394542": {
+		"type": "text"
+	},
+	"msgcce935f040e8287f": "{var0} s",
+	"@msgcce935f040e8287f": {
+		"description": "A duration in seconds, as 1.5 s.",
+		"type": "text"
+	},
+	"msgce3e71939c48e386": "Incomplet",
+	"@msgce3e71939c48e386": {
+		"context": "[message]",
+		"type": "text"
+	},
+	"msgcea3732db6a63477": "chemin du paquet Go du bundle généré, relatif au chemin du module (-m)",
+	"@msgcea3732db6a63477": {
+		"description": "The usage of a flag. Keep -m, the flag of the module path.",
+		"type": "text"
+	},
+	"msgcff0852036afc540": "Répertoire du projet",
+	"@msgcff0852036afc540": {
+		"type": "text"
+	},
+	"msgd1bdc13770abd0": "Page précédente",
+	"@msgd1bdc13770abd0": {
+		"type": "text"
+	},
+	"msgd297189b79e4a170": "La langue des messages déclarés dans le code source",
+	"@msgd297189b79e4a170": {
+		"type": "text"
+	},
+	"msgd349459fae6adb62": "Clair",
+	"@msgd349459fae6adb62": {
+		"context": "[theme]",
+		"type": "text"
+	},
+	"msgd40013ff9ec2cd6f": "Échec de la génération",
+	"@msgd40013ff9ec2cd6f": {
+		"type": "text"
+	},
+	"msgd44f0a25fe711d48": "Service de traduction IA",
+	"@msgd44f0a25fe711d48": {
+		"type": "text"
+	},
+	"msgd7268c12096d4deb": "Aucun TIK trouvé pour ce filtre.",
+	"@msgd7268c12096d4deb": {
+		"type": "text"
+	},
+	"msgd8143d93376b81da": "Terminé en {var0}",
+	"@msgd8143d93376b81da": {
+		"type": "text"
+	},
+	"msgd8a1edc072b8e5ee": "{var0, plural, one {# message de la locale source ne correspond} many {# de messages de la locale source ne correspondent} other {# messages de la locale source ne correspondent}} pas au code source (ICU verrouillé ou espaces réservés différents).",
+	"@msgd8a1edc072b8e5ee": {
+		"type": "text"
+	},
+	"msgd8b9c1ce5482baa": "Répertoire",
+	"@msgd8b9c1ce5482baa": {
+		"type": "text"
+	},
+	"msgd92c6e7bb9ca6efa": "Régénérer le bundle",
+	"@msgd92c6e7bb9ca6efa": {
+		"type": "text"
+	},
+	"msgdd2635266015180": "Tous",
+	"@msgdd2635266015180": {
+		"context": "[TIKs]",
+		"type": "text"
+	},
+	"msge263572cec2161dd": "Monospace du système",
+	"@msge263572cec2161dd": {
+		"description": "The monospace font of the operating system.",
+		"type": "text"
+	},
+	"msge30d90f457fce251": "Rechercher",
+	"@msge30d90f457fce251": {
+		"type": "text"
+	},
+	"msge31fb7c87b690c2f": "Afficher le fil d’Ariane masqué",
+	"@msge31fb7c87b690c2f": {
+		"type": "text"
+	},
+	"msge32fa625a9f79a1e": "Cela peut prendre un moment pour les grandes bases de code.",
+	"@msge32fa625a9f79a1e": {
+		"type": "text"
+	},
+	"msge3c19b2a264843ad": "Ouverture…",
+	"@msge3c19b2a264843ad": {
+		"type": "text"
+	},
+	"msge45b9af068e65f9f": "Aucune taille trouvée",
+	"@msge45b9af068e65f9f": {
+		"type": "text"
+	},
+	"msge49e278b497dfb53": "Page suivante",
+	"@msge49e278b497dfb53": {
+		"type": "text"
+	},
+	"msge4a22ca50b583839": "Langues configurées",
+	"@msge4a22ca50b583839": {
+		"type": "text"
+	},
+	"msge4ea3a5f99b36da8": "Tableau de bord",
+	"@msge4ea3a5f99b36da8": {
+		"type": "text"
+	},
+	"msge8c3d20b7c25b14d": "Modifié",
+	"@msge8c3d20b7c25b14d": {
+		"context": "[TIK]",
+		"type": "text"
+	},
+	"msge95d52f540951be9": "Précédent",
+	"@msge95d52f540951be9": {
+		"type": "text"
+	},
+	"msgeac2fc6541312cda": "Fermer",
+	"@msgeac2fc6541312cda": {
+		"type": "text"
+	},
+	"msgec18bac997dac33f": "Écriture des fichiers .arb et génération du code Go…",
+	"@msgec18bac997dac33f": {
+		"type": "text"
+	},
+	"msgecf390d54855e84e": "« Générer le bundle » l’écrit dans le fichier .arb de la locale et régénère le code Go. « Réinitialiser » rétablit le message d’origine.",
+	"@msgecf390d54855e84e": {
+		"type": "text"
+	},
+	"msgedc9dc8d0db1a26": "Vos modifications seront abandonnées et le message ICU d’origine sera rétabli.",
+	"@msgedc9dc8d0db1a26": {
+		"type": "text"
+	},
+	"msgee90a62d620ceb98": "Copier dans le presse-papiers",
+	"@msgee90a62d620ceb98": {
+		"type": "text"
+	},
+	"msgef92dde4cce687a5": "Apparence",
+	"@msgef92dde4cce687a5": {
+		"type": "text"
+	},
+	"msgefdb0ff861d03e61": "skill d’agent IA écrit",
+	"@msgefdb0ff861d03e61": {
+		"description": "Log message about a skill file for AI coding agents that toki wrote.",
+		"type": "text"
+	},
+	"msgf1c253a7372d809e": "Par défaut du système",
+	"@msgf1c253a7372d809e": {
+		"type": "text"
+	},
+	"msgf208c0c0c20613a0": "nouveau TIK",
+	"@msgf208c0c0c20613a0": {
+		"description": "Verbose log message about a TIK that is new in the source code.",
+		"type": "text"
+	},
+	"msgf3e3d93582ee0171": "{var0}–{var1} sur {var2}",
+	"@msgf3e3d93582ee0171": {
+		"type": "text"
+	},
+	"msgf40bb5f684bcb4e8": "désactive toute journalisation dans la console",
+	"@msgf40bb5f684bcb4e8": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msgf485a47ef771b266": "Aller au tableau de bord",
+	"@msgf485a47ef771b266": {
+		"type": "text"
+	},
+	"msgf4a57c5c895c9ebc": "Cette locale n’a pas encore de traduction pour ce message. En attendant, le bundle utilise le message de la locale par défaut.",
+	"@msgf4a57c5c895c9ebc": {
+		"type": "text"
+	},
+	"msgf53a53c1b5e8d054": "Erreur à l’index {var0, number, integer} : {var1}",
+	"@msgf53a53c1b5e8d054": {
+		"description": "ICU syntax error that the editor has no text for. The first placeholder is the byte index of the error, the second the error in English.",
+		"type": "text"
+	},
+	"msgf6c1bdee7c4a02f1": "Génération réussie",
+	"@msgf6c1bdee7c4a02f1": {
+		"type": "text"
+	},
+	"msgf750d55d5e9ea48c": "Lecture seule",
+	"@msgf750d55d5e9ea48c": {
+		"type": "text"
+	},
+	"msgf8e36be5c372bf1a": "le bundle contient des messages corrompus de la locale source — exécutez `toki repair` ({var0, plural, one {# entrée corrompue} many {# d’entrées corrompues} other {# entrées corrompues}})",
+	"@msgf8e36be5c372bf1a": {
+		"description": "Keep toki repair, a command.",
+		"type": "text"
+	},
+	"msgf9de86316817f08": "Les TIK du code source sont écrits dans cette locale. Les autres locales se rabattent sur ses messages là où elles n’ont pas de traduction.",
+	"@msgf9de86316817f08": {
+		"type": "text"
+	},
+	"msgfb472db9466db27c": "Grande",
+	"@msgfb472db9466db27c": {
+		"context": "[font size]",
+		"type": "text"
+	},
+	"msgfbdbc333f54f8353": "Bonjour, {var0} !\nLa page « {var1} » que vous avez demandée n’existe pas.\nVoulez-vous revenir en arrière ou aller au tableau de bord ?",
+	"@msgfbdbc333f54f8353": {
+		"description": "The page for a URL that doesn't exist shows this text as if it were an ICU message. The placeholders show {name} and {text} as they are, as placeholders that nothing fills. Keep the line breaks.",
+		"type": "text"
+	},
+	"msgfbeb7c0885db1e6c": "Vous avez modifié ce message, et la modification n’est pas encore dans le bundle.",
+	"@msgfbeb7c0885db1e6c": {
+		"type": "text"
+	},
+	"msgfc886f47a3a5fe37": "active la sortie JSON",
+	"@msgfc886f47a3a5fe37": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msgfd3cd464ae4055da": "L’argument {var0} a l’option select non valide {var1}.",
+	"@msgfd3cd464ae4055da": {
+		"description": "Note under an ICU message editor. The first placeholder is the name of an ICU argument, the second the name of a select option.",
+		"type": "text"
+	},
+	"msgfe0d41bfee6caad7": "Revenir en arrière",
+	"@msgfe0d41bfee6caad7": {
+		"type": "text"
+	},
+	"msgfe9b203c79e07f0d": "TIK",
+	"@msgfe9b203c79e07f0d": {
+		"context": "[TIKs]",
+		"type": "text"
+	},
+	"msgffbbb73ebe399cfb": "Échec du remplissage de la base d’index : {var0}",
+	"@msgffbbb73ebe399cfb": {
+		"description": "The placeholder is an error in English. The index database is where the editor caches the scan of the project.",
+		"type": "text"
+	}
+}

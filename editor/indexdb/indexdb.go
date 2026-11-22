@@ -26,7 +26,6 @@ type DB struct {
 // Catalog represents a locale catalog stored in the index DB.
 type Catalog struct {
 	Locale          string
-	Name            string
 	IsDefault       bool
 	MessagesCorrupt int
 	MessagesMissing int
@@ -90,7 +89,6 @@ func createSchema(sq *sqinn.Sqinn) error {
 		)`,
 		`CREATE TABLE IF NOT EXISTS catalog (
 			locale TEXT PRIMARY KEY,
-			name TEXT NOT NULL,
 			is_default INTEGER NOT NULL DEFAULT 0,
 			messages_corrupt INTEGER NOT NULL DEFAULT 0,
 			messages_missing INTEGER NOT NULL DEFAULT 0
@@ -133,9 +131,11 @@ func createSchema(sq *sqinn.Sqinn) error {
 		`ALTER TABLE catalog ADD COLUMN messages_corrupt INTEGER NOT NULL DEFAULT 0`,
 		`ALTER TABLE tik ADD COLUMN domain TEXT NOT NULL DEFAULT ''`,
 		`ALTER TABLE catalog ADD COLUMN messages_missing INTEGER NOT NULL DEFAULT 0`,
+		// The editor names the locales in the language of its interface.
+		`ALTER TABLE catalog DROP COLUMN name`,
 	}
 	for _, m := range migrations {
-		_ = sq.ExecSql(m) // Ignore "duplicate column" errors.
+		_ = sq.ExecSql(m) // Ignore "duplicate column" and "no such column" errors.
 	}
 	return nil
 }
@@ -310,12 +310,11 @@ func (db *DB) InsertCatalog(c Catalog) error {
 	}
 	return db.sq.ExecParams(
 		"INSERT OR REPLACE INTO catalog "+
-			"(locale, name, is_default, messages_corrupt, messages_missing) "+
-			"VALUES (?, ?, ?, ?, ?)",
-		1, 5,
+			"(locale, is_default, messages_corrupt, messages_missing) "+
+			"VALUES (?, ?, ?, ?)",
+		1, 4,
 		[]sqinn.Value{
 			sqinn.StringValue(c.Locale),
-			sqinn.StringValue(c.Name),
 			sqinn.Int32Value(isDefault),
 			sqinn.Int32Value(c.MessagesCorrupt),
 			sqinn.Int32Value(c.MessagesMissing),
@@ -392,12 +391,10 @@ func (db *DB) CommitMessages() error {
 // LoadCatalogs returns all catalogs from the database.
 func (db *DB) LoadCatalogs() ([]Catalog, error) {
 	rows, err := db.sq.QueryRows(
-		"SELECT locale, name, is_default, messages_corrupt, messages_missing "+
+		"SELECT locale, is_default, messages_corrupt, messages_missing "+
 			"FROM catalog ORDER BY is_default DESC, locale",
 		nil,
-		[]byte{
-			sqinn.ValString, sqinn.ValString, sqinn.ValInt32, sqinn.ValInt32, sqinn.ValInt32,
-		},
+		[]byte{sqinn.ValString, sqinn.ValInt32, sqinn.ValInt32, sqinn.ValInt32},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("loading catalogs: %w", err)
@@ -406,10 +403,9 @@ func (db *DB) LoadCatalogs() ([]Catalog, error) {
 	for i, row := range rows {
 		catalogs[i] = Catalog{
 			Locale:          row[0].String,
-			Name:            row[1].String,
-			IsDefault:       row[2].Int32 != 0,
-			MessagesCorrupt: row[3].Int32,
-			MessagesMissing: row[4].Int32,
+			IsDefault:       row[1].Int32 != 0,
+			MessagesCorrupt: row[2].Int32,
+			MessagesMissing: row[3].Int32,
 		}
 	}
 	return catalogs, nil

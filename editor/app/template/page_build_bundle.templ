@@ -4,15 +4,15 @@ import (
 	"github.com/romshark/morpheus/neo"
 
 	"github.com/romshark/toki/editor/app/datapagesgen/href"
-	"github.com/romshark/toki/editor/app/template/strfmt"
+	"github.com/romshark/toki/internal/tokibundle"
 )
 
 // PageBuildBundle renders the whole build page. It is both the GET body
 // and what PageBuildBundle.OnUpdated morphs as the build progresses.
-templ PageBuildBundle(state BuildBundleState) {
+templ PageBuildBundle(tr tokibundle.Reader, state BuildBundleState) {
 	@page("page-build-bundle", nil) {
 		<div class="page-center">
-			@buildBundleStatus(state)
+			@buildBundleStatus(tr, state)
 		</div>
 	}
 }
@@ -35,46 +35,44 @@ templ buildBundleCard(title string) {
 
 // componentDashboardLink renders the "Go to Dashboard" call to action
 // shared by the build page's terminal states.
-templ componentDashboardLink() {
+templ componentDashboardLink(tr tokibundle.Reader) {
 	@neo.Link(neo.LinkOpts{
 		Href:    neo.Set(href.PageIndex()),
 		Variant: neo.Set(neo.LinkVariantButtonPrimary),
 	}) {
-		Go to Dashboard
+		{ tr.String("Go to Dashboard") }
 	}
 }
 
 // buildBundleStatus renders the card of the current build state.
-templ buildBundleStatus(state BuildBundleState) {
+templ buildBundleStatus(tr tokibundle.Reader, state BuildBundleState) {
 	<div id="build-bundle-content">
 		if state.Building {
-			@buildBundleCard("Building Bundle") {
+			@buildBundleCard(tr.String("Building Bundle")) {
 				<div class="loading-screen">
 					@componentLoadingDots()
-					<p>
-						Writing .arb files and generating Go code&hellip;
-					</p>
+					<p>{ tr.String("Writing the .arb files and generating Go code…") }</p>
 					<p class="loading-hint">
-						This may take a moment for large codebases.
+						{ tr.String("This may take a moment for large codebases.") }
 					</p>
 				</div>
 			}
 		} else if state.Err != "" {
-			@buildBundleCard("Build Failed") {
+			@buildBundleCard(tr.String("Build Failed")) {
 				<div class="build-result">
 					@componentAlertDanger() {
 						{ state.Err }
 					}
 					if state.Duration > 0 {
 						<p class="build-duration">
-							Failed after { FmtDuration(state.Duration) }
+							{ tr.String("Failed after {text}", FmtDuration(tr, state.Duration)) }
 						</p>
 					}
-					@componentDashboardLink()
+					@componentDashboardLink(tr)
 				</div>
 			}
 		} else if state.Duration > 0 {
-			@buildBundleCard("Build Successful") {
+			@buildBundleCard(tr.String("Build Successful")) {
 				<div class="build-result">
 					@neo.AlertAttrs(
 						neo.AlertOpts{Variant: neo.Set(neo.AlertVariantSuccess)},
@@ -82,29 +80,26 @@ templ buildBundleStatus(state BuildBundleState) {
 					) {
 						@neo.AlertContent() {
 							@neo.AlertDescription() {
-								Bundle built successfully. The .arb files and Go code
-								have been updated.
+								{ tr.String("Bundle built successfully. " +
+									"The .arb files and Go code have been updated.") }
 							}
 						}
 					}
 					<p class="build-duration">
-						Completed in { FmtDuration(state.Duration) }
+						{ tr.String("Completed in {text}", FmtDuration(tr, state.Duration)) }
 					</p>
-					@componentDashboardLink()
+					@componentDashboardLink(tr)
 				</div>
 			}
 		} else {
-			@buildBundleCard("Build Bundle") {
+			@buildBundleCard(tr.String("Build Bundle")) {
 				<div class="build-result">
 					if state.TotalChanges == 0 {
-						<p>No unsaved changes to build.</p>
+						<p>{ tr.String("No unsaved changes to build.") }</p>
 					} else {
-						<p>
-							{ strfmt.Int(state.TotalChanges) } unsaved
-							change(s) ready to build.
-						</p>
+						<p>{ tr.String("{# unsaved changes} ready to build.", state.TotalChanges) }</p>
 					}
-					@componentDashboardLink()
+					@componentDashboardLink(tr)
 				</div>
 			}
 		}

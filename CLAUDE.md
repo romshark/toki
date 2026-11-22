@@ -18,6 +18,17 @@ Toki is an i18n (internationalization) framework for Go. See [README.md](README.
 
 Read `.claude/skills/changelog/SKILL.md` before writing a `CHANGELOG.md` entry or releasing.
 
+## Localization
+
+The editor and the command line localize their text with Toki itself. Follow the `toki` and `toki-translate` skills in `.claude/skills/`, written by `toki generate`: `toki` for any text users read, `toki-translate` for the catalogs. This section only records what is specific to this repository. Where it differs from the skills, this section wins.
+
+- **Run this repository's toki**: where the skills say `toki`, run `go run .` in the repository root, as `go run . generate -b internal/tokibundle`. Never an installed `toki` or `go run github.com/romshark/toki@latest`: another version rewrites every generated file. Until `go run . generate` adds a new TIK to the catalogs, `toki` writes the TIK itself where the bundle would panic: see `missingtik.go`.
+- **Domains**: the editor's texts belong to the domain of `editor/.tokidomain.yml`, the command line's to the domain of `internal/.tokidomain.yml`.
+- **Translate every new TIK into every locale** before you finish. The catalogs stay complete.
+- **Reader**: pass the `tokibundle.Reader` down as a parameter named `tr`. `main` picks it from the environment with `uilang`, and tests pass English. In the editor, every template that renders text takes it as its first parameter. A `GET` gets it from `App.readerFor(r)`. An `On` handler has no request: it reads the reader from the page's state, which `StreamOpen` sets.
+- **English for programs**: `-json` output stays English. The errors of the command line stay English values for `errors.Is`, `-json` and the tests: `errorText` translates the command line's own ones when it prints them. Keep the English TIK of such an error identical to its `Error()`, which `TestErrorTextEnglish` checks.
+- **TIKs in templates**: Templ drops Go comments, which leaves a TIK in a `.templ` file without a translator comment. Give a short, ambiguous TIK a context, as `[TIKs] Complete`, or write a TIK that needs a comment in a Go function, as in `editor/app/template/text.go`. Let `datapages watch` regenerate the templates before `go run . generate`: Toki reads the TIKs of a template from its `_templ.go` file.
+
 ## Editor
 
 The following instructions apply to the Toki editor under `editor/`.

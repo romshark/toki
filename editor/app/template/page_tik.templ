@@ -7,11 +7,12 @@ import (
 
 	"github.com/romshark/toki/editor/app/datapagesgen/action"
 	"github.com/romshark/toki/editor/app/datapagesgen/href"
+	"github.com/romshark/toki/internal/tokibundle"
 )
 
 // PageTIK renders the whole page of one TIK. It is both the GET body and
 // what PageTIK.OnUpdated morphs.
-templ PageTIK(tk *TIK, isHybrid bool) {
+templ PageTIK(tr tokibundle.Reader, tk *TIK, isHybrid bool) {
 	@page("page-tik", templ.Attributes{
 		"data-signals:icumsg":            "''",
 		"data-signals:resettikid":        "''",
@@ -21,20 +22,20 @@ templ PageTIK(tk *TIK, isHybrid bool) {
 		"data-signals:resetdonelocale":   "''",
 		"data-signals:editor__ifmissing": InitEditorSignalsOne(tk),
 	}) {
-		@componentSidebar("TIK navigation") {
-			@componentSidebarHeader(isHybrid)
-			@tikSidebarNav(tk)
+		@componentSidebar(tr.String("TIK navigation")) {
+			@componentSidebarHeader(tr, isHybrid)
+			@tikSidebarNav(tr, tk)
 		}
-		@tikMainArea(tk)
-		@componentEditorModals()
+		@tikMainArea(tr, tk)
+		@componentEditorModals(tr)
 	}
 }
 
-templ tikSidebarNav(tk *TIK) {
+templ tikSidebarNav(tr tokibundle.Reader, tk *TIK) {
 	<nav
 		{ neo.SidebarContent()... }
 		id="tik-sidebar-content"
-		aria-label="TIK navigation"
+		aria-label={ tr.String("TIK navigation") }
 	>
 		<section>
 			<ul class="sidebar-nav-list">
@@ -43,7 +44,7 @@ templ tikSidebarNav(tk *TIK) {
 				}
 			</ul>
 			<div role="group" aria-labelledby="tik-nav-label">
-				<h3 id="tik-nav-label">ICU Messages</h3>
+				<h3 id="tik-nav-label">{ tr.String("ICU Messages") }</h3>
 				@componentLocaleSortable() {
 					for _, msg := range tk.ICU {
 						@componentLocaleSortableItem(msg.Catalog.Locale) {
@@ -54,14 +55,14 @@ templ tikSidebarNav(tk *TIK) {
 									<strong class="locale-code">
 										{ msg.Catalog.Locale }
 									</strong>
-									if msg.Catalog.Name != "" {
-										– { msg.Catalog.Name }
+									if name := localeName(tr, msg.Catalog.Locale); name != "" {
+										– { name }
 									}
 								</span>
 								if msg.Catalog.Default {
 									@neo.BadgeAttrs(
 										neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantSecondary)},
-										templ.Attributes{"title": "Default locale"},
+										templ.Attributes{"title": tr.String("Default locale")},
 									) {
 										@iconCode()
 									}
@@ -69,7 +70,7 @@ templ tikSidebarNav(tk *TIK) {
 								if msg.Changed {
 									@neo.BadgeAttrs(neo.BadgeOpts{}, templ.Attributes{
 										"class": "badge-changed",
-										"title": "Unsaved change",
+										"title": tr.String("Unsaved change"),
 									}) {
 										@iconPencil()
 									}
@@ -77,15 +78,15 @@ templ tikSidebarNav(tk *TIK) {
 								if msg.Message == "" {
 									@neo.BadgeAttrs(
 										neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantSecondary)},
-										templ.Attributes{"title": "Missing Translation"},
+										templ.Attributes{"title": tr.String("Missing Translation")},
 									) {
 										@iconCircleMinus()
 									}
 								}
-								if msg.Error != "" || len(msg.IncompleteReports) > 0 {
+								if msg.Error != nil || len(msg.Problems) > 0 {
 									@neo.BadgeAttrs(
 										neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantDanger)},
-										templ.Attributes{"title": "Invalid ICU message"},
+										templ.Attributes{"title": tr.String("Invalid ICU message")},
 									) {
 										@iconAlertTriangle()
 									}
@@ -98,7 +99,7 @@ templ tikSidebarNav(tk *TIK) {
 			if len(tk.Occurrences) > 0 {
 				<ul class="sidebar-nav-list">
 					@componentSidebarNavLink("#source-occurrences") {
-						<span class="sidebar-nav-text">Source Occurrences</span>
+						<span class="sidebar-nav-text">{ tr.String("Source Occurrences") }</span>
 					}
 				</ul>
 			}
@@ -106,11 +107,11 @@ templ tikSidebarNav(tk *TIK) {
 	</nav>
 }
 
-templ tikMainArea(tk *TIK) {
+templ tikMainArea(tr tokibundle.Reader, tk *TIK) {
 	@componentMainArea(templ.Attributes{"id": "tik-main-area"}) {
-		@componentNavbar([]Breadcrumb{
-			{Label: "Dashboard", Href: href.PageIndex()},
-			{Label: "Messages", Href: href.PageTIKs(href.QueryPageTIKs{})},
+		@componentNavbar(tr, []Breadcrumb{
+			{Label: tr.String("Dashboard"), Href: href.PageIndex()},
+			{Label: tr.String("Messages"), Href: href.PageTIKs(href.QueryPageTIKs{})},
 			{Label: tk.ID},
 		}, tikChangedCount(tk), true)
 		<main>
@@ -133,7 +134,7 @@ templ tikMainArea(tk *TIK) {
 							@componentFieldStack() {
 								<span class="label">
 									TIK
-									@componentCopy(tk.TIK)
+									@componentCopy(tr, tk.TIK)
 								</span>
 								<toki-editor
 									value={ tk.TIK }
@@ -143,7 +144,7 @@ templ tikMainArea(tk *TIK) {
 							}
 							if tk.Description != "" {
 								@componentFieldStack() {
-									<span class="label">Description</span>
+									<span class="label">{ tr.String("Description") }</span>
 									<p>{ tk.Description }</p>
 								}
 							}
@@ -152,7 +153,7 @@ templ tikMainArea(tk *TIK) {
 				}
 				<h2 id="icu-messages">
 					@iconLanguages()
-					ICU Messages
+					{ tr.String("ICU Messages") }
 				</h2>
 				for _, msg := range tk.ICU {
 					@neo.CardAttrs(neo.CardOpts{}, templ.Attributes{
@@ -163,15 +164,15 @@ templ tikMainArea(tk *TIK) {
 								<strong class="locale-code">
 									{ msg.Catalog.Locale }
 								</strong>
-								if msg.Catalog.Name != "" {
-									— { msg.Catalog.Name }
+								if name := localeName(tr, msg.Catalog.Locale); name != "" {
+									— { name }
 								}
-								@componentICUMessageStatusButtons(msg)
-								@componentCopy(msg.Message)
+								@componentICUMessageStatusButtons(tr, msg)
+								@componentCopy(tr, msg.Message)
 							</span>
 						}
 						@neo.CardBody() {
-							@componentICUMessageForm(tk.ID, msg, false, templ.Attributes{
+							@componentICUMessageForm(tr, tk.ID, msg, false, templ.Attributes{
 								"data-on:toki-change": action.PageTIK.Set.POST(
 									tk.ID,
 									action.PageTIK.Set.POSTQuery(msg.Catalog.Locale),
@@ -185,7 +186,7 @@ templ tikMainArea(tk *TIK) {
 				if len(tk.Occurrences) > 0 {
 					<h2 id="source-occurrences">
 						@iconCode()
-						Source Occurrences
+						{ tr.String("Source Occurrences") }
 					</h2>
 					@neo.Card(neo.CardOpts{}) {
 						@neo.CardBody() {
@@ -202,7 +203,7 @@ templ tikMainArea(tk *TIK) {
 												{ occ.Pos() }
 											</span>
 										</code>
-										@componentCopy(fmt.Sprintf(
+										@componentCopy(tr, fmt.Sprintf(
 											"%s:%d:%d", occ.File, occ.Line, occ.Column,
 										))
 									</li>

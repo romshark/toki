@@ -1,0 +1,20 @@
+# The TIK domain for this directory tree.
+# The description provides context for translators working on this domain.
+# Also see: https://github.com/romshark/tik/blob/main/SPECIFICATION.md#domains
+
+# This defines the name of the domain.
+name: cli
+
+# The description provides translators with additional context and instructions on
+# how to translate within a directory tree, such as the expected tone, style,
+# target audience, or terminology conventions.
+description: >-
+  The output of toki, the command-line tool that Go developers run in a terminal to
+  extract the texts of their source code, check them and generate the localization bundle. 
+  Its users know software localization. Keep the terms of the localization tools of
+  the language: TIK, ICU message, locale, catalog, bundle, domain. Leave Toki, TIK, ICU,
+  Go, file names as head.txt and .arb, commands as toki generate, flags as -l and
+  argument names in angle brackets, as <command>, as they are. Use the formal form
+  of address: German "Sie", French "vous", Russian "вы", Ukrainian "ви".
+  Log messages are short and start in lower case, as "finished":
+  keep them short and lower case wherever the language allows. Help texts are sentences.

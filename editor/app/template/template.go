@@ -10,6 +10,7 @@ import (
 	"github.com/romshark/morpheus/neo"
 
 	"github.com/romshark/toki/editor/app/datapagesgen/action"
+	"github.com/romshark/toki/internal/icu"
 )
 
 // ActionExcludeEditor excludes the "editor" signal tree (and default
@@ -18,6 +19,14 @@ const ActionExcludeEditor = `(^_|\._|^editor\.)`
 
 // NoEditorSignals applies ActionExcludeEditor to an action.
 var NoEditorSignals = action.WithFilterSignals("", ActionExcludeEditor)
+
+// LangSystem is the interface language preference that follows the
+// languages the browser asks for.
+const LangSystem = "system"
+
+// codeMark stands in for a code span in a localized text, which [withCode]
+// renders. Pass it as the argument of the TIK's placeholder for the code.
+const codeMark = "￼"
 
 // EditorID is the element id of the <toki-editor> editing the message of
 // TIK tikID in locale.
@@ -150,7 +159,6 @@ type DashboardStats struct {
 // LocaleStats holds per-locale statistics for the dashboard.
 type LocaleStats struct {
 	Locale       string
-	Name         string // e.g. "German", "English"
 	Default      bool
 	Complete     int     // TIKs fully translated and valid for this locale
 	Incomplete   int     // TIKs whose translation is missing required ICU options
@@ -230,14 +238,16 @@ func (d DataIndex) TotalPages() int {
 }
 
 type ICUMessage struct {
-	ID                string
-	IncompleteReports []string
-	Message           string
-	Error             string
-	MessageOriginal   string
-	Catalog           *Catalog
-	Changed           bool
-	IsReadOnly        bool
+	ID string
+	// Problems lists the plural and select options the message lacks or
+	// mustn't have.
+	Problems        []icu.Problem
+	Message         string
+	Error           *ICUError // nil when the message is valid.
+	MessageOriginal string
+	Catalog         *Catalog
+	Changed         bool
+	IsReadOnly      bool
 }
 
 // SourceOccurrence is a location where a TIK appears in the source code.
@@ -270,7 +280,6 @@ type TIK struct {
 
 type Catalog struct {
 	Locale  string
-	Name    string // e.g. "German", "English"
 	Default bool
 }
 
@@ -289,14 +298,6 @@ type BuildBundleState struct {
 	Err          string
 	Duration     time.Duration
 	TotalChanges int
-}
-
-// FmtDuration formats a duration for display.
-func FmtDuration(d time.Duration) string {
-	if d < time.Second {
-		return fmt.Sprintf("%dms", d.Milliseconds())
-	}
-	return fmt.Sprintf("%.1fs", d.Seconds())
 }
 
 // DomainInfo holds display data for a single TIK domain.

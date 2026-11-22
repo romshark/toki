@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -122,7 +121,6 @@ func RunServer(s datapages.Server, host string) int {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	log.Info("listening", slog.String("host", host))
 	err := s.ListenAndServe(ctx, host)
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Error("listening and serving HTTP", err)

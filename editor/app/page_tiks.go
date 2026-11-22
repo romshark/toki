@@ -9,6 +9,7 @@ import (
 
 	"github.com/romshark/toki/editor/app/datapagesgen/href"
 	"github.com/romshark/toki/editor/app/template"
+	"github.com/romshark/toki/internal/tokibundle"
 )
 
 // PageTIKs is /tiks
@@ -27,6 +28,7 @@ type StateTIKs struct {
 	SearchQuery string
 	PageIdx     int // 0-based
 	PageSize    int
+	Reader      tokibundle.Reader // Renders the text of the tab.
 }
 
 func (p PageTIKs) GET(
@@ -42,15 +44,18 @@ func (p PageTIKs) GET(
 ) (
 	body datapages.Component,
 	redirect datapages.Redirect,
+	docAttrs datapages.DocumentAttrs,
 	enableBackgroundStreaming datapages.EnableBackgroundStreaming,
 	disableRefreshAfterHidden datapages.DisableRefreshAfterHidden,
 	err error,
 ) {
 	enableBackgroundStreaming = true
 	disableRefreshAfterHidden = true
+	tr := p.App.readerFor(r)
+	docAttrs = documentAttrs(tr)
 
 	if p.App.IsLoading() {
-		body = template.PageLoading()
+		body = template.PageLoading(tr)
 		return
 	}
 
@@ -76,7 +81,7 @@ func (p PageTIKs) GET(
 		max(q.Page-1, 0),
 		q.PageSize, q.Search)
 	data.ClosedSections = readClosedSections(r)
-	body = template.PageTIKs(data)
+	body = template.PageTIKs(tr, data)
 	return
 }
 
@@ -120,7 +125,7 @@ func (PageTIKs) POSTSetSectionOpen(
 	return sse.ExecuteScript(script.String())
 }
 
-func (PageTIKs) StreamOpen(
+func (p PageTIKs) StreamOpen(
 	r *http.Request,
 	state datapages.State[StateTIKs],
 	signals datapages.Signals[struct {
@@ -141,6 +146,7 @@ func (PageTIKs) StreamOpen(
 		// signal is 1-based, internal is 0-based
 		PageIdx:  max(s.Page-1, 0),
 		PageSize: template.NormalizePageSize(s.PageSize),
+		Reader:   p.App.readerFor(r),
 	}
 	return nil
 }
@@ -220,7 +226,7 @@ func (p PageTIKs) renderLocked(
 	}); err != nil {
 		return err
 	}
-	return sse.PatchElement(template.PageTIKs(data))
+	return sse.PatchElement(template.PageTIKs(vs.Reader, data))
 }
 
 // render is renderLocked for actions, which don't hold the App lock.

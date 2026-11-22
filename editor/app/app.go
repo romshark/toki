@@ -27,8 +27,8 @@ import (
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/icu"
 	tikutil "github.com/romshark/toki/internal/tik"
+	"github.com/romshark/toki/internal/tokibundle"
 	"golang.org/x/text/language"
-	"golang.org/x/text/language/display"
 )
 
 const MainBundleFileGo = "bundle_gen.go"
@@ -109,7 +109,8 @@ type App struct {
 	// from ARB (needs `toki generate`)
 	numMissing int
 	repairErr  string
-	initErr    string
+	// initErr is why the project can't be loaded, if it can't.
+	initErr template.ProjectError
 
 	// sourceErrors are populated when initErr is a source-error summary
 	sourceErrors []template.SourceError
@@ -128,13 +129,19 @@ type App struct {
 	buildErr      string
 	buildDuration time.Duration
 
-	// PickDirectory opens a native directory picker dialog.
+	// PickDirectory opens a native directory picker dialog with title.
 	// Set by the Wails runner; nil in server mode.
-	PickDirectory func() (string, error)
+	PickDirectory func(title string) (string, error)
 
 	// OpenNewWindow opens a new native editor window pointed at the same
 	// local server. Set by the Wails runner; nil in server mode.
 	OpenNewWindow func()
+
+	// SystemReader renders the text of the desktop app in the language of
+	// the terminal that started it, unless the user picks another language.
+	// Set by `toki edit` before it serves. Nil in server mode, where the
+	// languages each browser accepts decide.
+	SystemReader tokibundle.Reader
 
 	// Version is the Toki version string. Set by editor.Setup.
 	Version string
@@ -198,12 +205,6 @@ func (a *App) Dir() string {
 	return a.dir
 }
 
-func (a *App) InitErr() string {
-	a.lock.Lock()
-	defer a.lock.Unlock()
-	return a.initErr
-}
-
 // TryInit loads the bundle for the configured project directory into the
 // App's in-memory state. Takes the App lock, then delegates to
 // [App.tryInitLocked]. On success the editor is ready to serve pages; on
@@ -219,7 +220,8 @@ func (a *App) TryInit() error {
 // to the project-dir page instead of letting them edit translations.
 // True when the bundle is missing, out-of-sync with source, or corrupt.
 func (a *App) mustRedirectToProjectDir() bool {
-	return a.dir == "" || a.initErr != "" || a.numCorrupt > 0 || a.numMissing > 0
+	return a.dir == "" || a.initErr.Kind != template.ProjectErrorNone ||
+		a.numCorrupt > 0 || a.numMissing > 0
 }
 
 // defaultLocaleLocked returns the bundle's native locale. Prefers the
@@ -245,7 +247,7 @@ func (a *App) defaultLocaleLocked() language.Tag {
 // to a full codeparse-driven rebuild. Domain discovery runs in both paths.
 // Must be called with a.lock held.
 func (a *App) tryInitLocked() error {
-	a.initErr = ""
+	a.initErr = template.ProjectError{}
 	a.sourceErrors = nil
 	a.changed = nil
 	a.numCorrupt = 0
@@ -257,21 +259,19 @@ func (a *App) tryInitLocked() error {
 	a.domains = nil
 
 	if a.dir == "" {
-		a.initErr = "No directory selected"
-		return errors.New(a.initErr)
+		return a.failInitLocked(template.ProjectError{Kind: template.ProjectErrorNoDir})
 	}
 
 	mainBundleFile := filepath.Join(a.dir, a.bundlePkgPath, MainBundleFileGo)
 	switch _, err := os.Stat(mainBundleFile); {
 	case errors.Is(err, os.ErrNotExist):
-		a.initErr = fmt.Sprintf(
-			"Bundle file %q not found. Run `toki generate` first.",
-			mainBundleFile,
-		)
-		return errors.New(a.initErr)
+		return a.failInitLocked(template.ProjectError{
+			Kind: template.ProjectErrorBundleMissing, Path: mainBundleFile,
+		})
 	case err != nil:
-		a.initErr = fmt.Sprintf("Checking bundle file %q: %v", mainBundleFile, err)
-		return errors.New(a.initErr)
+		return a.failInitLocked(template.ProjectError{
+			Kind: template.ProjectErrorBundleCheck, Path: mainBundleFile, Err: err.Error(),
+		})
 	}
 
 	// Check if we can use the index DB (fast path).
@@ -301,6 +301,13 @@ func (a *App) tryInitLocked() error {
 	return nil
 }
 
+// failInitLocked keeps e for the project page to show and returns it.
+// Caller holds a.lock.
+func (a *App) failInitLocked(e template.ProjectError) error {
+	a.initErr = e
+	return e
+}
+
 // discoverDomainsLocked discovers .tokidomain.yml files in the project directory.
 func (a *App) discoverDomainsLocked() {
 	if a.dir == "" {
@@ -318,11 +325,11 @@ func (a *App) fullRebuildLocked() error {
 	parser := codeparse.NewParser(a.hasher, a.tikParser, a.tikICUTranslator)
 	scan, err := parser.Parse(a.env, a.dir, "./...", a.bundlePkgPath, false)
 	if err != nil {
-		a.initErr = fmt.Sprintf("Analyzing source: %v", err)
-		return errors.New(a.initErr)
+		return a.failInitLocked(template.ProjectError{
+			Kind: template.ProjectErrorAnalyze, Err: err.Error(),
+		})
 	}
 	if scan.SourceErrors.Len() > 0 {
-		a.initErr = "Source code contains errors"
 		_ = scan.SourceErrors.Access(func(s []codeparse.SourceError) error {
 			a.sourceErrors = make([]template.SourceError, len(s))
 			for i, se := range s {
@@ -335,7 +342,7 @@ func (a *App) fullRebuildLocked() error {
 			}
 			return nil
 		})
-		return errors.New(a.initErr)
+		return a.failInitLocked(template.ProjectError{Kind: template.ProjectErrorSource})
 	}
 
 	a.scan = scan
@@ -348,12 +355,14 @@ func (a *App) fullRebuildLocked() error {
 	if a.indexDB != nil {
 		unsaved, err := a.indexDB.ChangedMessages()
 		if err != nil {
-			a.initErr = fmt.Sprintf("Loading unsaved edits: %v", err)
-			return errors.New(a.initErr)
+			return a.failInitLocked(template.ProjectError{
+				Kind: template.ProjectErrorLoadEdits, Err: err.Error(),
+			})
 		}
 		if err := a.populateDBFromScanLocked(); err != nil {
-			a.initErr = fmt.Sprintf("Populating index DB: %v", err)
-			return errors.New(a.initErr)
+			return a.failInitLocked(template.ProjectError{
+				Kind: template.ProjectErrorIndex, Err: err.Error(),
+			})
 		}
 		for _, m := range unsaved {
 			// Edits that no longer apply, to TIKs gone from the source or
@@ -377,7 +386,6 @@ func (a *App) buildTemplateDataFromScanLocked() {
 		tag := language.MustParse(cat.ARB.Locale.String())
 		c := &template.Catalog{
 			Locale:  cat.ARB.Locale.String(),
-			Name:    display.English.Languages().Name(tag),
 			Default: cat.ARB.Locale == scan.DefaultLocale,
 		}
 		a.catalogs = append(a.catalogs, c)
@@ -438,24 +446,7 @@ func (a *App) buildTemplateDataFromScanLocked() {
 				Message:    m.ICUMessage,
 				IsReadOnly: isReadOnly,
 			}
-			// Validate ICU message on load.
-			if tmplMsg.Message != "" {
-				loc := language.MustParse(c.ARB.Locale.String())
-				a.icuTokBuffer = a.icuTokBuffer[:0]
-				var icuErr error
-				a.icuTokBuffer, icuErr = a.icuTokenizer.Tokenize(
-					loc, a.icuTokBuffer, tmplMsg.Message,
-				)
-				if icuErr != nil {
-					tmplMsg.Error = fmt.Sprintf("at index %d: %v",
-						a.icuTokenizer.Pos(), icuErr)
-				} else {
-					tmplMsg.IncompleteReports = icu.AnalysisReport(
-						loc, tmplMsg.Message, a.icuTokBuffer,
-						codeparse.ICUSelectOptions,
-					)
-				}
-			}
+			a.validateLocked(tmplMsg, c.ARB.Locale)
 			tmplTIK.ICU = append(tmplTIK.ICU, tmplMsg)
 		}
 		a.tiks = append(a.tiks, tmplTIK)
@@ -497,7 +488,6 @@ func (a *App) populateDBFromScanLocked() error {
 		}
 		if err := db.InsertCatalog(indexdb.Catalog{
 			Locale:          c.Locale,
-			Name:            c.Name,
 			IsDefault:       c.Default,
 			MessagesCorrupt: messagesCorrupt,
 			MessagesMissing: messagesMissing,
@@ -600,7 +590,6 @@ func (a *App) loadFromDBLocked() error {
 		tag := language.MustParse(dc.Locale)
 		c := &template.Catalog{
 			Locale:  dc.Locale,
-			Name:    dc.Name,
 			Default: dc.IsDefault,
 		}
 		if dc.IsDefault {
@@ -662,24 +651,7 @@ func (a *App) loadFromDBLocked() error {
 				tmplMsg.MessageOriginal = dm.OriginalICUMessage
 				a.changed = append(a.changed, tmplMsg)
 			}
-			// Validate ICU message on load.
-			if tmplMsg.Message != "" {
-				loc := language.MustParse(dm.Locale)
-				a.icuTokBuffer = a.icuTokBuffer[:0]
-				var icuErr error
-				a.icuTokBuffer, icuErr = a.icuTokenizer.Tokenize(
-					loc, a.icuTokBuffer, tmplMsg.Message,
-				)
-				if icuErr != nil {
-					tmplMsg.Error = fmt.Sprintf("at index %d: %v",
-						a.icuTokenizer.Pos(), icuErr)
-				} else {
-					tmplMsg.IncompleteReports = icu.AnalysisReport(
-						loc, tmplMsg.Message, a.icuTokBuffer,
-						codeparse.ICUSelectOptions,
-					)
-				}
-			}
+			a.validateLocked(tmplMsg, language.MustParse(dm.Locale))
 			tmplTIK.ICU = append(tmplTIK.ICU, tmplMsg)
 		}
 		a.tiks = append(a.tiks, tmplTIK)
@@ -816,22 +788,6 @@ func (a *App) setMessageLocked(id, locale, newMessage string) error {
 		return datapages.ErrForbidden // The TIK fully determines the message.
 	}
 
-	loc := a.localeTags[iCatalog]
-
-	var icuErr error
-	a.icuTokBuffer = a.icuTokBuffer[:0]
-	a.icuTokBuffer, icuErr = a.icuTokenizer.Tokenize(
-		loc, a.icuTokBuffer, newMessage,
-	)
-	if icuErr != nil {
-		icuMsg.Error = fmt.Sprintf("at index %d: %v", a.icuTokenizer.Pos(), icuErr)
-	} else {
-		icuMsg.Error = ""
-		icuMsg.IncompleteReports = icu.AnalysisReport(
-			loc, newMessage, a.icuTokBuffer, codeparse.ICUSelectOptions,
-		)
-	}
-
 	if icuMsg.Changed {
 		if newMessage == icuMsg.MessageOriginal {
 			icuMsg.Message = newMessage
@@ -850,9 +806,28 @@ func (a *App) setMessageLocked(id, locale, newMessage string) error {
 		icuMsg.Message = newMessage
 		a.changed = append(a.changed, icuMsg)
 	}
+	a.validateLocked(icuMsg, a.localeTags[iCatalog])
 
 	a.persistMessageLocked(tk, icuMsg)
 	return nil
+}
+
+// validateLocked sets the syntax error and the problems of msg, a message
+// in locale. Caller holds a.lock.
+func (a *App) validateLocked(msg *template.ICUMessage, locale language.Tag) {
+	msg.Error, msg.Problems = nil, nil
+	if msg.Message == "" {
+		return
+	}
+	var err error
+	a.icuTokBuffer, err = a.icuTokenizer.Tokenize(locale, a.icuTokBuffer[:0], msg.Message)
+	if err != nil {
+		msg.Error = &template.ICUError{Index: a.icuTokenizer.Pos(), Err: err}
+		return
+	}
+	msg.Problems = icu.Analyze(
+		locale, msg.Message, a.icuTokBuffer, codeparse.ICUSelectOptions,
+	)
 }
 
 // persistMessageLocked stores msg of tk in the index DB and refreshes
@@ -943,8 +918,7 @@ func (a *App) resetMessage(id, locale string) (string, error) {
 		icuMsg.Message = icuMsg.MessageOriginal
 		icuMsg.Changed = false
 		icuMsg.MessageOriginal = ""
-		icuMsg.Error = ""
-		icuMsg.IncompleteReports = nil
+		a.validateLocked(icuMsg, a.localeTags[iCatalog])
 		a.changed = slices.DeleteFunc(a.changed, func(m *template.ICUMessage) bool {
 			return m == icuMsg
 		})
@@ -1078,13 +1052,8 @@ func (a *App) buildDashboardStats() template.DashboardStats {
 	// Build per-locale stats.
 	localeStats := make([]template.LocaleStats, len(a.catalogs))
 	for i, c := range a.catalogs {
-		var name string
-		if tag, err := language.Parse(c.Locale); err == nil {
-			name = display.English.Languages().Name(tag)
-		}
 		localeStats[i] = template.LocaleStats{
 			Locale:  c.Locale,
-			Name:    name,
 			Default: c.Default,
 		}
 	}
@@ -1110,9 +1079,9 @@ func (a *App) buildDashboardStats() template.DashboardStats {
 						locTag, a.icuTokBuffer, m.Message,
 					)
 					switch {
-					case icuErr != nil || m.Error != "":
+					case icuErr != nil || m.Error != nil:
 						localeStats[li].Invalid++
-					case len(icu.AnalysisReport(
+					case len(icu.Analyze(
 						locTag, m.Message, a.icuTokBuffer,
 						codeparse.ICUSelectOptions,
 					)) > 0:
@@ -1210,8 +1179,11 @@ func (a *App) ensureNativeCatalogExists(scan *codeparse.Scan) {
 // PageError404 is /error404/
 type PageError404 struct{ App *App }
 
-func (PageError404) GET(r *http.Request) (body datapages.Component, err error) {
-	return template.PageNotFound(r.URL.Path), nil
+func (p PageError404) GET(r *http.Request) (
+	body datapages.Component, docAttrs datapages.DocumentAttrs, err error,
+) {
+	tr := p.App.readerFor(r)
+	return template.PageNotFound(tr), documentAttrs(tr), nil
 }
 
 // startBuildBundleLocked kicks off the bundle build in a background goroutine.
@@ -1277,7 +1249,7 @@ func (a *App) doBuildBundleLocked(changed []*template.ICUMessage) error {
 		return err
 	}
 
-	a.initErr = ""
+	a.initErr = template.ProjectError{}
 	a.changed = nil
 	a.scan = scan
 	a.buildTemplateDataFromScanLocked()
@@ -1542,7 +1514,7 @@ func (a *App) repairCorruptLocked() error {
 
 func (a *App) canApplyChangesLocked() bool {
 	for _, c := range a.changed {
-		if c.Error != "" {
+		if c.Error != nil {
 			return false
 		}
 	}
@@ -1571,10 +1543,10 @@ func (a *App) buildTIKForDisplay(
 			if msg.Catalog != c {
 				continue
 			}
-			if msg.Error != "" {
+			if msg.Error != nil {
 				tmplTIK.IsInvalid = true
 			}
-			if len(msg.IncompleteReports) > 0 {
+			if len(msg.Problems) > 0 {
 				tmplTIK.IsIncomplete = true
 			}
 			if msg.Message == "" {
@@ -1750,7 +1722,7 @@ func (a *App) tikStatusFlags(
 		if m.Changed {
 			hasChanged = true
 		}
-		if m.Error != "" {
+		if m.Error != nil {
 			hasInvalid = true
 		} else if m.Message != "" {
 			// Look up the locale tag by catalog locale string.
@@ -1762,7 +1734,7 @@ func (a *App) tikStatusFlags(
 			)
 			if icuErr != nil {
 				hasInvalid = true
-			} else if len(icu.AnalysisReport(
+			} else if len(icu.Analyze(
 				locTag, m.Message, a.icuTokBuffer,
 				codeparse.ICUSelectOptions,
 			)) > 0 {

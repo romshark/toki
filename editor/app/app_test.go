@@ -17,6 +17,7 @@ import (
 	"github.com/romshark/toki/editor/indexdb"
 	tokisqinn "github.com/romshark/toki/editor/sqinn"
 	"github.com/romshark/toki/internal/cli"
+	"github.com/romshark/toki/internal/tokibundle"
 
 	"github.com/stretchr/testify/require"
 )
@@ -226,7 +227,7 @@ func newProject(t *testing.T, tiks ...string) *project {
 	t.Chdir(p.dir)
 	res, exitCode := cli.Run(
 		[]string{"toki", "generate", "-l=en", "-t=de"},
-		env, io.Discard, io.Discard, time.Now(),
+		env, tokibundle.Default(), io.Discard, io.Discard, time.Now(),
 	)
 	require.NoError(t, res.Err)
 	require.Zero(t, exitCode)

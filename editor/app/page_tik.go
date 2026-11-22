@@ -7,6 +7,7 @@ import (
 
 	"github.com/romshark/toki/editor/app/datapagesgen/href"
 	"github.com/romshark/toki/editor/app/template"
+	"github.com/romshark/toki/internal/tokibundle"
 )
 
 // PageTIK is /tik/{id}
@@ -20,6 +21,8 @@ type PageTIK struct {
 type StateTIK struct {
 	// TIKID is the TIK the tab shows, taken from the page URL.
 	TIKID string
+	// Reader renders the text of the tab.
+	Reader tokibundle.Reader
 }
 
 func (p PageTIK) GET(
@@ -30,15 +33,18 @@ func (p PageTIK) GET(
 ) (
 	body datapages.Component,
 	redirect datapages.Redirect,
+	docAttrs datapages.DocumentAttrs,
 	enableBackgroundStreaming datapages.EnableBackgroundStreaming,
 	disableRefreshAfterHidden datapages.DisableRefreshAfterHidden,
 	err error,
 ) {
 	enableBackgroundStreaming = true
 	disableRefreshAfterHidden = true
+	tr := p.App.readerFor(r)
+	docAttrs = documentAttrs(tr)
 
 	if p.App.IsLoading() {
-		body = template.PageLoading()
+		body = template.PageLoading(tr)
 		return
 	}
 
@@ -62,14 +68,15 @@ func (p PageTIK) GET(
 		err = datapages.ErrNotFound
 		return
 	}
-	body = template.PageTIK(tk, p.App.OpenNewWindow != nil)
+	body = template.PageTIK(tr, tk, p.App.OpenNewWindow != nil)
 	return
 }
 
-func (PageTIK) StreamOpen(
+func (p PageTIK) StreamOpen(
 	r *http.Request, state datapages.State[StateTIK],
 ) error {
 	state.Values.TIKID = r.PathValue("id")
+	state.Values.Reader = p.App.readerFor(r)
 	return nil
 }
 
@@ -106,7 +113,9 @@ func (p PageTIK) OnUpdated(
 	}); err != nil {
 		return err
 	}
-	return sse.PatchElement(template.PageTIK(tk, p.App.OpenNewWindow != nil))
+	return sse.PatchElement(
+		template.PageTIK(state.Values.Reader, tk, p.App.OpenNewWindow != nil),
+	)
 }
 
 // POSTSet is /tik/{id}/set/{$}

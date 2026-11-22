@@ -7,6 +7,7 @@ import (
 	"io"
 	"runtime"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +16,8 @@ import (
 	"github.com/romshark/tik/tik-go"
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
+
+	"github.com/romshark/toki/internal/tokibundle"
 )
 
 var (
@@ -38,27 +41,40 @@ var (
 
 const MainBundleFileGo = "bundle_gen.go"
 
-// commands lists the commands for the usage text.
-var commands = []struct{ name, synopsis string }{
-	{"generate", "Extract texts from the source code and generate the localization bundle"},
-	{"lint", "Check the source code and the catalogs without writing any files"},
-	{"edit", "Open the translation editor"},
-	{"repair", "Rewrite native-locale messages that disagree with their TIK"},
-	{"version", "Print version information"},
-	{"help", "Print the usage of a command"},
+// command is a command of toki in the usage text.
+type command struct{ name, synopsis string }
+
+// commands lists the commands for the usage text, described in the language of tr.
+func commands(tr tokibundle.Reader) []command {
+	return []command{
+		// The synopsis of toki generate in the list of commands.
+		{"generate", tr.String("Extract texts from the source code and generate the localization bundle")},
+		// The synopsis of toki lint in the list of commands.
+		{"lint", tr.String("Check the source code and the catalogs without writing any files")},
+		// The synopsis of toki edit in the list of commands.
+		{"edit", tr.String("Open the translation editor")},
+		// The synopsis of toki repair in the list of commands.
+		{"repair", tr.String("Rewrite native-locale messages that disagree with their TIK")},
+		// The synopsis of toki version in the list of commands.
+		{"version", tr.String("Print version information")},
+		// The synopsis of toki help in the list of commands.
+		{"help", tr.String("Print the usage of a command")},
+	}
 }
 
+// Run runs the command of osArgs. It writes its text for the user in the
+// language of tr. The output of -json, which programs read, is English.
 func Run(
-	osArgs, env []string, stderr, stdout io.Writer, now time.Time,
+	osArgs, env []string, tr tokibundle.Reader, stderr, stdout io.Writer, now time.Time,
 ) (result Result, exitCode int) {
 	if len(osArgs) < 2 {
-		printUsage(stderr)
+		printUsage(tr, stderr)
 		return Result{}, 2
 	}
 
 	if isHelp(osArgs[1]) {
 		if len(osArgs) < 3 || isHelp(osArgs[2]) {
-			printUsage(stdout)
+			printUsage(tr, stdout)
 			return Result{}, 0
 		}
 		// `toki help <command>` is the same as `toki <command> -h`.
@@ -68,16 +84,17 @@ func Run(
 	switch osArgs[1] {
 	case "version", "-version", "--version":
 		fs := newFlagSet("version")
-		full := fs.Bool("full", false,
-			"also print the build information with the module dependencies")
-		if err := flagError(fs, stdout, fs.Parse(osArgs[2:])); err != nil {
+		// The usage of a flag of toki version.
+		full := fs.Bool("full", false, tr.String(
+			"also print the build information with the module dependencies"))
+		if err := flagError(tr, fs, stdout, fs.Parse(osArgs[2:])); err != nil {
 			return exit(Result{Err: err})
 		}
 		printVersion(stdout, *full)
 		return Result{}, 0
 
 	case "repair":
-		return exit(Result{Err: new(Repair).Run(osArgs, env, stderr, stdout)})
+		return exit(Result{Err: new(Repair).Run(osArgs, env, tr, stderr, stdout)})
 
 	case "lint", "generate":
 		g := Generate{
@@ -87,15 +104,12 @@ func Run(
 			tikICUTranslator: tik.NewICUTranslator(tik.DefaultConfig),
 		}
 		lintOnly := osArgs[1] == "lint"
-		return exit(g.Run(osArgs, env, lintOnly, stderr, stdout, now))
+		return exit(g.Run(osArgs, env, tr, lintOnly, stderr, stdout, now))
 
 	case "edit":
-		return exit(Result{Err: new(Edit).Run(osArgs, env, stderr, stdout)})
+		return exit(Result{Err: new(Edit).Run(osArgs, env, tr, stderr, stdout)})
 	}
-	return Result{
-		Err: fmt.Errorf("%w %q, run 'toki help' for a list of commands",
-			ErrUnknownCommand, osArgs[1]),
-	}, 2
+	return Result{Err: &UnknownCommandError{Command: osArgs[1]}}, 2
 }
 
 // exit returns r with the exit code of its error: 0 for none or a help
@@ -120,14 +134,25 @@ func isHelp(arg string) bool {
 	return false
 }
 
-func printUsage(w io.Writer) {
+// printUsage prints the usage of toki to w in the language of tr.
+func printUsage(tr tokibundle.Reader, w io.Writer) {
 	var b strings.Builder
-	b.WriteString("Toki is an i18n framework for Go.\n\n" +
-		"Usage:\n\n\ttoki <command> [flags]\n\nCommands:\n\n")
-	for _, c := range commands {
+	// The first line of the usage of toki.
+	b.WriteString(tr.String("Toki is an i18n framework for Go."))
+	b.WriteString("\n\n")
+	// The heading of the usage line, as in "Usage: toki <command> [flags]".
+	b.WriteString(tr.String("Usage:"))
+	b.WriteString("\n\n\ttoki <command> [flags]\n\n")
+	// The heading of the list of commands.
+	b.WriteString(tr.String("Commands:"))
+	b.WriteString("\n\n")
+	for _, c := range commands(tr) {
 		_, _ = fmt.Fprintf(&b, "\t%-10s %s\n", c.name, c.synopsis)
 	}
-	b.WriteString("\nRun 'toki help <command>' for the usage of a command.\n")
+	b.WriteString("\n")
+	// The last line of the usage of toki. Keep toki help <command>, a command.
+	b.WriteString(tr.String("Run 'toki help <command>' for the usage of a command."))
+	b.WriteString("\n")
 	_, _ = io.WriteString(w, b.String())
 }
 
@@ -141,22 +166,24 @@ func newFlagSet(command string) *flag.FlagSet {
 
 // flagError returns the error of the command fs parses arguments for given err,
 // the error of parsing them. On a help request it prints the usage of the command
-// to stdout and returns [flag.ErrHelp]. It wraps any other error in
-// [ErrInvalidCLIArgs].
-func flagError(fs *flag.FlagSet, stdout io.Writer, err error) error {
+// to stdout in the language of tr and returns [flag.ErrHelp]. It wraps any
+// other error in [ErrInvalidCLIArgs].
+func flagError(tr tokibundle.Reader, fs *flag.FlagSet, stdout io.Writer, err error) error {
 	switch {
 	case err == nil:
 		return nil
 	case errors.Is(err, flag.ErrHelp):
-		printCommandUsage(stdout, fs)
+		printCommandUsage(tr, stdout, fs)
 		return flag.ErrHelp
 	}
 	return fmt.Errorf("%w: %w", ErrInvalidCLIArgs, err)
 }
 
-func printCommandUsage(w io.Writer, fs *flag.FlagSet) {
+// printCommandUsage prints the usage of the command of fs to w in the
+// language of tr.
+func printCommandUsage(tr tokibundle.Reader, w io.Writer, fs *flag.FlagSet) {
 	var synopsis string
-	for _, c := range commands {
+	for _, c := range commands(tr) {
 		if c.name == fs.Name() {
 			synopsis = c.synopsis
 			break
@@ -165,13 +192,62 @@ func printCommandUsage(w io.Writer, fs *flag.FlagSet) {
 	var hasFlags bool
 	fs.VisitAll(func(*flag.Flag) { hasFlags = true })
 	if !hasFlags {
-		_, _ = fmt.Fprintf(w, "Usage: toki %s\n\n%s.\n", fs.Name(), synopsis)
+		// The usage line of a command without flags. The placeholder is the
+		// command, as version.
+		_, _ = fmt.Fprintf(w, "%s\n\n%s.\n", tr.String("Usage: toki {text}", fs.Name()), synopsis)
 		return
 	}
-	_, _ = fmt.Fprintf(w, "Usage: toki %s [flags]\n\n%s.\n\nFlags:\n",
-		fs.Name(), synopsis)
-	fs.SetOutput(w)
-	fs.PrintDefaults()
+	_, _ = fmt.Fprintf(w, "%s\n\n%s.\n\n%s\n",
+		// The usage line of a command. The placeholder is the command, as
+		// generate. Keep [flags], which stands for its flags.
+		tr.String("Usage: toki {text} [flags]", fs.Name()), synopsis,
+		// The heading of the list of the flags of a command.
+		tr.String("Flags:"))
+	printFlags(tr, w, fs)
+}
+
+// printFlags prints the flags of fs to w as [flag.FlagSet.PrintDefaults] does,
+// in the language of tr.
+func printFlags(tr tokibundle.Reader, w io.Writer, fs *flag.FlagSet) {
+	var b strings.Builder
+	fs.VisitAll(func(f *flag.Flag) {
+		b.WriteString("  -")
+		b.WriteString(f.Name)
+		name, usage := flag.UnquoteUsage(f)
+		if name != "" {
+			b.WriteByte(' ')
+			b.WriteString(name)
+		}
+		if len(f.Name) == 1 && name == "" {
+			b.WriteByte('\t') // A boolean flag of 1 letter keeps its usage on its line.
+		} else {
+			b.WriteString("\n    \t")
+		}
+		b.WriteString(strings.ReplaceAll(usage, "\n", "\n    \t"))
+		if def := defaultValue(f); def != "" {
+			b.WriteByte(' ')
+			// Follows the usage of a flag. The placeholder is its default value,
+			// as "tokibundle" or true.
+			b.WriteString(tr.String("(default {text})", def))
+		}
+		b.WriteByte('\n')
+	})
+	_, _ = io.WriteString(w, b.String())
+}
+
+// defaultValue returns the default value of f as the usage shows it, quoted
+// for a string, and "" for the zero value, which the usage leaves out.
+func defaultValue(f *flag.Flag) string {
+	switch f.DefValue {
+	case "", "false", "0":
+		return ""
+	}
+	if g, ok := f.Value.(flag.Getter); ok {
+		if _, ok := g.Get().(string); ok {
+			return strconv.Quote(f.DefValue)
+		}
+	}
+	return f.DefValue
 }
 
 // printVersion prints the version of Toki and Go to w. With full it adds the

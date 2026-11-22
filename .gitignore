@@ -28,7 +28,7 @@ go.work.sum
 /editor-server
 /editor
 !/editor/
-toki
+/toki
 
 # Ignore all Toki index db dirs
 .toki/

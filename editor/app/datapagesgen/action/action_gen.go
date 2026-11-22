@@ -317,7 +317,26 @@ func (pageProjectDir_Pick) POST(options ...Option) string {
 var PageSettings pageSettings
 
 type pageSettings struct {
+	SetLang pageSettings_SetLang
 	SetPref pageSettings_SetPref
+}
+
+type pageSettings_SetLang struct{}
+
+// POST references /settings/set-lang/
+func (pageSettings_SetLang) POST(options ...Option) string {
+	if len(options) == 0 {
+		return "@post('/settings/set-lang/')"
+	}
+	var b strings.Builder
+	bl, al := actionexpr.BeforeAfterLen(options)
+	b.Grow(bl + len("@post('/settings/set-lang/'") + actionexpr.OptionsLen(options) + len(")") + al)
+	actionexpr.WriteBefore(&b, options)
+	b.WriteString("@post('/settings/set-lang/'")
+	actionexpr.WriteOptions(&b, options)
+	b.WriteByte(')')
+	actionexpr.WriteAfter(&b, options)
+	return b.String()
 }
 
 type pageSettings_SetPref struct{}

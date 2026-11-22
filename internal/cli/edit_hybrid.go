@@ -44,11 +44,11 @@ func RunHybridApp(a *app.App, s datapages.Server) error {
 		OnShutdown: func() { serverCancel() },
 	})
 
-	a.PickDirectory = func() (string, error) {
+	a.PickDirectory = func(title string) (string, error) {
 		return wailsApp.Dialog.OpenFile().
 			CanChooseDirectories(true).
 			CanChooseFiles(false).
-			SetTitle("Select Project Folder").
+			SetTitle(title).
 			PromptForSingleSelection()
 	}
 

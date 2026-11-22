@@ -1,11 +1,14 @@
 package template
 
 import (
+	"strconv"
+
 	"github.com/romshark/morpheus/neo"
 
 	"github.com/romshark/toki/editor/app/datapagesgen/action"
 	"github.com/romshark/toki/editor/app/datapagesgen/href"
 	"github.com/romshark/toki/editor/app/template/strfmt"
+	"github.com/romshark/toki/internal/tokibundle"
 )
 
 // Trigger ids the folder field's Enter chord activates, and the Datastar
@@ -33,11 +36,13 @@ func openProjectClickAttr(numChanges int) templ.Attributes {
 // PageProjectDir renders the whole project-directory page. It is both the
 // GET body and what PageProjectDir.OnUpdated morphs.
 templ PageProjectDir(
-	dir string, errMsg string, repairErr string,
+	tr tokibundle.Reader,
+	dir string, projectErr ProjectError, repairErr string,
 	numChanges int, numCorrupt int, numMissing int,
 	sourceErrors []SourceError,
 	isHybrid bool,
 ) {
+	{{ hasErr := projectErr.Kind != ProjectErrorNone }}
 	@page("page-project-dir", nil) {
 		// $folder is what the user types, hence __ifmissing: a fat morph
 		// after another tab opened a project must not overwrite it.
@@ -46,20 +51,20 @@ templ PageProjectDir(
 			class="page-center"
 			data-signals:folder__ifmissing={ strfmt.SingleQuote(dir) }
 			data-signals:origfolder={ strfmt.SingleQuote(dir) }
-			data-signals:haserror={ strfmt.Bool(errMsg != "") }
+			data-signals:haserror={ strfmt.Bool(hasErr) }
 			data-signals:confirmdiscard="false"
 			data-signals:opening="false"
 		>
 			@neo.Card(neo.CardOpts{}) {
 				@neo.CardHeader() {
 					@neo.CardTitle() {
-						<h1>Toki Project Directory</h1>
+						<h1>{ tr.String("Toki Project Directory") }</h1>
 					}
 				}
 				@neo.CardBody() {
 					<div class="folder-picker">
 						<label>
-							<span>Project Folder</span>
+							<span>{ tr.String("Project Folder") }</span>
 							@neo.LayoutAttrs(
 								neo.LayoutOpts{
 									AlignItems: neo.Set(neo.AlignItemsStretch),
@@ -69,7 +74,7 @@ templ PageProjectDir(
 							) {
 								@neo.TextInputAttrs(
 									neo.TextInputOpts{
-										Placeholder: neo.Set("/path/to/your/project"),
+										Placeholder: neo.Set(tr.String("/path/to/your/project")),
 									},
 									templ.Attributes{"data-bind:folder": true},
 								)
@@ -78,8 +83,8 @@ templ PageProjectDir(
 										neo.ButtonOpts{},
 										templ.Attributes{
 											"class":         "folder-pick-btn",
-											"title":         "Browse for folder...",
-											"aria-label":    "Browse for folder",
+											"title":         tr.String("Browse for folder…"),
+											"aria-label":    tr.String("Browse for folder"),
 											"data-on:click": action.PageProjectDir.Pick.POST(),
 										},
 									) {
@@ -88,12 +93,12 @@ templ PageProjectDir(
 								}
 							}
 						</label>
-						if errMsg != "" {
+						if hasErr {
 							@componentProjectDirAlert(
 								neo.AlertVariantDanger, iconAlertCircle(),
 							) {
 								@neo.AlertTitle(2) {
-									{ errMsg }
+									{ projectErrorText(tr, projectErr) }
 								}
 								if len(sourceErrors) > 0 {
 									@neo.AlertDescription() {
@@ -101,7 +106,7 @@ templ PageProjectDir(
 											for _, se := range sourceErrors {
 												<li>
 													<code class="source-error-pos">
-														{ se.File }:{ strfmt.Int(se.Line) }:{ strfmt.Int(se.Col) }
+														{ se.File }:{ strconv.Itoa(se.Line) }:{ strconv.Itoa(se.Col) }
 													</code>
 													<span class="source-error-msg">{ se.Err }</span>
 												</li>
@@ -116,20 +121,18 @@ templ PageProjectDir(
 								neo.AlertVariantDanger, iconAlertTriangle(),
 							) {
 								@neo.AlertTitle(2) {
-									Corrupted Bundle
+									{ tr.String("Corrupted Bundle") }
 								}
 								@neo.AlertDescription() {
 									<p>
-										{ strfmt.Int(numCorrupt) }
-										native-locale message(s) disagree(s)
-										with the source-code TIK
-										(locked-ICU or placeholder mismatch).
-										Run <code>toki repair</code> or click
-										the button below to repair the bundle.
+										{ tr.String("{# native-locale messages disagree} with the source code "+
+											"(locked ICU or placeholder mismatch).", numCorrupt) }
+										@withCode(tr.String("Run {text} or click the button below "+
+											"to repair the bundle.", codeMark), "toki repair", "")
 									</p>
 									if repairErr != "" {
 										<p>
-											<strong>Repair failed:</strong>
+											<strong>{ tr.String("Repair failed:") }</strong>
 											{ repairErr }
 										</p>
 									}
@@ -141,26 +144,25 @@ templ PageProjectDir(
 								neo.AlertVariantWarning, iconAlertCircle(),
 							) {
 								@neo.AlertTitle(2) {
-									Bundle Out of Date
+									{ tr.String("Bundle Out of Date") }
 								}
 								@neo.AlertDescription() {
 									<p>
-										Source code declares
-										{ strfmt.Int(numMissing) } TIK(s)
-										that have no entry in the native-locale catalog yet.
-										Click Regenerate (or run <code>toki generate</code>)
-										to update the bundle.
+										{ tr.String("The source code declares {# TIKs that have} " +
+											"no entry in the native-locale catalog yet.", numMissing) }
+										@withCode(tr.String("Click Regenerate Bundle or run {text} "+
+											"to update the bundle.", codeMark), "toki generate", "")
 									</p>
 									if repairErr != "" {
 										<p>
-											<strong>Regenerate failed:</strong>
+											<strong>{ tr.String("Regenerate failed:") }</strong>
 											{ repairErr }
 										</p>
 									}
 								}
 							}
 						}
-						if dir != "" && errMsg == "" && numCorrupt == 0 && numMissing == 0 {
+						if dir != "" && !hasErr && numCorrupt == 0 && numMissing == 0 {
 							@neo.LinkAttrs(
 								neo.LinkOpts{
 									Href:    neo.Set(href.PageIndex()),
@@ -171,7 +173,7 @@ templ PageProjectDir(
 									"data-show": "$folder===$origfolder",
 								},
 							) {
-								Continue
+								{ tr.String("Continue") }
 							}
 							// Enter in the folder field activates whichever trigger is
 							// live. <neo-keys> scopes the chord to .folder-picker (its
@@ -195,7 +197,7 @@ templ PageProjectDir(
 									"data-on:click": action.App.Regenerate.POST(),
 								},
 							) {
-								Regenerate Bundle
+								{ tr.String("Regenerate Bundle") }
 							}
 						}
 						if numCorrupt > 0 {
@@ -206,7 +208,7 @@ templ PageProjectDir(
 									"data-on:click": action.App.Repair.POST(),
 								},
 							) {
-								Repair Bundle
+								{ tr.String("Repair Bundle") }
 							}
 						}
 						@neo.ButtonAttrs(
@@ -218,12 +220,12 @@ templ PageProjectDir(
 									"data-attr:disabled":     "$folder==='' || $opening",
 									"data-class:btn-loading": "$opening",
 								},
-								hiddenWhen(dir != "" && errMsg == "" &&
+								hiddenWhen(dir != "" && !hasErr &&
 									numCorrupt == 0 && numMissing == 0),
 								openProjectClickAttr(numChanges),
 							),
 						) {
-							@componentOpenProjectLabel("Open Project")
+							@componentOpenProjectLabel(tr, tr.String("Open Project"))
 						}
 						@neo.KeysAttrs(
 							neo.KeysOpts{
@@ -247,13 +249,13 @@ templ PageProjectDir(
 					@neo.CardAttrs(neo.CardOpts{}, templ.Attributes{"class": "modal-card"}) {
 						@neo.CardHeader() {
 							@neo.CardTitle() {
-								<h3>Unsaved Changes</h3>
+								<h3>{ tr.String("Unsaved Changes") }</h3>
 							}
 						}
 						@neo.CardBody() {
 							<p>
-								You have { strfmt.Int(numChanges) } unsaved change(s).
-								Opening a new project will irreversibly discard them.
+								{ tr.String("Opening a new project will irreversibly discard "+
+									"{# unsaved changes}.", numChanges) }
 							</p>
 						}
 						@neo.CardFooterAttrs(templ.Attributes{"class": "modal-actions"}) {
@@ -261,7 +263,7 @@ templ PageProjectDir(
 								neo.ButtonOpts{Variant: neo.Set(neo.ButtonVariantGhost)},
 								templ.Attributes{"data-on:click": "$confirmdiscard=false"},
 							) {
-								Cancel
+								{ tr.String("Cancel") }
 							}
 							@neo.ButtonAttrs(
 								neo.ButtonOpts{Variant: neo.Set(neo.ButtonVariantDanger)},
@@ -275,7 +277,7 @@ templ PageProjectDir(
 									),
 								},
 							) {
-								@componentOpenProjectLabel("Discard Changes")
+								@componentOpenProjectLabel(tr, tr.String("Discard Changes"))
 							}
 						}
 					}
@@ -307,7 +309,7 @@ templ componentProjectDirAlert(variant neo.AlertVariant, icon templ.Component) {
 
 // componentOpenProjectLabel swaps the button label for a spinner while
 // the open request is in flight.
-templ componentOpenProjectLabel(idle string) {
+templ componentOpenProjectLabel(tr tokibundle.Reader, idle string) {
 	<span data-show="!$opening">{ idle }</span>
 	<span
 		class="btn-loading-label"
@@ -315,6 +317,6 @@ templ componentOpenProjectLabel(idle string) {
 		data-show="$opening"
 	>
 		@iconLoader()
-		Opening&hellip;
+		{ tr.String("Opening…") }
 	</span>
 }

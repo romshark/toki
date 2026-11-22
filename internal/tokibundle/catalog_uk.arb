@@ -1,0 +1,1061 @@
+{
+	"@@locale": "uk",
+	"@@last_modified": "2026-11-22T15:12:58+01:00",
+	"@@x-generator": "github.com/romshark/toki",
+	"@@x-generator-version": "(devel)",
+	"msg106e93ad6776c89d": "Налаштування",
+	"@msg106e93ad6776c89d": {
+		"type": "text"
+	},
+	"msg131ab78dfaf7f346": "Повідомлення ICU",
+	"@msg131ab78dfaf7f346": {
+		"type": "text"
+	},
+	"msg13adacf834b5648a": "вихідний код містить помилки",
+	"@msg13adacf834b5648a": {
+		"type": "text"
+	},
+	"msg13d342b142ac79ae": "Прапорці:",
+	"@msg13d342b142ac79ae": {
+		"description": "The heading of the list of the flags of a command.",
+		"type": "text"
+	},
+	"msg147c4e5b7a5e7c5f": "Без перекладу",
+	"@msg147c4e5b7a5e7c5f": {
+		"context": "[message]",
+		"type": "text"
+	},
+	"msg149e6fc0c1d2acac": "Очікувалася кома в позиції {var0, number, integer}.",
+	"@msg149e6fc0c1d2acac": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg152537f908bccfab": "Попередній перегляд",
+	"@msg152537f908bccfab": {
+		"type": "text"
+	},
+	"msg174ae5f53bcbbdfc": "Повідомлення",
+	"@msg174ae5f53bcbbdfc": {
+		"type": "text"
+	},
+	"msg185940bdf7df50a5": "У каталозі вихідної локалі ще немає записів для {var0, plural, one {# TIK} few {# TIK} many {# TIK} other {# TIK}} з вихідного коду.",
+	"@msg185940bdf7df50a5": {
+		"type": "text"
+	},
+	"msg1862e1c85df4011b": "Очікувалася двокрапка в позиції {var0, number, integer}.",
+	"@msg1862e1c85df4011b": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg1979cff996e72e6d": "Бандл не можна зібрати, доки ви не виправите або не скинете цю зміну.",
+	"@msg1979cff996e72e6d": {
+		"type": "text"
+	},
+	"msg1b0e9c9d7cf5f880": "режим перевірки",
+	"@msg1b0e9c9d7cf5f880": {
+		"description": "Log message of toki lint, which checks without writing files.",
+		"type": "text"
+	},
+	"msg1b2ec9bba2cafae0": "3. Жартую! Я намагався перекласти ваші повідомлення, але в мене весь час виходило {var0}. Нема за що.",
+	"@msg1b2ec9bba2cafae0": {
+		"type": "text"
+	},
+	"msg1e94eb7cfa2c00d7": "параметр -l («{var0}») має збігатися з DefaultLocale («{var1}») у пакеті «{var2}» або не задаватися зовсім",
+	"@msg1e94eb7cfa2c00d7": {
+		"description": "Keep -l, a flag, and DefaultLocale, a Go constant. The placeholders are the locale of the flag, the default locale of the bundle and the path of the bundle package.",
+		"type": "text"
+	},
+	"msg20457981691d7945": "Без перекладу",
+	"@msg20457981691d7945": {
+		"context": "[TIKs]",
+		"type": "text"
+	},
+	"msg2090b23ec7d104f9": "Локаль за замовчуванням",
+	"@msg2090b23ec7d104f9": {
+		"type": "text"
+	},
+	"msg210443ed66fb781a": "Звичайний",
+	"@msg210443ed66fb781a": {
+		"context": "[font size]",
+		"type": "text"
+	},
+	"msg2135dd122d53583": "Вихідний код містить помилки.",
+	"@msg2135dd122d53583": {
+		"type": "text"
+	},
+	"msg22789c2c0596bec3": "невідома команда «{var0}», виконайте «toki help», щоб побачити список команд",
+	"@msg22789c2c0596bec3": {
+		"description": "The placeholder is the command that toki doesn't have. Keep toki help, a command.",
+		"type": "text"
+	},
+	"msg2434f9e9afdcb63f": "закриття файлу каталогу .arb",
+	"@msg2434f9e9afdcb63f": {
+		"description": "Log message about an error of the file system.",
+		"type": "text"
+	},
+	"msg28884feb2e3175e7": "відновлення завершено",
+	"@msg28884feb2e3175e7": {
+		"description": "Log message of toki repair, followed by the number of repaired messages.",
+		"type": "text"
+	},
+	"msg2a20de037ed9cd34": "бандл містить неповні каталоги",
+	"@msg2a20de037ed9cd34": {
+		"type": "text"
+	},
+	"msg2a2380645e21c4a1": "шлях до згенерованого Go-пакета бандла",
+	"@msg2a2380645e21c4a1": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msg2c4193b15bcd9fa0": "Входження у вихідному коді",
+	"@msg2c4193b15bcd9fa0": {
+		"type": "text"
+	},
+	"msg2c7186ff30202569": "1. Спершу мені треба видалити весь проєкт",
+	"@msg2c7186ff30202569": {
+		"type": "text"
+	},
+	"msg2d426ada71c6745d": "Неочікуваний токен у позиції {var0, number, integer}.",
+	"@msg2d426ada71c6745d": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg2db3133a4f8c3686": "Бандл застарів",
+	"@msg2db3133a4f8c3686": {
+		"type": "text"
+	},
+	"msg2ea44ad2d907465d": "Пошук шрифтів",
+	"@msg2ea44ad2d907465d": {
+		"type": "text"
+	},
+	"msg3188438f52d94a13": "Не вдалося відновити:",
+	"@msg3188438f52d94a13": {
+		"type": "text"
+	},
+	"msg33e0696fdbcbb90a": "локаль за замовчуванням для текстів вихідного коду в BCP 47, крім und",
+	"@msg33e0696fdbcbb90a": {
+		"description": "The usage of a flag. Keep BCP 47 and \"und\", the undetermined locale.",
+		"type": "text"
+	},
+	"msg352292ce24926a0c": "В аргументі {var0} бракує {var1, plural, one {# варіанта} few {# варіантів} many {# варіантів} other {# варіанта}}: {var2}.",
+	"@msg352292ce24926a0c": {
+		"description": "Note under an ICU message editor. The first placeholder is the name of an ICU argument, the last lists the names of the plural or select options it lacks, as \"one, few\".",
+		"type": "text"
+	},
+	"msg3678d724f6eb1d0c": "Показати або сховати бічну панель",
+	"@msg3678d724f6eb1d0c": {
+		"type": "text"
+	},
+	"msg38658ea1ee574ac5": "Показати всі",
+	"@msg38658ea1ee574ac5": {
+		"type": "text"
+	},
+	"msg387f447f0cf50a46": "записує навички для ШІ-агентів програмування в .claude/skills і .agents/skills модуля, замінюючи попередні версії",
+	"@msg387f447f0cf50a46": {
+		"description": "The usage of a flag. Keep the paths .claude/skills and .agents/skills.",
+		"type": "text"
+	},
+	"msg3a23936b20e21661": "Навігація редактора",
+	"@msg3a23936b20e21661": {
+		"type": "text"
+	},
+	"msg3a67cca6614073a0": "локаль перекладу в BCP 47, крім und (можна вказати кілька, повтори ігноруються). Створює нові каталоги для локалей, які їх ще не мають.",
+	"@msg3a67cca6614073a0": {
+		"description": "The usage of a flag. Keep BCP 47 and \"und\", the undetermined locale.",
+		"type": "text"
+	},
+	"msg3b87fd603b6c3c3d": "Тека проєкту",
+	"@msg3b87fd603b6c3c3d": {
+		"type": "text"
+	},
+	"msg3cd32ca235f7b3c2": "{var0} мс",
+	"@msg3cd32ca235f7b3c2": {
+		"description": "A duration in milliseconds, as 250 ms.",
+		"type": "text"
+	},
+	"msg3dc50b1c6e744453": "Бандл успішно зібрано. Файли .arb і код Go оновлено.",
+	"@msg3dc50b1c6e744453": {
+		"type": "text"
+	},
+	"msg3e5aefcfb53c85f8": "готово",
+	"@msg3e5aefcfb53c85f8": {
+		"description": "Log message of the report at the end of toki generate and toki lint.",
+		"type": "text"
+	},
+	"msg402c25c43688abbb": "аргумент {var0}=«{var1}»: має бути допустимою локаллю BCP 47, крім und: {var2}",
+	"@msg402c25c43688abbb": {
+		"description": "The placeholders are a flag, as l, its value and the error of parsing it in English. Keep BCP 47 and \"und\", the undetermined locale.",
+		"type": "text"
+	},
+	"msg416a0609cfda5871": "Неприпустимий номер аргументу в позиції {var0, number, integer}.",
+	"@msg416a0609cfda5871": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg41afbf08af4fc448": "Неприпустимий варіант у позиції {var0, number, integer}.",
+	"@msg41afbf08af4fc448": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg425cb813b1635b14": "Уперед",
+	"@msg425cb813b1635b14": {
+		"type": "text"
+	},
+	"msg43343e9e4667b439": "Очікувані зміни",
+	"@msg43343e9e4667b439": {
+		"type": "text"
+	},
+	"msg4369aee9fa785170": "Навігація налаштувань",
+	"@msg4369aee9fa785170": {
+		"type": "text"
+	},
+	"msg46c348538fd08a05": "помилки у вихідному коді",
+	"@msg46c348538fd08a05": {
+		"description": "Log message that heads the list of the errors in the source code.",
+		"type": "text"
+	},
+	"msg4709b18128b120f3": "Вихідна локаль",
+	"@msg4709b18128b120f3": {
+		"type": "text"
+	},
+	"msg47463dd161059ba9": "Використання: toki {var0} [flags]",
+	"@msg47463dd161059ba9": {
+		"description": "The usage line of a command. The placeholder is the command, as generate. Keep [flags], which stands for its flags.",
+		"type": "text"
+	},
+	"msg47b6749375b0a12d": "Закрити пошук",
+	"@msg47b6749375b0a12d": {
+		"type": "text"
+	},
+	"msg49302ee4a0e443c": "Навігація TIK",
+	"@msg49302ee4a0e443c": {
+		"type": "text"
+	},
+	"msg4a6a833acc1ecd24": "Не збережено",
+	"@msg4a6a833acc1ecd24": {
+		"context": "[changes]",
+		"type": "text"
+	},
+	"msg4a9e9b56b7b5a144": "Більший",
+	"@msg4a9e9b56b7b5a144": {
+		"context": "[font size]",
+		"type": "text"
+	},
+	"msg4ae96107fb345768": "{var0, plural, one {# незбережена зміна готова} few {# незбережені зміни готові} many {# незбережених змін готові} other {# незбереженої зміни готові}} до збирання.",
+	"@msg4ae96107fb345768": {
+		"type": "text"
+	},
+	"msg4b0cc1621f891e62": "З помилками",
+	"@msg4b0cc1621f891e62": {
+		"context": "[TIKs]",
+		"type": "text"
+	},
+	"msg4d6c5cf2b3db4a32": "Відкрити проєкт",
+	"@msg4d6c5cf2b3db4a32": {
+		"type": "text"
+	},
+	"msg4eb8d8aba50d5cfb": "Команди:",
+	"@msg4eb8d8aba50d5cfb": {
+		"description": "The heading of the list of commands.",
+		"type": "text"
+	},
+	"msg4f8ea5343f3e9117": "Очікувалася закривна фігурна дужка в позиції {var0, number, integer}.",
+	"@msg4f8ea5343f3e9117": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg4fcee5ca9678e971": "Огляд",
+	"@msg4fcee5ca9678e971": {
+		"type": "text"
+	},
+	"msg5003fd56a8b020d7": "Файл бандла {var0} не знайдено. Спершу виконайте toki generate.",
+	"@msg5003fd56a8b020d7": {
+		"description": "The placeholder is the path of a file. Keep toki generate, a command.",
+		"type": "text"
+	},
+	"msg506954b2288eb0cd": "Скинути всі фільтри",
+	"@msg506954b2288eb0cd": {
+		"type": "text"
+	},
+	"msg50bd6bb7747f5287": "Змінені",
+	"@msg50bd6bb7747f5287": {
+		"context": "[TIKs]",
+		"type": "text"
+	},
+	"msg519db0c532769d72": "закриття файлу head.txt",
+	"@msg519db0c532769d72": {
+		"description": "Log message about an error of the file system.",
+		"type": "text"
+	},
+	"msg52084bebd5eaf26e": "Готові",
+	"@msg52084bebd5eaf26e": {
+		"context": "[TIKs]",
+		"type": "text"
+	},
+	"msg52676939bb47c0c": "Не вдалося перевірити файл бандла {var0}: {var1}",
+	"@msg52676939bb47c0c": {
+		"description": "The first placeholder is the path of a file, the second an error in English.",
+		"type": "text"
+	},
+	"msg527b32738838fca3": "Виконайте «toki help \u003ccommand\u003e», щоб дізнатися, як використовувати команду.",
+	"@msg527b32738838fca3": {
+		"description": "The last line of the usage of toki. Keep toki help \u003ccommand\u003e, a command.",
+		"type": "text"
+	},
+	"msg52d3111b67e886a4": "Пошук шрифтів…",
+	"@msg52d3111b67e886a4": {
+		"type": "text"
+	},
+	"msg53459526a0e6e364": "Навігація зведенням",
+	"@msg53459526a0e6e364": {
+		"type": "text"
+	},
+	"msg537d8f9aeadade90": "невикористаний TIK",
+	"@msg537d8f9aeadade90": {
+		"description": "The TIK is gone from the source, which leaves only its catalog entry. Verbose log message about a TIK that the source code no longer uses.",
+		"type": "text"
+	},
+	"msg55465a52686313c": "Очікувалася відкривна фігурна дужка в позиції {var0, number, integer}.",
+	"@msg55465a52686313c": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg5ac34725eb5156e4": "Перевірити вихідний код і каталоги, не записуючи файлів",
+	"@msg5ac34725eb5156e4": {
+		"description": "The synopsis of toki lint in the list of commands.",
+		"type": "text"
+	},
+	"msg5b13d14f6f5af75a": "Помилка",
+	"@msg5b13d14f6f5af75a": {
+		"context": "[TIK]",
+		"type": "text"
+	},
+	"msg5b8955596032111d": "завершує команду з помилкою, якщо повнота будь-якого активного каталогу \u003c 1,0 (менше 100%)",
+	"@msg5b8955596032111d": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msg5d6fac6bc9aadd8f": "вмикає докладний вивід у консоль",
+	"@msg5d6fac6bc9aadd8f": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msg5edbc6e02352dbb8": "Показати, як використовувати команду",
+	"@msg5edbc6e02352dbb8": {
+		"description": "The synopsis of toki help in the list of commands.",
+		"type": "text"
+	},
+	"msg5f34ba887dcde654": "Локалі",
+	"@msg5f34ba887dcde654": {
+		"type": "text"
+	},
+	"msg60805665e157ae14": "Витягти тексти з вихідного коду й згенерувати бандл локалізації",
+	"@msg60805665e157ae14": {
+		"description": "The synopsis of toki generate in the list of commands.",
+		"type": "text"
+	},
+	"msg611bf0dab2e6777c": "Використання: toki {var0}",
+	"@msg611bf0dab2e6777c": {
+		"description": "The usage line of a command without flags. The placeholder is the command, as version.",
+		"type": "text"
+	},
+	"msg6169a384d0b21f0": "Неочікуваний кінець повідомлення в позиції {var0, number, integer}.",
+	"@msg6169a384d0b21f0": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg64031fb4721596f5": "Незакрита лапка в позиції {var0, number, integer}.",
+	"@msg64031fb4721596f5": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg645b08afb94a99d1": "У цьому повідомленні бракує варіантів plural або select, потрібних цій локалі, або є варіант, якого вона не допускає. Примітки під редактором показують, що додати або виправити.",
+	"@msg645b08afb94a99d1": {
+		"type": "text"
+	},
+	"msg649dbf93cd4235ff": "шлях до Go-модуля",
+	"@msg649dbf93cd4235ff": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msg6510096c731f223d": "TIK з відсутніми перекладами",
+	"@msg6510096c731f223d": {
+		"type": "text"
+	},
+	"msg674a7c81308e4e73": "Це неприпустиме повідомлення ICU. Помилка під редактором показує, де не вдався розбір.",
+	"@msg674a7c81308e4e73": {
+		"type": "text"
+	},
+	"msg684c5db7650c469": "Відкрити редактор перекладів",
+	"@msg684c5db7650c469": {
+		"description": "The synopsis of toki edit in the list of commands.",
+		"type": "text"
+	},
+	"msg69ecef84ecc0d505": "Сховати всі",
+	"@msg69ecef84ecc0d505": {
+		"type": "text"
+	},
+	"msg6a45ce589847ac96": "Щоб змінити його, відредагуйте TIK у вихідному коді.",
+	"@msg6a45ce589847ac96": {
+		"type": "text"
+	},
+	"msg6c0e8f51f7f708f": "/шлях/до/вашого/проєкту",
+	"@msg6c0e8f51f7f708f": {
+		"type": "text"
+	},
+	"msg6c2c8442427f2791": "Повнота",
+	"@msg6c2c8442427f2791": {
+		"type": "text"
+	},
+	"msg6f26008b4129abf5": "Переписати повідомлення вихідної локалі, що розходяться зі своїм TIK",
+	"@msg6f26008b4129abf5": {
+		"description": "The synopsis of toki repair in the list of commands.",
+		"type": "text"
+	},
+	"msg6f8e3f856532ce51": "цю збірку toki скомпільовано без cgo; нативний настільний застосунок недоступний — натомість виконайте `toki edit -server \u003caddr\u003e`",
+	"@msg6f8e3f856532ce51": {
+		"description": "Keep cgo, the Go feature, and toki edit -server \u003caddr\u003e, a command.",
+		"type": "text"
+	},
+	"msg70089d99139dc154": "Немає незбережених змін для збирання.",
+	"@msg70089d99139dc154": {
+		"type": "text"
+	},
+	"msg73129e1feb194faa": "Toki — фреймворк i18n для Go.",
+	"@msg73129e1feb194faa": {
+		"description": "The first line of the usage of toki.",
+		"type": "text"
+	},
+	"msg734796f4f659ec16": "Використання:",
+	"@msg734796f4f659ec16": {
+		"description": "The heading of the usage line, as in \"Usage: toki \u003ccommand\u003e [flags]\".",
+		"type": "text"
+	},
+	"msg73d56c8f4903f515": "{var0, number, integer} з {var1, plural, one {# TIK} few {# TIK} many {# TIK} other {# TIK}}",
+	"@msg73d56c8f4903f515": {
+		"type": "text"
+	},
+	"msg7530ff1414efed33": "Продовжити",
+	"@msg7530ff1414efed33": {
+		"type": "text"
+	},
+	"msg754da36cdfbb73eb": "Як у системі",
+	"@msg754da36cdfbb73eb": {
+		"type": "text"
+	},
+	"msg776b39a06145f9b3": "Під час відкриття нового проєкту {var0, plural, one {# незбережену зміну буде безповоротно скасовано} few {# незбережені зміни буде безповоротно скасовано} many {# незбережених змін буде безповоротно скасовано} other {# незбереженої зміни буде безповоротно скасовано}}.",
+	"@msg776b39a06145f9b3": {
+		"type": "text"
+	},
+	"msg7a1ce9b99505faa": "очікування з’єднань",
+	"@msg7a1ce9b99505faa": {
+		"description": "Log message of toki edit -server, followed by the address it serves on.",
+		"type": "text"
+	},
+	"msg7a366bd08cafc2b5": "Системна",
+	"@msg7a366bd08cafc2b5": {
+		"context": "[theme]",
+		"type": "text"
+	},
+	"msg7a5cb957f30600c5": "Перебудова індексної бази даних…",
+	"@msg7a5cb957f30600c5": {
+		"type": "text"
+	},
+	"msg7a7dbfa31c4137bc": "Дрібний",
+	"@msg7a7dbfa31c4137bc": {
+		"context": "[font size]",
+		"type": "text"
+	},
+	"msg7b1ab3ba42f5bbc6": "Усього ключів перекладу",
+	"@msg7b1ab3ba42f5bbc6": {
+		"type": "text"
+	},
+	"msg80d0eec76cc2ce49": "TIK з помилками ICU",
+	"@msg80d0eec76cc2ce49": {
+		"type": "text"
+	},
+	"msg80dc77088178cce7": "head.txt не знайдено, створюється новий",
+	"@msg80dc77088178cce7": {
+		"description": "Log message. Keep head.txt, the name of a file.",
+		"type": "text"
+	},
+	"msg82b0e16358914b62": "Шрифт редактора",
+	"@msg82b0e16358914b62": {
+		"type": "text"
+	},
+	"msg82e3d8b1db30490d": "Навігація",
+	"@msg82e3d8b1db30490d": {
+		"type": "text"
+	},
+	"msg83905e030d72610a": "Бандл пошкоджено",
+	"@msg83905e030d72610a": {
+		"type": "text"
+	},
+	"msg8595536f4dad28a9": "Не вдалося перегенерувати:",
+	"@msg8595536f4dad28a9": {
+		"type": "text"
+	},
+	"msg8636124724d79890": "Незбережена зміна",
+	"@msg8636124724d79890": {
+		"type": "text"
+	},
+	"msg86bb6f4f6d3420fb": "Теку проєкту не вибрано.",
+	"@msg86bb6f4f6d3420fb": {
+		"type": "text"
+	},
+	"msg87c737103e250af6": "Темна",
+	"@msg87c737103e250af6": {
+		"context": "[theme]",
+		"type": "text"
+	},
+	"msg8890b149f2c9fd13": "Неповні",
+	"@msg8890b149f2c9fd13": {
+		"context": "[TIKs]",
+		"type": "text"
+	},
+	"msg88b978125da2bd55": "Натисніть «Перегенерувати бандл» або виконайте {var0}, щоб оновити бандл.",
+	"@msg88b978125da2bd55": {
+		"type": "text"
+	},
+	"msg893d5b55fa207f2a": "Скасувати зміни",
+	"@msg893d5b55fa207f2a": {
+		"type": "text"
+	},
+	"msg89485d5f890f252e": "працювати як звичайний HTTP-сервер за цією адресою замість нативного настільного застосунку",
+	"@msg89485d5f890f252e": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msg895e0af8c527483b": "бандл узгоджений, нічого відновлювати",
+	"@msg895e0af8c527483b": {
+		"description": "Log message of toki repair.",
+		"type": "text"
+	},
+	"msg89e314b28e6dab4b": "Фільтр",
+	"@msg89e314b28e6dab4b": {
+		"type": "text"
+	},
+	"msg8a49a4ca171ca660": "Показати відомості про версію",
+	"@msg8a49a4ca171ca660": {
+		"description": "The synopsis of toki version in the list of commands.",
+		"type": "text"
+	},
+	"msg8c275afa52a9b3c2": "Дуже дрібний",
+	"@msg8c275afa52a9b3c2": {
+		"context": "[font size]",
+		"type": "text"
+	},
+	"msg8c47a42b8bfc3b9c": "Шрифтів не знайдено",
+	"@msg8c47a42b8bfc3b9c": {
+		"type": "text"
+	},
+	"msg8cea9d890f95722c": "Шрифт",
+	"@msg8cea9d890f95722c": {
+		"type": "text"
+	},
+	"msg8e3a3cb2dcff18e5": "Незбережені зміни",
+	"@msg8e3a3cb2dcff18e5": {
+		"type": "text"
+	},
+	"msg8e7589745d4c4773": "Далі",
+	"@msg8e7589745d4c4773": {
+		"type": "text"
+	},
+	"msg8f632e75cd449be": "Локаль не підтримує це правило множини в позиції {var0, number, integer}.",
+	"@msg8f632e75cd449be": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msg90b43847a6ed184d": "Посторінкова навігація",
+	"@msg90b43847a6ed184d": {
+		"type": "text"
+	},
+	"msg91ca24610763fd5b": "вихідний код",
+	"@msg91ca24610763fd5b": {
+		"description": "Log message of an error in the source code, which follows in English with its position.",
+		"type": "text"
+	},
+	"msg930a54fe7092702a": "Тека проєкту Toki",
+	"@msg930a54fe7092702a": {
+		"type": "text"
+	},
+	"msg943b9be1d97d1050": "Пошук…",
+	"@msg943b9be1d97d1050": {
+		"type": "text"
+	},
+	"msg97e4766ffe432da0": "Скасувати",
+	"@msg97e4766ffe432da0": {
+		"type": "text"
+	},
+	"msg996193f83bf9e69d": "Неприпустиме повідомлення ICU",
+	"@msg996193f83bf9e69d": {
+		"type": "text"
+	},
+	"msg9ade02415f167e94": "Скинути",
+	"@msg9ade02415f167e94": {
+		"type": "text"
+	},
+	"msg9b5a56836abcc9c1": "Немає перекладу",
+	"@msg9b5a56836abcc9c1": {
+		"type": "text"
+	},
+	"msg9dd67af80726c6af": "Відкрити нове вікно",
+	"@msg9dd67af80726c6af": {
+		"type": "text"
+	},
+	"msg9ed97b2e55babc00": "Перед збиранням виправте всі неприпустимі повідомлення ICU.",
+	"@msg9ed97b2e55babc00": {
+		"type": "text"
+	},
+	"msg9eeb5ae31ed4170d": "Чуєш їх, доцю, га? Кумедна ж ти, прощайся без ґольфів!",
+	"@msg9eeb5ae31ed4170d": {
+		"description": "Sample text of the interface font picker. Write a pangram of your language, a sentence that uses every letter of its alphabet.",
+		"type": "text"
+	},
+	"msg9f6d68d78e6e55c5": "Опис",
+	"@msg9f6d68d78e6e55c5": {
+		"type": "text"
+	},
+	"msga0537653566e20c1": "Мова",
+	"@msga0537653566e20c1": {
+		"type": "text"
+	},
+	"msga06696ace22cb495": "Повернути початкове повідомлення?",
+	"@msga06696ace22cb495": {
+		"type": "text"
+	},
+	"msga0debb231d6f60ef": "Шрифт інтерфейсу",
+	"@msga0debb231d6f60ef": {
+		"type": "text"
+	},
+	"msga278994566746ab": "також вивести відомості про збірку із залежностями модулів",
+	"@msga278994566746ab": {
+		"description": "The usage of a flag of toki version.",
+		"type": "text"
+	},
+	"msga2943a0cafb20b22": "Пошук розмірів…",
+	"@msga2943a0cafb20b22": {
+		"type": "text"
+	},
+	"msga2b5d22f6626948c": "Toki повністю генерує це повідомлення з TIK, тому для цієї локалі нічого перекладати.",
+	"@msga2b5d22f6626948c": {
+		"type": "text"
+	},
+	"msga2c7f39334800ae4": "аналіз вихідних кодів: {var0}",
+	"@msga2c7f39334800ae4": {
+		"description": "The placeholder is the error of the analysis in English.",
+		"type": "text"
+	},
+	"msga2d542ebb22c7296": "неприпустимі аргументи: {var0}",
+	"@msga2d542ebb22c7296": {
+		"description": "The placeholder is the error of the arguments, in English unless it is one of the errors this domain translates.",
+		"type": "text"
+	},
+	"msga3930c6e225f127d": "створення нового каталогу",
+	"@msga3930c6e225f127d": {
+		"description": "Log message about the catalog of a locale that toki generate creates.",
+		"type": "text"
+	},
+	"msga4a5052981991492": "Сторінка {var0}",
+	"@msga4a5052981991492": {
+		"description": "The component puts the number of the page in place of {n}.",
+		"type": "text"
+	},
+	"msga56a1911a8fe9375": "Бракує обов’язкового варіанта other у позиції {var0, number, integer}.",
+	"@msga56a1911a8fe9375": {
+		"description": "ICU syntax error. Keep \"other\", the name of an ICU option. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msga60682798ecd5230": "Вибрати теку",
+	"@msga60682798ecd5230": {
+		"type": "text"
+	},
+	"msga775843095619fd0": "head.txt не знайдено",
+	"@msga775843095619fd0": {
+		"description": "Log message. Keep head.txt, the name of a file.",
+		"type": "text"
+	},
+	"msga7b8e92b9c7b0ccf": "Початкове",
+	"@msga7b8e92b9c7b0ccf": {
+		"type": "text"
+	},
+	"msga7f604baf053d9ae": "Виберіть теку проєкту",
+	"@msga7f604baf053d9ae": {
+		"description": "Title of the dialog of the operating system that picks a folder.",
+		"type": "text"
+	},
+	"msga8e10e6ca62ebf70": "Повідомлення ICU",
+	"@msga8e10e6ca62ebf70": {
+		"type": "text"
+	},
+	"msgaa030d099aebeca6": "аргумент {var0}=«{var1}»: має бути допустимою локаллю BCP 47, крім und: вказано und",
+	"@msgaa030d099aebeca6": {
+		"description": "The placeholders are a flag, as l, and its value. Keep BCP 47 and \"und\", the undetermined locale.",
+		"type": "text"
+	},
+	"msgaa910bb8d288edf": "Локалі за замовчуванням потрібне повідомлення для кожного TIK: інші локалі використовують його як запасне, а бандл панікує, якщо його немає.",
+	"@msgaa910bb8d288edf": {
+		"type": "text"
+	},
+	"msgab9e0d269a473ef5": "Світла тема",
+	"@msgab9e0d269a473ef5": {
+		"type": "text"
+	},
+	"msgae3779b43fb4d9a5": "У вас {var0, plural, one {# незбережена зміна} few {# незбережені зміни} many {# незбережених змін} other {# незбереженої зміни}}. Зберіть бандл, щоб оновити файли .arb і перегенерувати код Go.",
+	"@msgae3779b43fb4d9a5": {
+		"type": "text"
+	},
+	"msgae9a4a462ab8e304": "2. Виконую {var0}",
+	"@msgae9a4a462ab8e304": {
+		"type": "text"
+	},
+	"msgaea322ed423ecc80": "Домени",
+	"@msgaea322ed423ecc80": {
+		"type": "text"
+	},
+	"msgaf89dc109b7a6672": "Неприпустиме",
+	"@msgaf89dc109b7a6672": {
+		"context": "[message]",
+		"type": "text"
+	},
+	"msgb157558a446242ca": "Розмір",
+	"@msgb157558a446242ca": {
+		"type": "text"
+	},
+	"msgb1b9260eba1cfa22": "TIK без перекладу",
+	"@msgb1b9260eba1cfa22": {
+		"type": "text"
+	},
+	"msgb211c288001b6d53": "Області доменів TIK",
+	"@msgb211c288001b6d53": {
+		"type": "text"
+	},
+	"msgb2267d627659bfe5": "Зібрати бандл",
+	"@msgb2267d627659bfe5": {
+		"type": "text"
+	},
+	"msgb666cc5c311077e1": "Не вдалося завантажити незбережені зміни: {var0}",
+	"@msgb666cc5c311077e1": {
+		"description": "The placeholder is an error in English.",
+		"type": "text"
+	},
+	"msgb70a169708dd45a7": "створення нового пакета бандла",
+	"@msgb70a169708dd45a7": {
+		"description": "Verbose log message.",
+		"type": "text"
+	},
+	"msgb85423fbc0a4908e": "Вибрати теку…",
+	"@msgb85423fbc0a4908e": {
+		"type": "text"
+	},
+	"msgb8b97743a6cc6e40": "Неприпустимий зсув у позиції {var0, number, integer}.",
+	"@msgb8b97743a6cc6e40": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msgb93d9c05702acdad": "вкажіть параметром -l допустиму локаль BCP 47, крім und, для мови за замовчуванням вашого вихідного коду",
+	"@msgb93d9c05702acdad": {
+		"description": "Keep BCP 47, \"und\", the undetermined locale, and 'l', a flag.",
+		"type": "text"
+	},
+	"msgb94ff2aaccd9ec93": "Повторюваний варіант у позиції {var0, number, integer}.",
+	"@msgb94ff2aaccd9ec93": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msgbaa76fbd98cc212d": "Попередня сторінка",
+	"@msgbaa76fbd98cc212d": {
+		"type": "text"
+	},
+	"msgbb462eb6f42239ee": "Надто глибоке вкладення в позиції {var0, number, integer}.",
+	"@msgbb462eb6f42239ee": {
+		"description": "ICU syntax error. The placeholder is the byte index of the error.",
+		"type": "text"
+	},
+	"msgbc2385db03256648": "Не вдалося проаналізувати вихідний код: {var0}",
+	"@msgbc2385db03256648": {
+		"description": "The placeholder is an error in English.",
+		"type": "text"
+	},
+	"msgbd6bd031bcc07840": "Помилка через {var0}",
+	"@msgbd6bd031bcc07840": {
+		"type": "text"
+	},
+	"msgbe543c713e80306c": "(за замовчуванням: {var0})",
+	"@msgbe543c713e80306c": {
+		"description": "Follows the usage of a flag. The placeholder is its default value, as \"tokibundle\" or true.",
+		"type": "text"
+	},
+	"msgc005958c84933ddf": "Видалити зміну",
+	"@msgc005958c84933ddf": {
+		"type": "text"
+	},
+	"msgc03456d5430b02f0": "Пошук розмірів",
+	"@msgc03456d5430b02f0": {
+		"type": "text"
+	},
+	"msgc0a2ac0e6e17a6a2": "Звісно! Розберімо це крок за кроком…",
+	"@msgc0a2ac0e6e17a6a2": {
+		"type": "text"
+	},
+	"msgc2e75bb8be6a83f9": "Виконайте {var0} або натисніть кнопку нижче, щоб відновити бандл.",
+	"@msgc2e75bb8be6a83f9": {
+		"type": "text"
+	},
+	"msgc68b1ed9d9dbbbe": "закриття нового файлу каталогу .arb",
+	"@msgc68b1ed9d9dbbbe": {
+		"description": "Log message about an error of the file system.",
+		"type": "text"
+	},
+	"msgc6f7bae11438b0ff": "URL сервера",
+	"@msgc6f7bae11438b0ff": {
+		"type": "text"
+	},
+	"msgc71ffb01a1ed0b55": "Збирання бандла",
+	"@msgc71ffb01a1ed0b55": {
+		"type": "text"
+	},
+	"msgc7a580e00ced50c7": "Темна тема",
+	"@msgc7a580e00ced50c7": {
+		"type": "text"
+	},
+	"msgc81ed59767eb5248": "скорочує шляхи до вихідного коду",
+	"@msgc81ed59767eb5248": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msgc84d11054784a204": "Відновити бандл",
+	"@msgc84d11054784a204": {
+		"type": "text"
+	},
+	"msgc9ab8b18e394542": "На сторінці",
+	"@msgc9ab8b18e394542": {
+		"type": "text"
+	},
+	"msgcce935f040e8287f": "{var0} с",
+	"@msgcce935f040e8287f": {
+		"description": "A duration in seconds, as 1.5 s.",
+		"type": "text"
+	},
+	"msgce3e71939c48e386": "Неповне",
+	"@msgce3e71939c48e386": {
+		"context": "[message]",
+		"type": "text"
+	},
+	"msgcea3732db6a63477": "шлях до згенерованого Go-пакета бандла відносно шляху модуля (-m)",
+	"@msgcea3732db6a63477": {
+		"description": "The usage of a flag. Keep -m, the flag of the module path.",
+		"type": "text"
+	},
+	"msgcff0852036afc540": "Тека проєкту",
+	"@msgcff0852036afc540": {
+		"type": "text"
+	},
+	"msgd1bdc13770abd0": "Попередня сторінка",
+	"@msgd1bdc13770abd0": {
+		"type": "text"
+	},
+	"msgd297189b79e4a170": "Мова повідомлень, оголошених у вихідному коді",
+	"@msgd297189b79e4a170": {
+		"type": "text"
+	},
+	"msgd349459fae6adb62": "Світла",
+	"@msgd349459fae6adb62": {
+		"context": "[theme]",
+		"type": "text"
+	},
+	"msgd40013ff9ec2cd6f": "Збирання не вдалося",
+	"@msgd40013ff9ec2cd6f": {
+		"type": "text"
+	},
+	"msgd44f0a25fe711d48": "Сервіс ШІ-перекладу",
+	"@msgd44f0a25fe711d48": {
+		"type": "text"
+	},
+	"msgd7268c12096d4deb": "За цим фільтром TIK не знайдено.",
+	"@msgd7268c12096d4deb": {
+		"type": "text"
+	},
+	"msgd8143d93376b81da": "Завершено за {var0}",
+	"@msgd8143d93376b81da": {
+		"type": "text"
+	},
+	"msgd8a1edc072b8e5ee": "{var0, plural, one {# повідомлення вихідної локалі не збігається} few {# повідомлення вихідної локалі не збігаються} many {# повідомлень вихідної локалі не збігаються} other {# повідомлення вихідної локалі не збігаються}} з вихідним кодом (заблокований ICU або розбіжність плейсхолдерів).",
+	"@msgd8a1edc072b8e5ee": {
+		"type": "text"
+	},
+	"msgd8b9c1ce5482baa": "Тека",
+	"@msgd8b9c1ce5482baa": {
+		"type": "text"
+	},
+	"msgd92c6e7bb9ca6efa": "Перегенерувати бандл",
+	"@msgd92c6e7bb9ca6efa": {
+		"type": "text"
+	},
+	"msgdd2635266015180": "Усі",
+	"@msgdd2635266015180": {
+		"context": "[TIKs]",
+		"type": "text"
+	},
+	"msge263572cec2161dd": "Системний моноширинний",
+	"@msge263572cec2161dd": {
+		"description": "The monospace font of the operating system.",
+		"type": "text"
+	},
+	"msge30d90f457fce251": "Пошук",
+	"@msge30d90f457fce251": {
+		"type": "text"
+	},
+	"msge31fb7c87b690c2f": "Показати приховані елементи шляху",
+	"@msge31fb7c87b690c2f": {
+		"type": "text"
+	},
+	"msge32fa625a9f79a1e": "Для великих кодових баз це може зайняти деякий час.",
+	"@msge32fa625a9f79a1e": {
+		"type": "text"
+	},
+	"msge3c19b2a264843ad": "Відкриття…",
+	"@msge3c19b2a264843ad": {
+		"type": "text"
+	},
+	"msge45b9af068e65f9f": "Розмірів не знайдено",
+	"@msge45b9af068e65f9f": {
+		"type": "text"
+	},
+	"msge49e278b497dfb53": "Наступна сторінка",
+	"@msge49e278b497dfb53": {
+		"type": "text"
+	},
+	"msge4a22ca50b583839": "Налаштовані мови",
+	"@msge4a22ca50b583839": {
+		"type": "text"
+	},
+	"msge4ea3a5f99b36da8": "Зведення",
+	"@msge4ea3a5f99b36da8": {
+		"type": "text"
+	},
+	"msge8c3d20b7c25b14d": "Змінено",
+	"@msge8c3d20b7c25b14d": {
+		"context": "[TIK]",
+		"type": "text"
+	},
+	"msge95d52f540951be9": "Назад",
+	"@msge95d52f540951be9": {
+		"type": "text"
+	},
+	"msgeac2fc6541312cda": "Закрити",
+	"@msgeac2fc6541312cda": {
+		"type": "text"
+	},
+	"msgec18bac997dac33f": "Запис файлів .arb і генерування коду Go…",
+	"@msgec18bac997dac33f": {
+		"type": "text"
+	},
+	"msgecf390d54855e84e": "«Зібрати бандл» записує її у файл .arb локалі й перегенеровує код Go. «Скинути» відновлює початкове повідомлення.",
+	"@msgecf390d54855e84e": {
+		"type": "text"
+	},
+	"msgedc9dc8d0db1a26": "Ваші зміни буде скасовано, а початкове повідомлення ICU відновлено.",
+	"@msgedc9dc8d0db1a26": {
+		"type": "text"
+	},
+	"msgee90a62d620ceb98": "Копіювати в буфер обміну",
+	"@msgee90a62d620ceb98": {
+		"type": "text"
+	},
+	"msgef92dde4cce687a5": "Вигляд",
+	"@msgef92dde4cce687a5": {
+		"type": "text"
+	},
+	"msgefdb0ff861d03e61": "записано навичку ШІ-агента",
+	"@msgefdb0ff861d03e61": {
+		"description": "Log message about a skill file for AI coding agents that toki wrote.",
+		"type": "text"
+	},
+	"msgf1c253a7372d809e": "Як у системі",
+	"@msgf1c253a7372d809e": {
+		"type": "text"
+	},
+	"msgf208c0c0c20613a0": "новий TIK",
+	"@msgf208c0c0c20613a0": {
+		"description": "Verbose log message about a TIK that is new in the source code.",
+		"type": "text"
+	},
+	"msgf3e3d93582ee0171": "{var0}–{var1} з {var2}",
+	"@msgf3e3d93582ee0171": {
+		"type": "text"
+	},
+	"msgf40bb5f684bcb4e8": "вимикає весь вивід у консоль",
+	"@msgf40bb5f684bcb4e8": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msgf485a47ef771b266": "Перейти до зведення",
+	"@msgf485a47ef771b266": {
+		"type": "text"
+	},
+	"msgf4a57c5c895c9ebc": "Для цього повідомлення в цій локалі ще немає перекладу. Доки його немає, бандл використовує повідомлення локалі за замовчуванням.",
+	"@msgf4a57c5c895c9ebc": {
+		"type": "text"
+	},
+	"msgf53a53c1b5e8d054": "Помилка в позиції {var0, number, integer}: {var1}",
+	"@msgf53a53c1b5e8d054": {
+		"description": "ICU syntax error that the editor has no text for. The first placeholder is the byte index of the error, the second the error in English.",
+		"type": "text"
+	},
+	"msgf6c1bdee7c4a02f1": "Збирання завершено",
+	"@msgf6c1bdee7c4a02f1": {
+		"type": "text"
+	},
+	"msgf750d55d5e9ea48c": "Лише для читання",
+	"@msgf750d55d5e9ea48c": {
+		"type": "text"
+	},
+	"msgf8e36be5c372bf1a": "бандл містить пошкоджені повідомлення вихідної локалі — виконайте `toki repair` ({var0, plural, one {# пошкоджений запис} few {# пошкоджені записи} many {# пошкоджених записів} other {# пошкодженого запису}})",
+	"@msgf8e36be5c372bf1a": {
+		"description": "Keep toki repair, a command.",
+		"type": "text"
+	},
+	"msgf9de86316817f08": "TIK у вихідному коді написані в цій локалі. Інші локалі використовують її повідомлення там, де в них немає перекладу.",
+	"@msgf9de86316817f08": {
+		"type": "text"
+	},
+	"msgfb472db9466db27c": "Великий",
+	"@msgfb472db9466db27c": {
+		"context": "[font size]",
+		"type": "text"
+	},
+	"msgfbdbc333f54f8353": "Вітаємо, {var0}!\nСторінки «{var1}», яку ви запитали, не існує.\nПовернутися назад чи перейти до зведення?",
+	"@msgfbdbc333f54f8353": {
+		"description": "The page for a URL that doesn't exist shows this text as if it were an ICU message. The placeholders show {name} and {text} as they are, as placeholders that nothing fills. Keep the line breaks.",
+		"type": "text"
+	},
+	"msgfbeb7c0885db1e6c": "Ви змінили це повідомлення, але зміна ще не потрапила в бандл.",
+	"@msgfbeb7c0885db1e6c": {
+		"type": "text"
+	},
+	"msgfc886f47a3a5fe37": "вмикає вивід у JSON",
+	"@msgfc886f47a3a5fe37": {
+		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msgfd3cd464ae4055da": "В аргументі {var0} є неприпустимий варіант select {var1}.",
+	"@msgfd3cd464ae4055da": {
+		"description": "Note under an ICU message editor. The first placeholder is the name of an ICU argument, the second the name of a select option.",
+		"type": "text"
+	},
+	"msgfe0d41bfee6caad7": "Назад",
+	"@msgfe0d41bfee6caad7": {
+		"type": "text"
+	},
+	"msgfe9b203c79e07f0d": "TIK",
+	"@msgfe9b203c79e07f0d": {
+		"context": "[TIKs]",
+		"type": "text"
+	},
+	"msgffbbb73ebe399cfb": "Не вдалося заповнити індексну базу даних: {var0}",
+	"@msgffbbb73ebe399cfb": {
+		"description": "The placeholder is an error in English. The index database is where the editor caches the scan of the project.",
+		"type": "text"
+	}
+}

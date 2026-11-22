@@ -11,6 +11,7 @@ import (
 	"github.com/romshark/toki/internal/config"
 	"github.com/romshark/toki/internal/gengo"
 	"github.com/romshark/toki/internal/log"
+	"github.com/romshark/toki/internal/tokibundle"
 )
 
 type Result struct {
@@ -94,10 +95,22 @@ func (r Result) mustPrintJSON(stdout io.Writer) {
 	}
 }
 
-// Print logs r and, in JSON mode, writes it to stdout as JSON.
-func (r Result) Print(stdout io.Writer) {
+// logReader returns the reader of what a command with conf logs: tr, or
+// English in JSON mode, whose output programs read. conf is nil for the
+// commands without -json.
+func logReader(tr tokibundle.Reader, conf *config.ConfigGenerate) tokibundle.Reader {
+	if conf != nil && conf.JSON {
+		return tokibundle.Default()
+	}
+	return tr
+}
+
+// Print logs r in the language of tr and, in JSON mode, writes it to stdout
+// as JSON.
+func (r Result) Print(tr tokibundle.Reader, stdout io.Writer) {
+	tr = logReader(tr, r.Config)
 	if r.Err != nil {
-		log.Error(r.Err.Error(), nil)
+		log.Error(errorText(tr, r.Err), nil)
 	}
 	if r.Config == nil {
 		return
@@ -110,9 +123,13 @@ func (r Result) Print(stdout io.Writer) {
 	if r.Scan != nil {
 		_ = r.Scan.SourceErrors.Access(func(s []codeparse.SourceError) error {
 			if l := len(s); l > 0 {
-				log.Error("source errors", nil, slog.Int("total", l))
+				// Log message that heads the list of the errors in the source code.
+				log.Error(tr.String("source errors"), nil, slog.Int("total", l))
 				for _, e := range s {
-					log.Error("source", e.Err, slog.String("pos", log.FmtPos(e.Position)))
+					// Log message of an error in the source code, which follows
+					// in English with its position.
+					log.Error(tr.String("source"), e.Err,
+						slog.String("pos", log.FmtPos(e.Position)))
 				}
 			}
 			return nil
@@ -136,6 +153,7 @@ func (r Result) Print(stdout io.Writer) {
 			}
 			return nil
 		})
-		log.Info("finished", fields...)
+		// Log message of the report at the end of toki generate and toki lint.
+		log.Info(tr.String("finished"), fields...)
 	}
 }

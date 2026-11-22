@@ -1,62 +1,60 @@
 package template
 
 import (
-	"fmt"
-
 	"github.com/romshark/morpheus/neo"
 
 	"github.com/romshark/toki/editor/app/datapagesgen/href"
-	"github.com/romshark/toki/editor/app/template/strfmt"
+	"github.com/romshark/toki/internal/tokibundle"
 )
 
-templ PageDashboard(stats DashboardStats) {
+templ PageDashboard(tr tokibundle.Reader, stats DashboardStats) {
 	@page("page-dashboard", nil) {
-		@componentSidebar("Dashboard navigation") {
-			@componentSidebarHeader(stats.IsHybrid)
-			<nav { neo.SidebarContent()... } aria-label="Dashboard navigation">
+		@componentSidebar(tr.String("Dashboard navigation")) {
+			@componentSidebarHeader(tr, stats.IsHybrid)
+			<nav { neo.SidebarContent()... } aria-label={ tr.String("Dashboard navigation") }>
 				<section>
 					<div role="group">
-						<h3>Navigation</h3>
+						<h3>{ tr.String("Navigation") }</h3>
 						<ul class="sidebar-nav-list">
 							@componentSidebarNavLink("#overview") {
 								@iconLayoutDashboard()
-								<span class="sidebar-nav-text">Overview</span>
+								<span class="sidebar-nav-text">{ tr.String("Overview") }</span>
 							}
 							if len(stats.Domains) > 0 {
 								@componentSidebarNavLink("#domains") {
 									@iconHierarchy()
-									<span class="sidebar-nav-text">Domains</span>
+									<span class="sidebar-nav-text">{ tr.String("Domains") }</span>
 									@neo.Badge(neo.BadgeOpts{
 										Variant: neo.Set(neo.BadgeVariantSecondary),
 									}) {
-										{ strfmt.Int(stats.NumDomains) }
+										{ fmtInt(tr, stats.NumDomains) }
 									}
 								}
 							}
 							@componentSidebarNavLink("#locales") {
 								@iconLanguages()
-								<span class="sidebar-nav-text">Locales</span>
+								<span class="sidebar-nav-text">{ tr.String("Locales") }</span>
 								@neo.Badge(neo.BadgeOpts{
 									Variant: neo.Set(neo.BadgeVariantSecondary),
 								}) {
-									{ strfmt.Int(stats.NumLocales) }
+									{ fmtInt(tr, stats.NumLocales) }
 								}
 							}
 						</ul>
 					</div>
 				</section>
 			</nav>
-			@componentSidebarFooter(stats.Dir)
+			@componentSidebarFooter(tr, stats.Dir)
 		}
 		@componentMainArea(nil) {
-			@componentNavbar([]Breadcrumb{
-				{Label: "Dashboard"},
+			@componentNavbar(tr, []Breadcrumb{
+				{Label: tr.String("Dashboard")},
 			}, stats.TotalChanges, stats.CanApplyChanges)
 			<main>
 				<div class="contents">
 					<h2 id="overview">
 						@iconLayoutDashboard()
-						Overview
+						{ tr.String("Overview") }
 					</h2>
 					<div class="dashboard-grid">
 						<a
@@ -70,18 +68,16 @@ templ PageDashboard(stats DashboardStats) {
 									<span class="dashboard-stat-value locale-code">
 										{ stats.NativeLocale.Locale }
 									</span>
-									if stats.NativeLocale.Name != "" {
-										<span class="dashboard-stat-label">
-											{ stats.NativeLocale.Name }
-										</span>
+									if name := localeName(tr, stats.NativeLocale.Locale); name != "" {
+										<span class="dashboard-stat-label">{ name }</span>
 									}
 								}
 								@neo.CardBody() {
 									<p class="dashboard-stat-desc">
-										Native locale
+										{ tr.String("Native locale") }
 										@neo.Tooltip(neo.TooltipOpts{
-											Text: neo.Set("The language used in source code " +
-												"message declarations"),
+											Text: neo.Set(tr.String(
+												"The language used in source code message declarations")),
 											Placement: neo.Set(neo.PlacementBottomStart),
 										}) {
 											<span class="info-icon">
@@ -96,15 +92,15 @@ templ PageDashboard(stats DashboardStats) {
 							@componentStatLinkCard() {
 								@neo.CardHeader() {
 									<span class="dashboard-stat-value">
-										{ strfmt.Int(stats.NumLocales) }
+										{ fmtInt(tr, stats.NumLocales) }
 									</span>
 									<span class="dashboard-stat-label">
 										@iconLanguages()
-										Locales
+										{ tr.String("Locales") }
 									</span>
 								}
 								@neo.CardBody() {
-									<p class="dashboard-stat-desc">Languages configured</p>
+									<p class="dashboard-stat-desc">{ tr.String("Languages configured") }</p>
 								}
 							}
 						</a>
@@ -112,15 +108,15 @@ templ PageDashboard(stats DashboardStats) {
 							@componentStatLinkCard() {
 								@neo.CardHeader() {
 									<span class="dashboard-stat-value">
-										{ strfmt.Int(stats.NumDomains) }
+										{ fmtInt(tr, stats.NumDomains) }
 									</span>
 									<span class="dashboard-stat-label">
 										@iconHierarchy()
-										Domains
+										{ tr.String("Domains") }
 									</span>
 								}
 								@neo.CardBody() {
-									<p class="dashboard-stat-desc">TIK domain scopes</p>
+									<p class="dashboard-stat-desc">{ tr.String("TIK domain scopes") }</p>
 								}
 							}
 						</a>
@@ -128,15 +124,15 @@ templ PageDashboard(stats DashboardStats) {
 							@componentStatLinkCard() {
 								@neo.CardHeader() {
 									<span class="dashboard-stat-value">
-										{ strfmt.Int(stats.NumTIKs) }
+										{ fmtInt(tr, stats.NumTIKs) }
 									</span>
 									<span class="dashboard-stat-label">
 										@iconList()
-										TIKs
+										{ tr.String("[TIKs] TIKs") }
 									</span>
 								}
 								@neo.CardBody() {
-									<p class="dashboard-stat-desc">Total translation keys</p>
+									<p class="dashboard-stat-desc">{ tr.String("Total translation keys") }</p>
 								}
 							}
 						</a>
@@ -149,18 +145,16 @@ templ PageDashboard(stats DashboardStats) {
 							@componentStatLinkCard() {
 								@neo.CardHeader() {
 									<span class="dashboard-stat-value">
-										{ strfmt.Percent(stats.Completeness) }
+										{ fmtPercent(tr, stats.Completeness) }
 									</span>
 									<span class="dashboard-stat-label">
 										@iconCircleCheck()
-										Complete
+										{ tr.String("[TIKs] Complete") }
 									</span>
 								}
 								@neo.CardBody() {
 									<p class="dashboard-stat-desc">
-										{ fmt.Sprintf("%s of %s TIKs",
-											strfmt.Int(stats.NumComplete),
-											strfmt.Int(stats.NumTIKs)) }
+										{ tr.String("{integer} of {# TIKs}", stats.NumComplete, stats.NumTIKs) }
 									</p>
 								}
 							}
@@ -174,15 +168,15 @@ templ PageDashboard(stats DashboardStats) {
 							@componentStatLinkCard() {
 								@neo.CardHeader() {
 									<span class="dashboard-stat-value">
-										{ strfmt.Int(stats.TotalChanges) }
+										{ fmtInt(tr, stats.TotalChanges) }
 									</span>
 									<span class="dashboard-stat-label">
 										@iconPencil()
-										Unsaved
+										{ tr.String("[changes] Unsaved") }
 									</span>
 								}
 								@neo.CardBody() {
-									<p class="dashboard-stat-desc">Pending changes</p>
+									<p class="dashboard-stat-desc">{ tr.String("Pending changes") }</p>
 								}
 							}
 						</a>
@@ -195,16 +189,16 @@ templ PageDashboard(stats DashboardStats) {
 							@componentStatLinkCard() {
 								@neo.CardHeader() {
 									<span class="dashboard-stat-value">
-										{ strfmt.Int(stats.NumIncomplete) }
+										{ fmtInt(tr, stats.NumIncomplete) }
 									</span>
 									<span class="dashboard-stat-label">
 										@iconCircleSlash()
-										Incomplete
+										{ tr.String("[TIKs] Incomplete") }
 									</span>
 								}
 								@neo.CardBody() {
 									<p class="dashboard-stat-desc">
-										TIKs with missing translations
+										{ tr.String("TIKs with missing translations") }
 									</p>
 								}
 							}
@@ -218,15 +212,15 @@ templ PageDashboard(stats DashboardStats) {
 							@componentStatLinkCard() {
 								@neo.CardHeader() {
 									<span class="dashboard-stat-value">
-										{ strfmt.Int(stats.NumUntranslated) }
+										{ fmtInt(tr, stats.NumUntranslated) }
 									</span>
 									<span class="dashboard-stat-label">
 										@iconCircleMinus()
-										Untranslated
+										{ tr.String("[TIKs] Untranslated") }
 									</span>
 								}
 								@neo.CardBody() {
-									<p class="dashboard-stat-desc">TIKs with no translation</p>
+									<p class="dashboard-stat-desc">{ tr.String("TIKs with no translation") }</p>
 								}
 							}
 						</a>
@@ -239,15 +233,15 @@ templ PageDashboard(stats DashboardStats) {
 							@componentStatLinkCard() {
 								@neo.CardHeader() {
 									<span class="dashboard-stat-value">
-										{ strfmt.Int(stats.NumInvalid) }
+										{ fmtInt(tr, stats.NumInvalid) }
 									</span>
 									<span class="dashboard-stat-label">
 										@iconAlertTriangle()
-										Invalid
+										{ tr.String("[TIKs] Invalid") }
 									</span>
 								}
 								@neo.CardBody() {
-									<p class="dashboard-stat-desc">TIKs with ICU errors</p>
+									<p class="dashboard-stat-desc">{ tr.String("TIKs with ICU errors") }</p>
 								}
 							}
 						</a>
@@ -259,13 +253,14 @@ templ PageDashboard(stats DashboardStats) {
 							@neo.CardHeader() {
 								<h3>
 									@iconSave()
-									Build Bundle
+									{ tr.String("Build Bundle") }
 								</h3>
 							}
 							@neo.CardBody() {
 								<p>
-									You have { strfmt.Int(stats.TotalChanges) } unsaved change(s).
-									Build the bundle to update .arb files and regenerate Go code.
+									{ tr.String("You have {# unsaved changes}. " +
+										"Build the bundle to update the .arb files and regenerate the Go code.",
+										stats.TotalChanges) }
 								</p>
 								@neo.Link(neo.LinkOpts{
 									Href:     neo.Set(href.PageBuildBundle()),
@@ -273,11 +268,11 @@ templ PageDashboard(stats DashboardStats) {
 									Disabled: neo.Set(!stats.CanApplyChanges),
 								}) {
 									@iconSave()
-									Build Bundle
+									{ tr.String("Build Bundle") }
 								}
 								if !stats.CanApplyChanges {
 									@componentAlertDanger() {
-										Fix all invalid ICU messages before building.
+										{ tr.String("Fix all invalid ICU messages before building.") }
 									}
 								}
 							}
@@ -286,24 +281,24 @@ templ PageDashboard(stats DashboardStats) {
 					if len(stats.Domains) > 0 {
 						<h2 id="domains">
 							@iconHierarchy()
-							Domains
+							{ tr.String("Domains") }
 							@neo.Badge(neo.BadgeOpts{
 								Variant: neo.Set(neo.BadgeVariantSecondary),
 							}) {
-								{ strfmt.Int(stats.NumDomains) }
+								{ fmtInt(tr, stats.NumDomains) }
 							}
 						</h2>
 						for _, d := range stats.Domains {
-							@dashboardDomainCard(d)
+							@dashboardDomainCard(tr, d)
 						}
 					}
 					<h2 id="locales">
 						@iconLanguages()
-						Locales
+						{ tr.String("Locales") }
 						@neo.Badge(neo.BadgeOpts{
 							Variant: neo.Set(neo.BadgeVariantSecondary),
 						}) {
-							{ strfmt.Int(stats.NumLocales) }
+							{ fmtInt(tr, stats.NumLocales) }
 						}
 					</h2>
 					<div class="dashboard-grid">
@@ -318,45 +313,45 @@ templ PageDashboard(stats DashboardStats) {
 									@neo.CardHeader() {
 										<span class="dashboard-stat-value">
 											<strong class="locale-code">{ ls.Locale }</strong>
-											if ls.Name != "" {
-												<span class="locale-name">– { ls.Name }</span>
+											if name := localeName(tr, ls.Locale); name != "" {
+												<span class="locale-name">– { name }</span>
 											}
 										</span>
 									}
 									@neo.CardBody() {
-										@componentCompletenessBar(ls.Completeness)
+										@componentCompletenessBar(tr, ls.Completeness)
 										<div class="locale-stats">
 											<div class="locale-stat-row">
-												<span>Complete</span>
-												<span>{ strfmt.Int(ls.Complete) }</span>
+												<span>{ tr.String("[TIKs] Complete") }</span>
+												<span>{ fmtInt(tr, ls.Complete) }</span>
 											</div>
 											<div class="locale-stat-row">
-												<span>Incomplete</span>
-												<span>{ strfmt.Int(ls.Incomplete) }</span>
+												<span>{ tr.String("[TIKs] Incomplete") }</span>
+												<span>{ fmtInt(tr, ls.Incomplete) }</span>
 											</div>
 											if ls.Untranslated > 0 {
 												<div class="locale-stat-row">
-													<span>Untranslated</span>
-													<span>{ strfmt.Int(ls.Untranslated) }</span>
+													<span>{ tr.String("[TIKs] Untranslated") }</span>
+													<span>{ fmtInt(tr, ls.Untranslated) }</span>
 												</div>
 											}
 											if ls.Invalid > 0 {
 												<div class="locale-stat-row">
-													<span>Invalid</span>
+													<span>{ tr.String("[TIKs] Invalid") }</span>
 													@neo.Badge(neo.BadgeOpts{
 														Variant: neo.Set(neo.BadgeVariantDanger),
 													}) {
-														{ strfmt.Int(ls.Invalid) }
+														{ fmtInt(tr, ls.Invalid) }
 													}
 												</div>
 											}
 											if ls.Changed > 0 {
 												<div class="locale-stat-row">
-													<span>Unsaved</span>
+													<span>{ tr.String("[changes] Unsaved") }</span>
 													@neo.BadgeAttrs(neo.BadgeOpts{}, templ.Attributes{
 														"class": "badge-changed",
 													}) {
-														{ strfmt.Int(ls.Changed) }
+														{ fmtInt(tr, ls.Changed) }
 													}
 												</div>
 											}
@@ -372,22 +367,20 @@ templ PageDashboard(stats DashboardStats) {
 	}
 }
 
-templ dashboardDomainCard(d DomainInfo) {
+templ dashboardDomainCard(tr tokibundle.Reader, d DomainInfo) {
 	@neo.CardAttrs(neo.CardOpts{}, templ.Attributes{"class": "domain-card"}) {
 		@neo.CardHeader() {
 			<h2>{ d.Name }</h2>
 		}
 		@neo.CardBody() {
 			@componentFieldStack() {
-				<span class="label">Directory</span>
+				<span class="label">{ tr.String("Directory") }</span>
 				<p class="domain-dir-path"><bdi>{ d.Dir }</bdi></p>
 			}
-			@componentCompletenessBar(d.Completeness)
+			@componentCompletenessBar(tr, d.Completeness)
 			<div class="domain-stats-grid">
 				<a href={ href.PageTIKs(href.QueryPageTIKs{Domains: d.FullName}) } class="domain-stat">
-					@componentDomainStat(
-						strfmt.Int(d.NumTIKs), "TIKs", iconList(),
-					)
+					@componentDomainStat(fmtInt(tr, d.NumTIKs), tr.String("[TIKs] TIKs"), iconList())
 				</a>
 				<a
 					href={ href.PageTIKs(href.QueryPageTIKs{
@@ -396,7 +389,7 @@ templ dashboardDomainCard(d DomainInfo) {
 					class="domain-stat"
 				>
 					@componentDomainStat(
-						strfmt.Int(d.NumComplete), "Complete", iconCircleCheck(),
+						fmtInt(tr, d.NumComplete), tr.String("[TIKs] Complete"), iconCircleCheck(),
 					)
 				</a>
 				if d.NumIncomplete > 0 {
@@ -407,7 +400,7 @@ templ dashboardDomainCard(d DomainInfo) {
 						class="domain-stat"
 					>
 						@componentDomainStat(
-							strfmt.Int(d.NumIncomplete), "Incomplete", iconCircleSlash(),
+							fmtInt(tr, d.NumIncomplete), tr.String("[TIKs] Incomplete"), iconCircleSlash(),
 						)
 					</a>
 				}
@@ -419,7 +412,8 @@ templ dashboardDomainCard(d DomainInfo) {
 						class="domain-stat"
 					>
 						@componentDomainStat(
-							strfmt.Int(d.NumUntranslated), "Untranslated", iconCircleMinus(),
+							fmtInt(tr, d.NumUntranslated), tr.String("[TIKs] Untranslated"),
+							iconCircleMinus(),
 						)
 					</a>
 				}
@@ -431,7 +425,7 @@ templ dashboardDomainCard(d DomainInfo) {
 						class="domain-stat"
 					>
 						@componentDomainStat(
-							strfmt.Int(d.NumInvalid), "Invalid", iconAlertTriangle(),
+							fmtInt(tr, d.NumInvalid), tr.String("[TIKs] Invalid"), iconAlertTriangle(),
 						)
 					</a>
 				}
@@ -443,7 +437,7 @@ templ dashboardDomainCard(d DomainInfo) {
 						class="domain-stat"
 					>
 						@componentDomainStat(
-							strfmt.Int(d.NumChanged), "Unsaved", iconPencil(),
+							fmtInt(tr, d.NumChanged), tr.String("[changes] Unsaved"), iconPencil(),
 						)
 					</a>
 				}
@@ -451,6 +445,6 @@ templ dashboardDomainCard(d DomainInfo) {
 		}
 	}
 	for _, sub := range d.SubDomains {
-		@dashboardDomainCard(sub)
+		@dashboardDomainCard(tr, sub)
 	}
 }

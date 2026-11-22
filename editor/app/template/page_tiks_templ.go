@@ -6,10 +6,15 @@ package template
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
-import "github.com/a-h/templ"
-import templruntime "github.com/a-h/templ/runtime"
+import (
+	"github.com/a-h/templ"
+	templruntime "github.com/a-h/templ/runtime"
+)
 
-import "github.com/romshark/toki/editor/app/datapagesgen/href"
+import (
+	"github.com/romshark/toki/editor/app/datapagesgen/href"
+	"github.com/romshark/toki/internal/tokibundle"
+)
 
 // PageTIKs renders the whole TIKs list page. It is both the GET body and
 // what every PageTIKs action and event handler morphs.
@@ -17,7 +22,7 @@ import "github.com/romshark/toki/editor/app/datapagesgen/href"
 // The URL-synced signals (filter, search, page, page size) are seeded by
 // the query's reflectsignal tags, and the server patches the ones it owns
 // before each morph, which is why the seeds here don't overwrite them.
-func PageTIKs(data DataIndex) templ.Component {
+func PageTIKs(tr tokibundle.Reader, data DataIndex) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -58,21 +63,21 @@ func PageTIKs(data DataIndex) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = componentSidebarHeader(data.IsHybrid).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = componentSidebarHeader(tr, data.IsHybrid).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = sidebarContent(data).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = sidebarContent(tr, data).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = componentSidebarFooter(data.Dir).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = componentSidebarFooter(tr, data.Dir).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = componentSidebar("Editor navigation").Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = componentSidebar(tr.String("Editor navigation")).Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -88,9 +93,9 @@ func PageTIKs(data DataIndex) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = componentNavbarSearch([]Breadcrumb{
-					{Label: "Dashboard", Href: href.PageIndex()},
-					{Label: "Messages"},
+				templ_7745c5c3_Err = componentNavbarSearch(tr, []Breadcrumb{
+					{Label: tr.String("Dashboard"), Href: href.PageIndex()},
+					{Label: tr.String("Messages")},
 				}, data.TotalChanges, data.CanApplyChanges).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -99,7 +104,7 @@ func PageTIKs(data DataIndex) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = TiksContentList(data).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = TiksContentList(tr, data).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -113,7 +118,7 @@ func PageTIKs(data DataIndex) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = componentEditorModals().Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = componentEditorModals(tr).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

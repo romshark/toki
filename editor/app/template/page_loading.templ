@@ -1,8 +1,12 @@
 package template
 
-import "github.com/romshark/morpheus/neo"
+import (
+	"github.com/romshark/morpheus/neo"
 
-templ PageLoading() {
+	"github.com/romshark/toki/internal/tokibundle"
+)
+
+templ PageLoading(tr tokibundle.Reader) {
 	@page("page-loading", nil) {
 		<div class="page-center">
 			<meta http-equiv="refresh" content="1"/>
@@ -15,9 +19,9 @@ templ PageLoading() {
 				@neo.CardBody() {
 					<div class="loading-screen">
 						@componentLoadingDots()
-						<p>Rebuilding index database&hellip;</p>
+						<p>{ tr.String("Rebuilding the index database…") }</p>
 						<p class="loading-hint">
-							This may take a moment for large codebases.
+							{ tr.String("This may take a moment for large codebases.") }
 						</p>
 					</div>
 				}

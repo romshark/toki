@@ -7,6 +7,7 @@ import (
 
 	"github.com/romshark/toki/editor/app/datapagesgen/href"
 	"github.com/romshark/toki/editor/app/template"
+	"github.com/romshark/toki/internal/tokibundle"
 )
 
 // PageSettings is /settings
@@ -17,19 +18,28 @@ type PageSettings struct {
 
 func (p PageSettings) GET(
 	r *http.Request,
-) (body datapages.Component, redirect datapages.Redirect, err error) {
+) (
+	body datapages.Component,
+	redirect datapages.Redirect,
+	docAttrs datapages.DocumentAttrs,
+	err error,
+) {
 	p.App.lock.Lock()
 	building := p.App.building
 	p.App.lock.Unlock()
 	if building {
-		return nil, datapages.Redirect{URL: href.PageBuildBundle()}, nil
+		return nil, datapages.Redirect{URL: href.PageBuildBundle()}, nil, nil
 	}
 
-	preview := "The quick brown fox jumps over the lazy dog"
+	tr := p.App.readerFor(r)
+	// Sample text of the interface font picker. Write a pangram of your
+	// language, a sentence that uses every letter of its alphabet.
+	preview := tr.String("The quick brown fox jumps over the lazy dog")
 	icuPreview := "{ plural, one {# item} other {# items} }"
 	prefs := ReadUIPrefs(r)
 	data := template.DataSettingsPreview{
 		IsHybrid: p.App.OpenNewWindow != nil,
+		Lang:     readLangPref(r),
 		Prefs: template.UIPrefs{
 			Theme:          prefs.Theme,
 			UIFont:         prefs.UIFont,
@@ -41,7 +51,7 @@ func (p PageSettings) GET(
 			{
 				Value:   "system",
 				Family:  fontFamilies["system"],
-				Label:   "System Default",
+				Label:   tr.String("System Default"),
 				Preview: preview,
 			},
 			{
@@ -59,9 +69,10 @@ func (p PageSettings) GET(
 		},
 		EditorFonts: []template.FontOption{
 			{
-				Value:   "mono-system",
-				Family:  "ui-monospace, SF Mono, Cascadia Code, monospace",
-				Label:   "System Mono",
+				Value:  "mono-system",
+				Family: "ui-monospace, SF Mono, Cascadia Code, monospace",
+				// The monospace font of the operating system.
+				Label:   tr.String("System Mono"),
 				Preview: icuPreview,
 			},
 			{
@@ -83,8 +94,8 @@ func (p PageSettings) GET(
 				Preview: icuPreview,
 			},
 		},
-		UIFontSizes:     fontSizeOptions(preview, ""),
-		EditorFontSizes: fontSizeOptions(icuPreview, "ui-monospace, monospace"),
+		UIFontSizes:     fontSizeOptions(tr, preview, ""),
+		EditorFontSizes: fontSizeOptions(tr, icuPreview, "ui-monospace, monospace"),
 		UIPreviewTIK:    "{name, select, other {Welcome, {name}!}}",
 		UIPreviewICUEN:  "{name, select, other {Welcome back, {name}!}}",
 		UIPreviewICUDE:  "{name, select, other {Willkommen, {name}!}}",
@@ -93,19 +104,20 @@ func (p PageSettings) GET(
 			"  other {You have # new messages}\n}",
 		ServerURL: serverURL(r),
 	}
-	body = template.PageSettings(p.App.Version, data)
-	return
+	return template.PageSettings(tr, p.App.Version, data), redirect, documentAttrs(tr), nil
 }
 
 // fontSizeOptions builds the selectable font sizes, rendering the sample in
 // the given family so the editor's sizes preview in a monospace face.
-func fontSizeOptions(preview, family string) []template.FontSizeOption {
+func fontSizeOptions(
+	tr tokibundle.Reader, preview, family string,
+) []template.FontSizeOption {
 	steps := []struct{ value, size, label string }{
-		{"very-small", "0.8rem", "Very Small"},
-		{"small", "0.9rem", "Small"},
-		{"default", "1rem", "Default"},
-		{"big", "1.1rem", "Big"},
-		{"bigger", "1.25rem", "Bigger"},
+		{"very-small", "0.8rem", tr.String("[font size] Very Small")},
+		{"small", "0.9rem", tr.String("[font size] Small")},
+		{"default", "1rem", tr.String("[font size] Default")},
+		{"big", "1.1rem", tr.String("[font size] Big")},
+		{"bigger", "1.25rem", tr.String("[font size] Bigger")},
 	}
 	opts := make([]template.FontSizeOption, 0, len(steps))
 	for _, s := range steps {

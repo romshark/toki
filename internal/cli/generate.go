@@ -25,6 +25,7 @@ import (
 	"github.com/romshark/toki/internal/log"
 	"github.com/romshark/toki/internal/sync"
 	tikutil "github.com/romshark/toki/internal/tik"
+	"github.com/romshark/toki/internal/tokibundle"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/romshark/icumsg"
@@ -41,19 +42,22 @@ type Generate struct {
 	tikICUTranslator *tik.ICUTranslator
 }
 
+// Run runs the command of osArgs, logging in the language of tr.
 func (g *Generate) Run(
-	osArgs, env []string, lintOnly bool, stderr, stdout io.Writer, now time.Time,
+	osArgs, env []string, tr tokibundle.Reader, lintOnly bool,
+	stderr, stdout io.Writer, now time.Time,
 ) (result Result) {
 	result.Start = now
 	flags := newFlagSet(osArgs[1])
-	conf, err := config.ParseCLIArgsGenerate(flags, osArgs[2:])
+	conf, err := config.ParseCLIArgsGenerate(tr, flags, osArgs[2:])
 	if err != nil {
-		result.Err = flagError(flags, stdout, err)
+		result.Err = flagError(tr, flags, stdout, err)
 		return result
 	}
 	result.Config = conf
 
 	log.SetWriter(stderr, conf.JSON)
+	tr = logReader(tr, conf)
 
 	switch {
 	case conf.QuietMode:
@@ -63,7 +67,8 @@ func (g *Generate) Run(
 	}
 
 	if lintOnly {
-		log.Info("linting mode")
+		// Log message of toki lint, which checks without writing files.
+		log.Info(tr.String("linting mode"))
 	}
 
 	// The bundle package lives in the module, not the working directory.
@@ -71,7 +76,7 @@ func (g *Generate) Run(
 
 	if !lintOnly {
 		// Create bundle package directory if it doesn't exist yet.
-		if err := prepareBundlePackageDir(bundleDir); err != nil {
+		if err := prepareBundlePackageDir(tr, bundleDir); err != nil {
 			result.Err = err
 			return result
 		}
@@ -79,7 +84,7 @@ func (g *Generate) Run(
 
 	// Read/create head.txt.
 	createIfNotExist := !lintOnly
-	headTxt, err := readOrCreateHeadTxt(bundleDir, createIfNotExist)
+	headTxt, err := readOrCreateHeadTxt(tr, bundleDir, createIfNotExist)
 	if err != nil {
 		result.Err = err
 		return result
@@ -142,8 +147,7 @@ func (g *Generate) Run(
 		corruptTotal += c.MessagesCorrupt.Load()
 	}
 	if corruptTotal > 0 {
-		result.Err = fmt.Errorf("%w (%d corrupt native-locale entries)",
-			ErrBundleCorrupt, corruptTotal)
+		result.Err = &BundleCorruptError{Corrupt: corruptTotal}
 		return result
 	}
 
@@ -152,9 +156,11 @@ func (g *Generate) Run(
 		if scan.DefaultLocale != language.Und && conf.Locale != scan.DefaultLocale {
 			// The bundle package already existed
 			// but the locale parameter doesn't match its default locale.
-			result.Err = fmt.Errorf("parameter -l (%q) must either match "+
-				"DefaultLocale (%q) in package %q or not be set at all",
-				conf.Locale.String(), scan.DefaultLocale.String(), conf.BundlePkgPath)
+			result.Err = &LocaleMismatchError{
+				Flag:      conf.Locale.String(),
+				Bundle:    scan.DefaultLocale.String(),
+				BundlePkg: conf.BundlePkgPath,
+			}
 			return result
 		}
 		scan.DefaultLocale = conf.Locale
@@ -208,7 +214,8 @@ func (g *Generate) Run(
 				result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, err)
 				return result
 			}
-			log.Verbose("new TIK",
+			// Verbose log message about a TIK that is new in the source code.
+			log.Verbose(tr.String("new TIK"),
 				slog.String("position", log.FmtPos(text.Position)),
 				slog.String("id", newMsg.ID))
 			nativeARB.Messages[newMsg.ID] = newMsg
@@ -264,7 +271,8 @@ func (g *Generate) Run(
 			continue
 		}
 		// The TIK is gone from the source, which leaves only its catalog entry.
-		log.Verbose("unused TIK",
+		// Verbose log message about a TIK that the source code no longer uses.
+		log.Verbose(tr.String("unused TIK"),
 			slog.String("id", id),
 			slog.String("message", msg.ICUMessage),
 		)
@@ -277,13 +285,13 @@ func (g *Generate) Run(
 
 	// (Re-)Generate .arb files.
 	if !lintOnly {
-		if err := writeARBFiles(bundleDir, scan.Catalogs); err != nil {
+		if err := writeARBFiles(tr, bundleDir, scan.Catalogs); err != nil {
 			result.Err = err
 			return result
 		}
 
 		if err := writeMissingARBFilesAndUpdateCatalogs(
-			now, bundleDir, scan.DefaultLocale, conf.Translations,
+			tr, now, bundleDir, scan.DefaultLocale, conf.Translations,
 			nativeARB, scan.Catalogs,
 		); err != nil {
 			result.Err = err
@@ -312,7 +320,7 @@ func (g *Generate) Run(
 		}
 
 		if conf.AISkills {
-			if err := writeAgentSkills(conf, scan.DefaultLocale); err != nil {
+			if err := writeAgentSkills(tr, conf, scan.DefaultLocale); err != nil {
 				result.Err = fmt.Errorf("writing AI agent skills: %w", err)
 				return result
 			}
@@ -378,7 +386,10 @@ func deleteAllTokiGeneratedFiles(dir string) error {
 	})
 }
 
-func writeARBFiles(bundlePkgPath string, catalogs *sync.Slice[*codeparse.Catalog]) error {
+// writeARBFiles writes the .arb files of catalogs, logging in the language of tr.
+func writeARBFiles(
+	tr tokibundle.Reader, bundlePkgPath string, catalogs *sync.Slice[*codeparse.Catalog],
+) error {
 	for catalog := range catalogs.SeqRead() {
 		locale := catalog.ARB.Locale
 		name := gengo.FileNameWithLocale(locale, "catalog", ".arb")
@@ -392,7 +403,8 @@ func writeARBFiles(bundlePkgPath string, catalogs *sync.Slice[*codeparse.Catalog
 			}
 			defer func() {
 				if err := f.Close(); err != nil {
-					log.Error("closing catalog .arb file", err)
+					// Log message about an error of the file system.
+					log.Error(tr.String("closing catalog .arb file"), err)
 				}
 			}()
 			setARBMetadata(catalog.ARB)
@@ -409,14 +421,16 @@ func writeARBFiles(bundlePkgPath string, catalogs *sync.Slice[*codeparse.Catalog
 	return nil
 }
 
+// writeMissingARBFilesAndUpdateCatalogs writes a catalog for each locale of
+// translations that has none, logging in the language of tr.
 func writeMissingARBFilesAndUpdateCatalogs(
-	now time.Time, bundlePkgPath string, defaultLocale language.Tag,
+	tr tokibundle.Reader, now time.Time, bundlePkgPath string, defaultLocale language.Tag,
 	translations []language.Tag, nativeARB *arb.File,
 	catalogs *sync.Slice[*codeparse.Catalog],
 ) error {
 	missing := make(map[language.Tag]struct{}, len(translations))
-	for _, tr := range translations {
-		missing[tr] = struct{}{}
+	for _, t := range translations {
+		missing[t] = struct{}{}
 	}
 	delete(missing, defaultLocale) // Ignore the default locale, it's the native catalog.
 
@@ -425,7 +439,8 @@ func writeMissingARBFilesAndUpdateCatalogs(
 		delete(missing, catalog.ARB.Locale)
 	}
 	for locale := range missing {
-		log.Info("generate new catalog", slog.String("locale", locale.String()))
+		// Log message about the catalog of a locale that toki generate creates.
+		log.Info(tr.String("generate new catalog"), slog.String("locale", locale.String()))
 
 		name := gengo.FileNameWithLocale(locale, "catalog", ".arb")
 		filePath := filepath.Join(bundlePkgPath, name)
@@ -442,7 +457,8 @@ func writeMissingARBFilesAndUpdateCatalogs(
 			}
 			defer func() {
 				if err := f.Close(); err != nil {
-					log.Error("closing new catalog .arb file", err)
+					// Log message about an error of the file system.
+					log.Error(tr.String("closing new catalog .arb file"), err)
 				}
 			}()
 
@@ -529,8 +545,10 @@ func readModulePath(modDir string) (string, error) {
 }
 
 // writeAgentSkills writes the skills for AI coding agents into the module
-// and logs the files it changed.
-func writeAgentSkills(conf *config.ConfigGenerate, defaultLocale language.Tag) error {
+// and logs the files it changed in the language of tr.
+func writeAgentSkills(
+	tr tokibundle.Reader, conf *config.ConfigGenerate, defaultLocale language.Tag,
+) error {
 	modulePath, err := readModulePath(conf.ModPath)
 	if err != nil {
 		return err
@@ -549,14 +567,18 @@ func writeAgentSkills(conf *config.ConfigGenerate, defaultLocale language.Tag) e
 		Version:          releaseVersion(),
 	})
 	for _, f := range written {
-		log.Info("wrote AI agent skill", slog.String("file", f))
+		// Log message about a skill file for AI coding agents that toki wrote.
+		log.Info(tr.String("wrote AI agent skill"), slog.String("file", f))
 	}
 	return err
 }
 
-func prepareBundlePackageDir(bundlePkgPath string) error {
+// prepareBundlePackageDir creates the directory of the bundle package,
+// logging in the language of tr.
+func prepareBundlePackageDir(tr tokibundle.Reader, bundlePkgPath string) error {
 	if _, err := os.Stat(bundlePkgPath); errors.Is(err, os.ErrNotExist) {
-		log.Verbose("create new bundle package", slog.String("path", bundlePkgPath))
+		// Verbose log message.
+		log.Verbose(tr.String("create new bundle package"), slog.String("path", bundlePkgPath))
 	}
 	if err := os.MkdirAll(bundlePkgPath, 0o755); err != nil {
 		return fmt.Errorf("mkdir: bundle package path: %w", err)
@@ -602,7 +624,8 @@ func RegenerateBundle(env []string, modDir, bundlePkgPath string) error {
 	osArgs := []string{
 		"toki", "generate", "-m", modDir, "-b", bundlePkgPath, "-q", "-ai-skills=false",
 	}
-	r := g.Run(osArgs, env, false, io.Discard, io.Discard, time.Now())
+	// The run writes nothing: its error goes to the editor.
+	r := g.Run(osArgs, env, tokibundle.Default(), false, io.Discard, io.Discard, time.Now())
 	return r.Err
 }
 
@@ -616,11 +639,6 @@ func GenerateBundle(bundlePkgPath string, scan *codeparse.Scan) error {
 		headTxtLines = strings.Split(string(fc), "\n")
 	}
 	return generateGoBundle(bundlePkgPath, scan, headTxtLines)
-}
-
-// WriteARBFiles writes all catalog .arb files to disk.
-func WriteARBFiles(bundlePkgPath string, catalogs *sync.Slice[*codeparse.Catalog]) error {
-	return writeARBFiles(bundlePkgPath, catalogs)
 }
 
 // ApplyChangesAndBuild applies in-memory ARB message edits, writes the
@@ -783,21 +801,27 @@ func writeGoFiles(bundlePkgPath string, files []goFile) error {
 }
 
 // readOrCreateHeadTxt reads the head.txt file if it exists, otherwise creates it.
-func readOrCreateHeadTxt(bundleDir string, createIfNotExist bool) ([]string, error) {
+// It logs in the language of tr.
+func readOrCreateHeadTxt(
+	tr tokibundle.Reader, bundleDir string, createIfNotExist bool,
+) ([]string, error) {
 	headFilePath := filepath.Join(bundleDir, "head.txt")
 	if fc, err := os.ReadFile(headFilePath); errors.Is(err, os.ErrNotExist) {
 		if !createIfNotExist {
-			log.Warn("head.txt not found")
+			// Log message. Keep head.txt, the name of a file.
+			log.Warn(tr.String("head.txt not found"))
 			return nil, nil
 		}
 
-		log.Warn("head.txt not found, creating a new one")
+		// Log message. Keep head.txt, the name of a file.
+		log.Warn(tr.String("head.txt not found, creating a new one"))
 		f, err := os.Create(headFilePath)
 		if err != nil {
 			return nil, fmt.Errorf("creating head.txt file: %w", err)
 		}
 		if err := f.Close(); err != nil {
-			log.Error("closing head.txt file", err)
+			// Log message about an error of the file system.
+			log.Error(tr.String("closing head.txt file"), err)
 		}
 	} else if err != nil {
 		return nil, fmt.Errorf("reading head.txt: %w", err)

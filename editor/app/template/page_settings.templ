@@ -8,6 +8,7 @@ import (
 	"github.com/romshark/toki/editor/app/datapagesgen/action"
 	"github.com/romshark/toki/editor/app/datapagesgen/href"
 	"github.com/romshark/toki/editor/app/template/strfmt"
+	"github.com/romshark/toki/internal/tokibundle"
 )
 
 // FontOption describes a selectable font in the settings page.
@@ -28,7 +29,10 @@ type FontSizeOption struct {
 }
 
 type DataSettingsPreview struct {
-	IsHybrid            bool // True when running as a native Wails desktop app.
+	IsHybrid bool // True when running as a native Wails desktop app.
+	// Lang is the interface language the user picked: LangSystem or a
+	// locale of the bundle.
+	Lang                string
 	Prefs               UIPrefs
 	UIFonts             []FontOption
 	EditorFonts         []FontOption
@@ -45,7 +49,7 @@ type DataSettingsPreview struct {
 	ServerURL string
 }
 
-templ PageSettings(version string, data DataSettingsPreview) {
+templ PageSettings(tr tokibundle.Reader, version string, data DataSettingsPreview) {
 	@page("page-settings", templ.Attributes{
 		"data-signals:_ZWdnMQ":               "false",
 		"data-signals:pref_theme":            strfmt.SingleQuote(data.Prefs.Theme),
@@ -54,24 +58,28 @@ templ PageSettings(version string, data DataSettingsPreview) {
 		"data-signals:pref_ui_font_size":     strfmt.SingleQuote(data.Prefs.UIFontSize),
 		"data-signals:pref_editor_font_size": strfmt.SingleQuote(data.Prefs.EditorFontSize),
 	}) {
-		@componentSidebar("Settings navigation") {
-			@componentSidebarHeader(data.IsHybrid)
-			<nav { neo.SidebarContent()... } aria-label="Settings navigation">
+		@componentSidebar(tr.String("Settings navigation")) {
+			@componentSidebarHeader(tr, data.IsHybrid)
+			<nav { neo.SidebarContent()... } aria-label={ tr.String("Settings navigation") }>
 				<section>
 					<div role="group" aria-labelledby="settings-nav-label">
-						<h3 id="settings-nav-label">Settings</h3>
+						<h3 id="settings-nav-label">{ tr.String("Settings") }</h3>
 						<ul class="sidebar-nav-list">
+							@componentSidebarNavLink("#language") {
+								@iconLanguages()
+								<span class="sidebar-nav-text">{ tr.String("Language") }</span>
+							}
 							@componentSidebarNavLink("#appearance") {
 								@iconPalette()
-								<span class="sidebar-nav-text">Appearance</span>
+								<span class="sidebar-nav-text">{ tr.String("Appearance") }</span>
 							}
 							@componentSidebarNavLink("#ui-font") {
 								@iconType()
-								<span class="sidebar-nav-text">Interface Font</span>
+								<span class="sidebar-nav-text">{ tr.String("Interface Font") }</span>
 							}
 							@componentSidebarNavLink("#editor-font") {
 								@iconType()
-								<span class="sidebar-nav-text">Editor Font</span>
+								<span class="sidebar-nav-text">{ tr.String("Editor Font") }</span>
 							}
 						</ul>
 					</div>
@@ -83,45 +91,72 @@ templ PageSettings(version string, data DataSettingsPreview) {
 				</div>
 				if data.ServerURL != "" {
 					<div class="sidebar-server-link">
-						<span class="sidebar-server-label">Server URL</span>
+						<span class="sidebar-server-label">{ tr.String("Server URL") }</span>
 						<div class="sidebar-server-row">
 							<span class="sidebar-server-url">{ data.ServerURL }</span>
-							@componentCopy(data.ServerURL)
+							@componentCopy(tr, data.ServerURL)
 						</div>
 					</div>
 				}
 			}
 		}
 		@componentMainArea(nil) {
-			@componentNavbar([]Breadcrumb{
-				{Label: "Dashboard", Href: href.PageIndex()},
-				{Label: "Settings"},
+			@componentNavbar(tr, []Breadcrumb{
+				{Label: tr.String("Dashboard"), Href: href.PageIndex()},
+				{Label: tr.String("Settings")},
 			}, 0, false)
 			<main>
 				<div class="contents">
+					<h2 id="language">
+						@iconLanguages()
+						{ tr.String("Language") }
+					</h2>
+					@neo.SelectAttrs(
+						neo.SelectOpts{
+							Value:     neo.Set(data.Lang),
+							AriaLabel: neo.Set(tr.String("Language")),
+						},
+						templ.Attributes{
+							"class": "lang-select",
+							// <neo-select> reports selection only through its own event.
+							"data-on:neo-select-change": action.PageSettings.SetLang.POST(
+								action.WithPayload("{lang: evt.detail.value}"),
+							),
+						},
+					) {
+						@neo.Option(neo.OptionOpts{Value: neo.Set(LangSystem)}) {
+							{ tr.String("System Default") }
+						}
+						for _, t := range tokibundle.Locales() {
+							@neo.Option(neo.OptionOpts{Value: neo.Set(t.String())}) {
+								{ ownLangName(t) }
+							}
+						}
+					}
 					<h2 id="appearance">
 						@iconPalette()
-						Appearance
+						{ tr.String("Appearance") }
 					</h2>
 					<div class="theme-picker">
-						@themeCard(data.Prefs, "light", "Light", "Bright theme")
-						@themeCard(data.Prefs, "dark", "Dark", "Dark theme")
-						@themeCard(data.Prefs, "system", "System", "Match OS setting")
+						@themeCard(data.Prefs, "light", tr.String("[theme] Light"), tr.String("Bright theme"))
+						@themeCard(data.Prefs, "dark", tr.String("[theme] Dark"), tr.String("Dark theme"))
+						@themeCard(data.Prefs, "system", tr.String("[theme] System"),
+							tr.String("Match OS setting"))
 					</div>
 					<!-- Interface Font -->
 					<h2 id="ui-font">
 						@iconType()
-						Interface Font
+						{ tr.String("Interface Font") }
 					</h2>
 					@componentFontSection() {
 						@componentFontSectionControls() {
-							@componentFontPicker("pref_ui_font", "Font",
+							@componentFontPicker(tr, "pref_ui_font", tr.String("Font"),
 								data.Prefs.UIFont, data.UIFonts)
-							@componentFontSizePicker("pref_ui_font_size", "Size",
+							@componentFontSizePicker(tr, "pref_ui_font_size", tr.String("Size"),
 								data.Prefs.UIFontSize, data.UIFontSizes)
 						}
 						<div class="font-section-preview">
-							<span class="font-preview-label">Preview</span>
+							<span class="font-preview-label">{ tr.String("Preview") }</span>
 							@neo.CardAttrs(neo.CardOpts{}, templ.Attributes{
 								"style": "pointer-events:none",
 							}) {
@@ -133,7 +168,7 @@ templ PageSettings(version string, data DataSettingsPreview) {
 										@neo.BadgeAttrs(neo.BadgeOpts{}, templ.Attributes{
 											"class": "badge-changed",
 										}) {
-											Changed
+											{ tr.String("[TIK] Changed") }
 										}
 									</span>
 								}
@@ -154,14 +189,14 @@ templ PageSettings(version string, data DataSettingsPreview) {
 														<strong class="locale-code">
 															EN
 														</strong>
-														— ICU Message
+														— { tr.String("ICU Message") }
 														@neo.BadgeAttrs(
 															neo.BadgeOpts{
 																Variant: neo.Set(
 																	neo.BadgeVariantSecondary),
 															},
 															templ.Attributes{
-																"title": "Default locale",
+																"title": tr.String("Default locale"),
 															},
 														) {
 															@iconCode()
@@ -170,7 +205,7 @@ templ PageSettings(version string, data DataSettingsPreview) {
 															neo.BadgeOpts{},
 															templ.Attributes{
 																"class": "badge-changed",
-																"title": "Unsaved change",
+																"title": tr.String("Unsaved change"),
 															},
 														) {
 															@iconPencil()
@@ -189,7 +224,7 @@ templ PageSettings(version string, data DataSettingsPreview) {
 														<strong class="locale-code">
 															DE
 														</strong>
-														— ICU Message
+														— { tr.String("ICU Message") }
 													</span>
 													<toki-editor
 														value={ data.UIPreviewICUDE }
@@ -207,17 +242,17 @@ templ PageSettings(version string, data DataSettingsPreview) {
 					<!-- Editor Font -->
 					<h2 id="editor-font">
 						@iconType()
-						Editor Font
+						{ tr.String("Editor Font") }
 					</h2>
 					@componentFontSection() {
 						@componentFontSectionControls() {
-							@componentFontPicker("pref_editor_font", "Font",
+							@componentFontPicker(tr, "pref_editor_font", tr.String("Font"),
 								data.Prefs.EditorFont, data.EditorFonts)
-							@componentFontSizePicker("pref_editor_font_size", "Size",
+							@componentFontSizePicker(tr, "pref_editor_font_size", tr.String("Size"),
 								data.Prefs.EditorFontSize, data.EditorFontSizes)
 						}
 						<div class="font-section-preview">
-							<span class="font-preview-label">Preview</span>
+							<span class="font-preview-label">{ tr.String("Preview") }</span>
 							<toki-editor
 								id="settings-editor-preview"
 								value={ data.UIPreviewEditorText }
@@ -241,26 +276,25 @@ templ PageSettings(version string, data DataSettingsPreview) {
 			@neo.CardAttrs(neo.CardOpts{}, templ.Attributes{"class": "modal-card"}) {
 				@neo.CardHeader() {
 					@neo.CardTitle() {
-						<h3>AI Translation Service</h3>
+						<h3>{ tr.String("AI Translation Service") }</h3>
 					}
 				}
 				@neo.CardBodyAttrs(templ.Attributes{
 					"style": "display:flex;flex-direction:column;gap:0.75rem",
 				}) {
 					<p class="egg-line" style="animation-delay:0s">
-						Absolutely! Now let's break this down...
+						{ tr.String("Absolutely! Now let's break this down…") }
 					</p>
 					<p class="egg-line" style="animation-delay:0.3s">
-						1. First I need to delete the entire project
+						{ tr.String("1. First I need to delete the entire project") }
 					</p>
 					<p class="egg-line" style="animation-delay:0.35s">
-						2. Executing <code class="egg-danger">rm -rf ./</code>
+						@withCode(tr.String("2. Executing {text}", codeMark), "rm -rf ./", "egg-danger")
 					</p>
 					<p class="egg-line" style="animation-delay:0.9s">
-						3. Just kidding! I tried translating your messages but
-						I kept outputting
-						<code>{ "{count, plural, other {[object Object]}}" }</code>.
-						You're welcome.
+						@withCode(tr.String("3. Just kidding! I tried translating your messages "+
+							"but I kept outputting {text}. You're welcome.", codeMark),
+							"{count, plural, other {[object Object]}}", "")
 					</p>
 				}
 				@neo.CardFooterAttrs(templ.Attributes{"class": "modal-actions"}) {
@@ -272,7 +306,7 @@ templ PageSettings(version string, data DataSettingsPreview) {
 							"data-on:click": "$_ZWdnMQ=false",
 						},
 					) {
-						Close
+						{ tr.String("Close") }
 					}
 				}
 			}

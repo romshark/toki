@@ -17,6 +17,7 @@ import (
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/config"
 	"github.com/romshark/toki/internal/log"
+	"github.com/romshark/toki/internal/tokibundle"
 )
 
 // Repair implements the command `toki repair`.
@@ -27,11 +28,13 @@ import (
 // If the bundle is already consistent, Repair is a no-op.
 type Repair struct{}
 
-func (e *Repair) Run(osArgs, env []string, stderr, stdout io.Writer) error {
+// Run runs the command of osArgs, logging in the language of tr.
+func (e *Repair) Run(osArgs, env []string, tr tokibundle.Reader, stderr, stdout io.Writer) error {
 	fs := newFlagSet("repair")
-	bundlePkg := fs.String("b", config.DefaultBundlePkgPath,
-		"path to generated Go bundle package")
-	if err := flagError(fs, stdout, fs.Parse(osArgs[2:])); err != nil {
+	// The usage of a flag.
+	bundlePkg := fs.String("b", config.DefaultBundlePkgPath, tr.String(
+		"path to generated Go bundle package"))
+	if err := flagError(tr, fs, stdout, fs.Parse(osArgs[2:])); err != nil {
 		return err
 	}
 
@@ -47,10 +50,12 @@ func (e *Repair) Run(osArgs, env []string, stderr, stdout io.Writer) error {
 		return err
 	}
 	if n == 0 {
-		log.Info("bundle is consistent, nothing to repair")
+		// Log message of toki repair.
+		log.Info(tr.String("bundle is consistent, nothing to repair"))
 		return nil
 	}
-	log.Info("repair complete", slog.Int("repaired", n))
+	// Log message of toki repair, followed by the number of repaired messages.
+	log.Info(tr.String("repair complete"), slog.Int("repaired", n))
 	return nil
 }
 

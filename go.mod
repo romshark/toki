@@ -7,6 +7,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/cvilsmeier/sqinn-go/v2 v2.1.10
 	github.com/fatih/color v1.19.0
+	github.com/go-playground/locales v0.14.2
 	github.com/goccy/go-yaml v1.19.2
 	github.com/romshark/datapages v0.11.4
 	github.com/romshark/icumsg v0.5.0

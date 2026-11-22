@@ -1337,6 +1337,10 @@ neo-card {
 		& > svg { width: 1.25rem; height: 1.25rem; }
 	}
 
+	& .lang-select {
+		max-inline-size: 20rem;
+	}
+
 	& .theme-picker {
 		display: flex;
 		gap: 1rem;

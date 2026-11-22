@@ -18,6 +18,8 @@ import (
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/cli"
 	"github.com/romshark/toki/internal/codeparse"
+	"github.com/romshark/toki/internal/tokibundle"
+	"github.com/romshark/toki/internal/uilang"
 
 	"github.com/romshark/tik/tik-go"
 	"github.com/stretchr/testify/require"
@@ -28,7 +30,7 @@ func TestVersion(t *testing.T) {
 	var stderr, stdout bytes.Buffer
 
 	res, exitCode := cli.Run(
-		[]string{"toki", "version"}, osEnv(), &stderr, &stdout, TimeNow,
+		[]string{"toki", "version"}, osEnv(), english, &stderr, &stdout, TimeNow,
 	)
 	require.Equal(t, 0, exitCode)
 	require.Zero(t, res)
@@ -43,7 +45,7 @@ func TestVersionFull(t *testing.T) {
 	var stderr, stdout bytes.Buffer
 
 	res, exitCode := cli.Run(
-		[]string{"toki", "version", "-full"}, osEnv(), &stderr, &stdout, TimeNow,
+		[]string{"toki", "version", "-full"}, osEnv(), english, &stderr, &stdout, TimeNow,
 	)
 	require.Equal(t, 0, exitCode)
 	require.Zero(t, res)
@@ -58,7 +60,7 @@ func TestVersionFlag(t *testing.T) {
 		t.Run(arg, func(t *testing.T) {
 			var stderr, stdout bytes.Buffer
 			res, exitCode := cli.Run(
-				[]string{"toki", arg}, osEnv(), &stderr, &stdout, TimeNow,
+				[]string{"toki", arg}, osEnv(), english, &stderr, &stdout, TimeNow,
 			)
 			require.Equal(t, 0, exitCode)
 			require.Zero(t, res)
@@ -72,7 +74,7 @@ func TestHelp(t *testing.T) {
 
 	t.Run("no command", func(t *testing.T) {
 		var stderr, stdout bytes.Buffer
-		res, exitCode := cli.Run([]string{"toki"}, osEnv(), &stderr, &stdout, TimeNow)
+		res, exitCode := cli.Run([]string{"toki"}, osEnv(), english, &stderr, &stdout, TimeNow)
 		require.Equal(t, 2, exitCode)
 		require.Zero(t, res)
 		require.Empty(t, stdout.String())
@@ -85,7 +87,7 @@ func TestHelp(t *testing.T) {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			var stderr, stdout bytes.Buffer
 			res, exitCode := cli.Run(
-				append([]string{"toki"}, args...), osEnv(), &stderr, &stdout, TimeNow,
+				append([]string{"toki"}, args...), osEnv(), english, &stderr, &stdout, TimeNow,
 			)
 			require.Equal(t, 0, exitCode)
 			require.Zero(t, res)
@@ -104,7 +106,7 @@ func TestHelp(t *testing.T) {
 			t.Run(strings.Join(args, " "), func(t *testing.T) {
 				var stderr, stdout bytes.Buffer
 				res, exitCode := cli.Run(
-					append([]string{"toki"}, args...), osEnv(), &stderr, &stdout, TimeNow,
+					append([]string{"toki"}, args...), osEnv(), english, &stderr, &stdout, TimeNow,
 				)
 				require.Equal(t, 0, exitCode)
 				require.Zero(t, res)
@@ -114,6 +116,37 @@ func TestHelp(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestRenderTIK(t *testing.T) {
+	f := func(t *testing.T, expect, tik string, args ...any) {
+		t.Helper()
+		require.Equal(t, expect, renderTIK(tik, args))
+	}
+
+	f(t, "finished", "finished")
+	f(t, "Complete", "[TIKs] Complete")
+	f(t, `unknown command "x", run 'toki help'`, `unknown command "{text}", run 'toki help'`, "x")
+	f(t, "3 files in docs copied", "{# files in {text}} copied", 3, "docs")
+	f(t, "Ada joined", "{name} joined",
+		tokibundle.String{Value: "Ada", Gender: tokibundle.GenderFemale})
+	f(t, "{n} stays", `\{n\} stays`)
+	f(t, "missing: ", "missing: {text}")
+}
+
+// TestHelpLanguage makes sure that the usage follows the reader of Run.
+func TestHelpLanguage(t *testing.T) {
+	var stderr, stdout bytes.Buffer
+	res, exitCode := cli.Run(
+		[]string{"toki", "help", "generate"}, osEnv(), uilang.Reader(language.German),
+		&stderr, &stdout, TimeNow,
+	)
+	require.NoError(t, res.Err)
+	require.Zero(t, exitCode)
+	require.Empty(t, stderr.String())
+	require.True(t, strings.HasPrefix(stdout.String(), "Verwendung: toki generate"),
+		"unexpected usage: %q", stdout.String())
+	require.NotContains(t, stdout.String(), "(default ")
 }
 
 func TestCLIArgsErr(t *testing.T) {
@@ -133,7 +166,7 @@ func TestCLIArgsErr(t *testing.T) {
 		t.Run(strings.Join(tt.args, " "), func(t *testing.T) {
 			var stderr, stdout bytes.Buffer
 			res, exitCode := cli.Run(
-				append([]string{"toki"}, tt.args...), osEnv(), &stderr, &stdout, TimeNow,
+				append([]string{"toki"}, tt.args...), osEnv(), english, &stderr, &stdout, TimeNow,
 			)
 			require.Equal(t, 2, exitCode)
 			require.ErrorIs(t, res.Err, tt.expectErr)
@@ -205,7 +238,7 @@ func TestGenerateAndRun(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en"}
-		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), english, io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -285,14 +318,14 @@ func TestGenerateAndRunFallback(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en", "-t=de"}
-		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), english, io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate"}
-		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), english, io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -337,14 +370,14 @@ func TestGenerateAndRunNoTranslationFallback(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en", "-t=de"}
-		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), english, io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate"}
-		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), english, io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -508,7 +541,7 @@ func TestGenerateAndRunSelectOnName(t *testing.T) {
 				t.Helper()
 				runInDir(t, dir, func() {
 					result, exitCode := cli.Run(append([]string{"toki", "generate"}, args...),
-						osEnv(), io.Discard, io.Discard, TimeNow)
+						osEnv(), english, io.Discard, io.Discard, TimeNow)
 					require.NoError(t, result.Err)
 					require.Zero(t, exitCode)
 				})
@@ -552,7 +585,7 @@ func TestGenerateAndRunApostrophes(t *testing.T) {
 	generate := func() {
 		runInDir(t, dir, func() {
 			args := []string{"toki", "generate", "-l=en"}
-			result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+			result, exitCode := cli.Run(args, osEnv(), english, io.Discard, io.Discard, TimeNow)
 			require.NoError(t, result.Err)
 			require.Zero(t, exitCode)
 		})
@@ -663,7 +696,7 @@ func TestApplyChangesAndBuild(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en", "-t=de"}
-		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), english, io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -725,7 +758,7 @@ func TestGenerateCrossCompile(t *testing.T) {
 	generate := func() {
 		runInDir(t, dir, func() {
 			args := []string{"toki", "generate", "-l=en"}
-			result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+			result, exitCode := cli.Run(args, osEnv(), english, io.Discard, io.Discard, TimeNow)
 			require.NoError(t, result.Err)
 			require.Zero(t, exitCode)
 		})
@@ -1057,7 +1090,7 @@ func TestGenerateRequireCompleteAfterSync(t *testing.T) {
 		runInDir(t, dir, func() {
 			res, _ := cli.Run(
 				append([]string{"toki", "generate"}, args...),
-				osEnv(), io.Discard, io.Discard, TimeNow,
+				osEnv(), english, io.Discard, io.Discard, TimeNow,
 			)
 			err = res.Err
 		})
@@ -1129,7 +1162,7 @@ func TestGenerateModPath(t *testing.T) {
 		var exitCode int
 		result, exitCode = cli.Run(
 			[]string{"toki", "generate", "-l=en", "-m=" + dir},
-			osEnv(), io.Discard, io.Discard, TimeNow,
+			osEnv(), english, io.Discard, io.Discard, TimeNow,
 		)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
@@ -1163,15 +1196,16 @@ func TestGenerateJSONPackageError(t *testing.T) {
 		var exitCode int
 		result, exitCode = cli.Run(
 			[]string{"toki", "generate", "-l=en", "-json"},
-			osEnv(), io.Discard, io.Discard, TimeNow,
+			osEnv(), english, io.Discard, io.Discard, TimeNow,
 		)
 		require.NotZero(t, exitCode)
 	})
 	require.ErrorIs(t, result.Err, cli.ErrAnalyzingSource)
 	require.Nil(t, result.Scan)
 
+	// JSON stays English, whatever the language of the terminal.
 	var stdout bytes.Buffer
-	result.Print(&stdout)
+	result.Print(uilang.Reader(language.German), &stdout)
 	var out cli.ResultJSON
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &out), stdout.String())
 	require.Equal(t, result.Err.Error(), out.Error)
@@ -1190,7 +1224,7 @@ func TestGenerateDomainFileNotOverwritten(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en"}
-		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), english, io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -1221,7 +1255,7 @@ func TestGenerateAISkills(t *testing.T) {
 			for _, c := range commands {
 				args := append([]string{"toki"}, c...)
 				args = append(args, "-m="+dir)
-				result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+				result, exitCode := cli.Run(args, osEnv(), english, io.Discard, io.Discard, TimeNow)
 				require.NoError(t, result.Err)
 				require.Zero(t, exitCode)
 			}
@@ -1286,7 +1320,7 @@ func TestGenerateSameTextDifferentDomains(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en"}
-		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), english, io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -1321,7 +1355,7 @@ func TestGenerateSimilarlyNamedPackage(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate"}
-		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), english, io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -1362,7 +1396,7 @@ func TestGenerateBundlesWithSameName(t *testing.T) {
 	runInDir(t, dir, func() {
 		for _, bundle := range []string{"app1/tokibundle", "app2/tokibundle"} {
 			args := []string{"toki", "generate", "-b", bundle}
-			result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+			result, exitCode := cli.Run(args, osEnv(), english, io.Discard, io.Discard, TimeNow)
 			require.NoError(t, result.Err, bundle)
 			require.Zero(t, exitCode, bundle)
 		}
@@ -1812,7 +1846,7 @@ func BenchmarkOKGenerate(b *testing.B) {
 
 	args := []string{"toki", "generate", "-l=en", "-q"}
 	for b.Loop() {
-		res, exitCode := cli.Run(args, osEnv(), os.Stderr, os.Stdout, TimeNow)
+		res, exitCode := cli.Run(args, osEnv(), english, os.Stderr, os.Stdout, TimeNow)
 		if res.Err != nil {
 			b.Fatalf("unexpected error: %v", res.Err)
 		}
@@ -1853,7 +1887,7 @@ func initBundle(
 		var exitCode int
 		result, exitCode = cli.Run([]string{
 			"toki", "generate", "-l", locale.String(), "-b", bundlePkg,
-		}, osEnv(), stderr, stdout, TimeNow)
+		}, osEnv(), english, stderr, stdout, TimeNow)
 		require.Zero(tb, exitCode)
 	})
 	return result
@@ -1931,13 +1965,13 @@ func (s Setup) generate(
 	runInDir(tb, dir, func() {
 		a := append([]string{"toki", "generate"}, args...)
 		generateResult.Result, generateResult.ExitCode = cli.Run(
-			a, osEnv(), stderr, stdout, now,
+			a, osEnv(), english, stderr, stdout, now,
 		)
 
 		ss := snapshotFiles(tb, dir)
 		a = append([]string{"toki", "lint"}, args...)
 		lintResult.Result, lintResult.ExitCode = cli.Run(
-			a, osEnv(), stderr, stdout, now,
+			a, osEnv(), english, stderr, stdout, now,
 		)
 		ss.RequireUnchanged(tb, dir)
 	})
@@ -2008,6 +2042,10 @@ func stripLeadingSpaces(s string) string {
 	}
 	return strings.Join(lines, "\n")
 }
+
+// english renders the output of the commands that the tests run, which
+// they check in English.
+var english = tokibundle.Default()
 
 func osEnv() []string {
 	// go test sets GOFLAGS to "-mod=readonly" which stops nested go commands
