@@ -27,7 +27,7 @@ templ:
 
 # MORPHEUS_COMPONENTS lists the Morpheus components the editor uses.
 # Add a component when a template starts using it, then run `make morpheus`.
-MORPHEUS_COMPONENTS = alert badge breadcrumb button buttongroup card clipcopy \
+MORPHEUS_COMPONENTS = alert badge breadcrumb button buttongroup card clipcopy collapsible \
 	combobox keys layout link navgroup pagination popover radio-group select \
 	sidebar sortable switch textinput tooltip
 

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/romshark/morpheus/neo"
+
 	"github.com/romshark/toki/editor/app/datapagesgen/action"
 )
 
@@ -21,6 +23,33 @@ var NoEditorSignals = action.WithFilterSignals("", ActionExcludeEditor)
 // TIK tikID in locale.
 func EditorID(tikID, locale string) string {
 	return "editor-" + tikID + "-" + locale
+}
+
+// The keys of the collapsible sections of the sidebar.
+const (
+	SectionDomains = "domains"
+	SectionLocales = "locales"
+	SectionFilter  = "filter"
+)
+
+// SidebarSections lists the keys of the collapsible sections of the sidebar.
+var SidebarSections = []string{SectionDomains, SectionLocales, SectionFilter}
+
+// sectionOpen returns the open attribute of sidebar section key. A page load
+// sets it from closed. A server re-render passes nil and leaves the attribute
+// unset, which keeps the section as the user set it.
+func sectionOpen(closed map[string]bool, key string) neo.Attr[bool] {
+	if closed == nil {
+		return neo.Attr[bool]{}
+	}
+	return neo.Set(!closed[key])
+}
+
+// sectionTogglePayload is the payload that sidebar section key sends when
+// the user opens or closes it.
+func sectionTogglePayload(key string) string {
+	k, _ := json.Marshal(key) // A string always marshals.
+	return fmt.Sprintf("{section: %s, open: evt.detail.open}", k)
 }
 
 // localeOrderItemIDPrefix starts the element id of each item of a sortable
@@ -144,6 +173,11 @@ type DataIndex struct {
 	TIKs     []TIK // windowed slice of full TIKs to render
 	Catalogs []*Catalog
 	Domains  []DomainFilter
+
+	// ClosedSections holds the collapsible sidebar sections that the user
+	// closed, read from the cookies on a page load. A server re-render leaves
+	// it nil, which keeps each section as the user set it. See [sectionOpen].
+	ClosedSections map[string]bool
 
 	// ShownLocales which locales are shown (nil = all)
 	ShownLocales map[string]bool

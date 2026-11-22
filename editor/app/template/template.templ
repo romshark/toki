@@ -28,8 +28,7 @@ templ sidebarContent(data DataIndex) {
 	>
 		<section class="sidebar-filters">
 			if len(data.Domains) > 0 {
-				<div role="group" aria-labelledby="domains-label">
-					<h3 id="domains-label">Domains</h3>
+				@componentSidebarSection(SectionDomains, "Domains", data.ClosedSections) {
 					@neo.ButtonGroup(neo.ButtonGroupOpts{}) {
 						@neo.ButtonAttrs(
 							neo.ButtonOpts{
@@ -87,11 +86,10 @@ templ sidebarContent(data DataIndex) {
 							</li>
 						}
 					</ul>
-				</div>
+				}
 				<div role="separator"></div>
 			}
-			<div role="group" aria-labelledby="locales-label">
-				<h3 id="locales-label">Locales</h3>
+			@componentSidebarSection(SectionLocales, "Locales", data.ClosedSections) {
 				@neo.ButtonGroup(neo.ButtonGroupOpts{}) {
 					@neo.ButtonAttrs(
 						neo.ButtonOpts{
@@ -156,10 +154,9 @@ templ sidebarContent(data DataIndex) {
 						}
 					}
 				}
-			</div>
+			}
 			<div role="separator"></div>
-			<div role="group" aria-labelledby="filter-label">
-				<h3 id="filter-label">Filter</h3>
+			@componentSidebarSection(SectionFilter, "Filter", data.ClosedSections) {
 				@neo.RadioGroupAttrs(
 					neo.RadioGroupOpts{
 						Value: neo.Set(normalizeFilterType(data.FilterType)),
@@ -181,9 +178,26 @@ templ sidebarContent(data DataIndex) {
 					@componentFilterRadio("untranslated", "Untranslated", data.NumUntranslated)
 					@componentFilterRadio("invalid", "Invalid", data.NumInvalid)
 				}
-			</div>
+			}
 		</section>
 	</nav>
+}
+
+// componentSidebarSection is a section of the sidebar that the user closes
+// and opens. Each toggle saves the state in a cookie, from which the next
+// page load renders the section. See [sectionOpen].
+templ componentSidebarSection(key, title string, closed map[string]bool) {
+	@neo.CollapsibleAttrs(neo.CollapsibleOpts{Open: sectionOpen(closed, key)}, templ.Attributes{
+		"class":           "sidebar-section",
+		"role":            "group",
+		"aria-labelledby": key + "-label",
+		"data-on:neo-collapsible-toggle": action.PageTIKs.SetSectionOpen.POST(
+			action.WithPayload(sectionTogglePayload(key)),
+		),
+	}) {
+		<h3 slot="summary" id={ key + "-label" }>{ title }</h3>
+		{ children... }
+	}
 }
 
 // componentSidebarFooter renders the sidebar's project-directory link.

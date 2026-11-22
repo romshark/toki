@@ -178,13 +178,14 @@ func (s PrefSignals) Normalized() PrefSignals {
 	return s
 }
 
-func writeUIPrefCookieScript(
-	script *strings.Builder, name, value string, maxAgeSeconds int,
-) {
+// uiPrefCookieMaxAge is how long a UI pref cookie lasts.
+const uiPrefCookieMaxAge = 365 * 24 * time.Hour
+
+func writeUIPrefCookieScript(script *strings.Builder, name, value string) {
 	fmt.Fprintf(script,
 		"document.cookie=%q;",
 		fmt.Sprintf("%s=%s; Path=/; Max-Age=%d; SameSite=Lax",
-			name, value, maxAgeSeconds))
+			name, value, int(uiPrefCookieMaxAge.Seconds())))
 }
 
 func writeRootStyleScript(script *strings.Builder, name, value string) {
@@ -194,15 +195,12 @@ func writeRootStyleScript(script *strings.Builder, name, value string) {
 }
 
 func applyUIPrefsScript(p UIPrefs) string {
-	maxAgeSeconds := int((365 * 24 * time.Hour).Seconds())
-
 	var script strings.Builder
-	writeUIPrefCookieScript(&script, "toki-theme", p.Theme, maxAgeSeconds)
-	writeUIPrefCookieScript(&script, "toki-ui-font", p.UIFont, maxAgeSeconds)
-	writeUIPrefCookieScript(&script, "toki-editor-font", p.EditorFont, maxAgeSeconds)
-	writeUIPrefCookieScript(&script, "toki-ui-font-size", p.UIFontSize, maxAgeSeconds)
-	writeUIPrefCookieScript(&script, "toki-editor-font-size",
-		p.EditorFontSize, maxAgeSeconds)
+	writeUIPrefCookieScript(&script, "toki-theme", p.Theme)
+	writeUIPrefCookieScript(&script, "toki-ui-font", p.UIFont)
+	writeUIPrefCookieScript(&script, "toki-editor-font", p.EditorFont)
+	writeUIPrefCookieScript(&script, "toki-ui-font-size", p.UIFontSize)
+	writeUIPrefCookieScript(&script, "toki-editor-font-size", p.EditorFontSize)
 
 	script.WriteString("document.documentElement.classList.toggle('dark',")
 	script.WriteString(p.IsDark())

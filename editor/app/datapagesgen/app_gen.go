@@ -555,6 +555,9 @@ func setupHandlers(s *Server) {
 		"POST /tik/{id}/set/{$}",
 		pageTIKHandlers{s}.POSTSet)
 	s.Mux().HandleFunc(
+		"POST /tiks/set-section-open/{$}",
+		pageTIKsHandlers{s}.POSTSetSectionOpen)
+	s.Mux().HandleFunc(
 		"POST /tiks/set/{$}",
 		pageTIKsHandlers{s}.POSTSet)
 	s.Mux().HandleFunc(
@@ -1754,6 +1757,46 @@ func (s pageTIKsHandlers) GETStream(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		})
+}
+
+func (s pageTIKsHandlers) POSTSetSectionOpen(
+	w http.ResponseWriter, r *http.Request,
+) {
+	defer s.recoverPanic(w, r, nil, "PageTIKs.SetSectionOpen")
+	if !s.CheckDatastarRequest(w, r) {
+		return
+	}
+	httpserve.LimitRequestBody(w, r, s.BodySizeLimit())
+	var signals datapages.Signals[struct {
+		Section string `json:"section"`
+		Open    bool   `json:"open"`
+	}]
+	if err := dpsse.ReadSignals(r, &signals.Values); err != nil {
+		s.HTTPErrBad(w, "reading signals", err)
+		return
+	}
+
+	sse := s.OpenSSE(w, r)
+	defer sse.Close()
+	defer s.recoverPanic(w, r, sse, "PageTIKs.SetSectionOpen")
+	p := dpapp.PageTIKs{
+		App: s.app,
+		PrefsSync: dpapp.PrefsSync{
+			App: s.app,
+		},
+		ResetSync: dpapp.ResetSync{
+			App: s.app,
+		},
+	}
+	err := p.POSTSetSectionOpen(
+		r,
+		sse,
+		signals,
+	)
+	if err != nil {
+		s.httpErrIntern(w, r, sse, "handling action PageTIKs.SetSectionOpen", err)
+		return
+	}
 }
 
 func (s pageTIKsHandlers) POSTSet(

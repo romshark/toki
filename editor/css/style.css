@@ -352,6 +352,12 @@ a {
 	}
 }
 
+/* The heading of a collapsible sidebar section labels its summary button,
+   which spaces it. */
+.sidebar-section > h3[slot="summary"] {
+	margin: 0;
+}
+
 /* A sortable list of locales keeps the nav rows' rhythm. Each row is the
    drag grip, then the row's own link or switch. */
 .locale-sortable {
@@ -788,6 +794,14 @@ main {
 	margin: 0;
 }
 
+/* A field's label, then the buttons that act on the field, as the copy
+   button of a TIK. */
+.field > .label {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
 .tik-breadcrumb {
 	display: flex;
 	align-items: center;
@@ -841,8 +855,10 @@ main {
 	margin: 0;
 	/* Without this the UA's 40px padding-inline-start on <ol> pushes the
 	   list past its parent, and neo-card's overflow:hidden clips the last
-	   locale column instead of the list scrolling. */
-	padding: 0;
+	   locale column instead of the list scrolling. overflow-x makes the list
+	   clip vertically too: the top padding keeps a hovered button, which
+	   lifts, inside it. */
+	padding: 0.25rem 0 0;
 }
 
 .icu-message {

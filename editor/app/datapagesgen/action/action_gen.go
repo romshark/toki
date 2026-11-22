@@ -421,6 +421,7 @@ type pageTIKs struct {
 	Set            pageTIKs_Set
 	SetPage        pageTIKs_SetPage
 	SetPageSize    pageTIKs_SetPageSize
+	SetSectionOpen pageTIKs_SetSectionOpen
 	ShowAllDomains pageTIKs_ShowAllDomains
 	ShowAllLocales pageTIKs_ShowAllLocales
 }
@@ -598,6 +599,24 @@ func (pageTIKs_SetPageSize) POST(options ...Option) string {
 	b.Grow(bl + len("@post('/tiks/set-page-size/'") + actionexpr.OptionsLen(options) + len(")") + al)
 	actionexpr.WriteBefore(&b, options)
 	b.WriteString("@post('/tiks/set-page-size/'")
+	actionexpr.WriteOptions(&b, options)
+	b.WriteByte(')')
+	actionexpr.WriteAfter(&b, options)
+	return b.String()
+}
+
+type pageTIKs_SetSectionOpen struct{}
+
+// POST references /tiks/set-section-open/
+func (pageTIKs_SetSectionOpen) POST(options ...Option) string {
+	if len(options) == 0 {
+		return "@post('/tiks/set-section-open/')"
+	}
+	var b strings.Builder
+	bl, al := actionexpr.BeforeAfterLen(options)
+	b.Grow(bl + len("@post('/tiks/set-section-open/'") + actionexpr.OptionsLen(options) + len(")") + al)
+	actionexpr.WriteBefore(&b, options)
+	b.WriteString("@post('/tiks/set-section-open/'")
 	actionexpr.WriteOptions(&b, options)
 	b.WriteByte(')')
 	actionexpr.WriteAfter(&b, options)

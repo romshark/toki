@@ -21,6 +21,7 @@ Releases up to v0.8.5 have their notes on
 - Install toki on macOS with Homebrew: `brew install --cask romshark/tools/toki`.
 - Cache the scan of the module in `.toki/index.db`, together with the edits not yet written to the catalogs. Add `.toki/` to `.gitignore`.
 - Reorder the locales by dragging them in the sidebar. Every page shows them in that order, which `.toki/index.db` keeps. Until then, the default locale comes first.
+- Collapse the Domains, Locales and Filter sections of the sidebar. The browser remembers which ones you closed.
 
 #### `toki repair`
 
