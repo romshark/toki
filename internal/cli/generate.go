@@ -298,6 +298,14 @@ func (g *Generate) Run(
 			return result
 		}
 
+		// Generate the Go bundle before clearing the old one
+		// to keep it if generation fails.
+		files, err := renderGoBundle(conf.BundlePkgPath, scan, headTxt)
+		if err != nil {
+			result.Err = err
+			return result
+		}
+
 		if scan.TokiVersion == "" || scan.TokiVersion != Version {
 			// Clear generated files on version mismatch.
 			if err := deleteAllTokiGeneratedFiles(conf.BundlePkgPath); err != nil {
@@ -306,8 +314,7 @@ func (g *Generate) Run(
 			}
 		}
 
-		// Generate go bundle.
-		if err := generateGoBundle(conf.BundlePkgPath, scan, headTxt); err != nil {
+		if err := writeGoFiles(conf.BundlePkgPath, files); err != nil {
 			result.Err = err
 			return result
 		}
@@ -682,56 +689,67 @@ func ApplyChangesAndBuild(
 	return scan, nil
 }
 
+// goFile is a generated Go file.
+type goFile struct {
+	path    string
+	content []byte
+}
+
 func generateGoBundle(
 	bundlePkgPath string, scan *codeparse.Scan, headTxtLines []string,
 ) error {
-	pkgName := filepath.Base(bundlePkgPath)
+	files, err := renderGoBundle(bundlePkgPath, scan, headTxtLines)
+	if err != nil {
+		return err
+	}
+	return writeGoFiles(bundlePkgPath, files)
+}
 
-	// Make sure the bundle package dir exists.
+// renderGoBundle generates and formats the Go bundle and catalog files
+// of scan without touching the existing ones.
+func renderGoBundle(
+	bundlePkgPath string, scan *codeparse.Scan, headTxtLines []string,
+) ([]goFile, error) {
+	pkgName := filepath.Base(bundlePkgPath)
+	writer := gengo.NewWriter(Version, scan)
+	files := make([]goFile, 0, 1+scan.Catalogs.Len())
+
+	var buf bytes.Buffer
+	writer.WritePackageBundle(&buf, pkgName, headTxtLines)
+	formatted, err := format.Source(buf.Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("formatting bundle: %w", err)
+	}
+	files = append(files, goFile{
+		path:    filepath.Join(bundlePkgPath, MainBundleFileGo),
+		content: formatted,
+	})
+
+	for catalog := range scan.Catalogs.SeqRead() {
+		locale := catalog.ARB.Locale
+		buf.Reset()
+		writer.WritePackageCatalog(&buf, locale, pkgName, headTxtLines)
+		formatted, err := format.Source(buf.Bytes())
+		if err != nil {
+			return nil, fmt.Errorf("formatting package catalog: %w", err)
+		}
+		fileName := gengo.FileNameWithLocale(locale, "catalog", "_gen.go")
+		files = append(files, goFile{
+			path:    filepath.Join(bundlePkgPath, fileName),
+			content: formatted,
+		})
+	}
+	return files, nil
+}
+
+// writeGoFiles writes files into the bundle package directory, creating it if needed.
+func writeGoFiles(bundlePkgPath string, files []goFile) error {
 	if err := os.MkdirAll(bundlePkgPath, 0o755); err != nil {
 		return err
 	}
-
-	bundleGoFilePath := filepath.Join(bundlePkgPath, MainBundleFileGo)
-	writer := gengo.NewWriter(Version, scan)
-	{
-		f, err := os.OpenFile(bundleGoFilePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o644)
-		if err != nil {
-			return err
-		}
-
-		// Generate the main Go bundle file.
-		var buf bytes.Buffer
-		writer.WritePackageBundle(&buf, pkgName, headTxtLines)
-
-		formatted, err := format.Source(buf.Bytes())
-		if err != nil {
-			return fmt.Errorf("formatting bundle: %w", err)
-		}
-		if _, err := f.Write(formatted); err != nil {
-			return fmt.Errorf("writing formatted bundle code to file: %w", err)
-		}
-	}
-
-	// Generate Go catalog files.
-	for catalog := range scan.Catalogs.SeqRead() {
-		locale := catalog.ARB.Locale
-		fileName := gengo.FileNameWithLocale(locale, "catalog", "_gen.go")
-		filePath := filepath.Join(bundlePkgPath, fileName)
-		f, err := os.OpenFile(filePath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0o644)
-		if err != nil {
-			return err
-		}
-
-		var buf bytes.Buffer
-		writer.WritePackageCatalog(&buf, locale, pkgName, headTxtLines)
-
-		formatted, err := format.Source(buf.Bytes())
-		if err != nil {
-			return fmt.Errorf("formatting package catalog: %w", err)
-		}
-		if _, err := f.Write(formatted); err != nil {
-			return fmt.Errorf("writing formatted code to file: %w", err)
+	for _, f := range files {
+		if err := os.WriteFile(f.path, f.content, 0o644); err != nil {
+			return fmt.Errorf("writing generated code: %w", err)
 		}
 	}
 	return nil

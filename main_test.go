@@ -254,6 +254,32 @@ func TestGenerateAndRunNoTranslationFallback(t *testing.T) {
 	require.Equal(t, expect, actual)
 }
 
+// TestGenerateAndRunBacktick makes sure TIKs containing backticks
+// generate valid Go.
+func TestGenerateAndRunBacktick(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, "tstmod")
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				fmt.Println(r.String("Run \x60toki generate\x60 first"))
+			}
+		`,
+	})
+	_ = initBundle(t, dir, language.English, "tokibundle", io.Discard, io.Discard)
+
+	cmd := exec.Command("go", "run", ".")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %q", string(out))
+	require.Equal(t, "Run `toki generate` first", strings.TrimSpace(string(out)))
+}
+
 // TestGenerateAndRunSelectOrdinal makes sure selectordinal messages
 // pick their option by the locale's ordinal plural rules.
 func TestGenerateAndRunSelectOrdinal(t *testing.T) {
