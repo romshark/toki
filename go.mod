@@ -9,7 +9,7 @@ require (
 	github.com/fatih/color v1.19.0
 	github.com/go-playground/locales v0.14.2
 	github.com/goccy/go-yaml v1.19.2
-	github.com/romshark/datapages v0.11.4
+	github.com/romshark/datapages v0.11.6
 	github.com/romshark/icumsg v0.5.0
 	github.com/romshark/morpheus v0.7.0
 	github.com/romshark/tik/tik-go v0.10.0
