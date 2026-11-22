@@ -4,6 +4,11 @@ import "github.com/romshark/toki/editor/app/template"
 
 // Accessors for the tests in package app_test.
 
+var (
+	DomainSignalKey        = domainSignalKey
+	NormalizeDomainsSignal = normalizeDomainsSignal
+)
+
 func (a *App) TIKs() []*template.TIK { return a.tiks }
 
 func (a *App) NumMissing() int { return a.numMissing }

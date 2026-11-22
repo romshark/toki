@@ -128,6 +128,25 @@ func TestSearchFiltersAndPages(t *testing.T) {
 	require.ElementsMatch(t, []string{"apple one", "apple two"}, tiks)
 }
 
+// TestDomainSignalKey makes sure domain signal keys are identifiers
+// that decode back to the domain names they encode.
+func TestDomainSignalKey(t *testing.T) {
+	shown := map[string]bool{
+		"app.web":   true,
+		"app_web":   false,
+		"my-domain": true,
+		"ünï cödé":  false,
+	}
+	keys := make(map[string]bool, len(shown))
+	for name, v := range shown {
+		keys[app.DomainSignalKey(name)] = v
+	}
+	require.Equal(t, shown, app.NormalizeDomainsSignal(keys))
+	for key := range keys {
+		require.Regexp(t, `^[A-Za-z_][A-Za-z0-9_]*$`, key)
+	}
+}
+
 // project is a generated Toki project to start the editor on.
 type project struct {
 	t         *testing.T

@@ -117,7 +117,7 @@ type LocaleStats struct {
 // DomainFilter holds a domain name for use in the sidebar filter UI.
 type DomainFilter struct {
 	FullName  string // Dot-separated qualified name used as filter value.
-	SignalKey string // FullName with dots replaced by underscores (safe for Datastar signals).
+	SignalKey string // FullName encoded as a Datastar signal key, an identifier.
 	Name      string // Display name.
 }
 

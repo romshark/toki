@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -1330,15 +1331,30 @@ func parseDomainsParam(s string) map[string]bool {
 	return parseLocalesParam(s) // Same parsing logic.
 }
 
-// normalizeDomainsSignal converts Datastar signal keys (underscored)
-// back to dotted full names used internally.
+// domainSignalKey encodes a domain's full name as a Datastar signal key.
+// Domain names may contain any character. Hex keeps the key an identifier
+// that decodes back to the name without collisions.
+func domainSignalKey(fullName string) string {
+	return "d" + hex.EncodeToString([]byte(fullName))
+}
+
+// normalizeDomainsSignal converts Datastar signal keys back to the full
+// domain names used internally, dropping keys that don't decode. See [domainSignalKey].
 func normalizeDomainsSignal(m map[string]bool) map[string]bool {
 	if m == nil {
 		return nil
 	}
 	out := make(map[string]bool, len(m))
 	for k, v := range m {
-		out[strings.ReplaceAll(k, "_", ".")] = v
+		h, ok := strings.CutPrefix(k, "d")
+		if !ok {
+			continue
+		}
+		name, err := hex.DecodeString(h)
+		if err != nil {
+			continue
+		}
+		out[string(name)] = v
 	}
 	return out
 }
@@ -1523,7 +1539,7 @@ func (a *App) buildFilteredDataIndex(
 			fullName := strings.Join(names, ".")
 			data.Domains = append(data.Domains, template.DomainFilter{
 				FullName:  fullName,
-				SignalKey: strings.ReplaceAll(fullName, ".", "_"),
+				SignalKey: domainSignalKey(fullName),
 				Name:      d.Name,
 			})
 		}
