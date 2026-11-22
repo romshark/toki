@@ -36,7 +36,7 @@ Releases up to v0.8.5 have their notes on
 - Fill an empty native-locale message from its TIK instead of keeping it empty.
 - Count blank messages as incomplete. `-require-complete` fails on catalogs with untranslated messages, and the completeness report counts them. A blank message used to count as complete once its catalog was written.
 - Print the `-json` result to stdout instead of stderr.
-- Print the usage for `-h` to stdout and start it with what the command does instead of "Usage of toki:". Report an unknown flag in one line, without the usage.
+- Print the usage for `-h` to stdout, headed by the name of the command and what it does instead of "Usage of toki:". Report an unknown flag in one line, without the usage.
 
 #### `toki version`
 
@@ -61,7 +61,7 @@ Releases up to v0.8.5 have their notes on
 - Reject a TIK used in multiple domains instead of writing a bundle that doesn't compile and breaks every later run.
 - Judge `-require-complete` and the completeness report by the catalogs after adding new TIKs and removing deleted ones. A removed incomplete message kept failing the check, and a new blank one passed it.
 - Stop panicking when the TIK removed from the source was the last one.
-- Keep the existing bundle when generating it fails. A formatting error left an empty `bundle_gen.go`.
+- Keep the existing Go files of the bundle when generating them fails. A formatting error left an empty `bundle_gen.go`.
 - Return the error when writing a catalog fails partway instead of reporting success for a truncated `.arb` file.
 - Report errors that stop the source scan in the `-json` output instead of panicking.
 
@@ -77,6 +77,6 @@ Run `toki generate` to apply these.
 
 #### `toki version`
 
-- Print `Toki (devel)` instead of `Toki v(devel)` for a build from a local checkout.
+- Print `Toki (devel)` instead of `Toki v(devel)` for `go run` in a local checkout.
 
 [Unreleased]: https://github.com/romshark/toki/compare/v0.8.5...HEAD

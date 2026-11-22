@@ -73,20 +73,24 @@ Regenerate the bundle to include the new localized message:
 go run github.com/romshark/toki@latest generate
 ```
 
-This adds the new message to `tokibundle/catalog_en.arb`. Toki can't translate your messages fully, and the generator report shows that the translation for `en` is still incomplete.
+This adds the new message to `tokibundle/catalog_en.arb`. Toki can't translate your messages fully: the message has only the `other` plural option, and the generator report shows that the translation for `en` is still incomplete.
+
+```
+"msgbe2fefc496f64dfb": "It''s {var0, date, full} and you have {var1, plural, other {# messages}}",
+```
 
 ## Complete the translation
 
 To complete the translation, add the missing `one {# message}` [plural option](https://cldr.unicode.org/index/cldr-spec/plural-rules) to the [ICU message](https://unicode-org.github.io/icu/userguide/format_parse/messages/) in `catalog_en.arb`:
 
 ```
-"msga5a0f2138b9d6598": "It''s {var0, date, full} and you have {var1, plural, one{# message} other {# messages}}",
+"msgbe2fefc496f64dfb": "It''s {var0, date, full} and you have {var1, plural, one{# message} other {# messages}}",
 ```
 
 You can also make it a bit better by adding a special case for `0`:
 
 ```
-"msga5a0f2138b9d6598": "It''s {var0, date, full} and you have {var1, plural, =0{no messages} one{# message} other {# messages}}",
+"msgbe2fefc496f64dfb": "It''s {var0, date, full} and you have {var1, plural, =0{no messages} one{# message} other {# messages}}",
 ```
 
 > [!TIP]

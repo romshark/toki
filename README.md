@@ -1,5 +1,5 @@
 <a href="https://pkg.go.dev/github.com/romshark/toki">
-    <img src="https://godoc.org/github.com/romshark/toki?status.svg" alt="GoDoc">
+    <img src="https://pkg.go.dev/badge/github.com/romshark/toki.svg" alt="Go Reference">
 </a>
 <a href='https://coveralls.io/github/romshark/toki?branch=main'>
     <img src='https://coveralls.io/repos/github/romshark/toki/badge.svg?branch=main&service=github' alt='Coverage Status' />
@@ -13,7 +13,8 @@ processor implementation.
 
 `toki generate` parses the source code, lints it reporting any misuse or errors,
 extracts localized texts and generates a localization bundle.
-`toki edit` opens a desktop editor app for comfortable manual translation editing.
+`toki edit` opens a desktop editor app for comfortable manual translation editing,
+or serves it over HTTP with `-server <addr>`.
 
 ## Documentation
 
