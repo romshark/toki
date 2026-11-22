@@ -282,6 +282,30 @@ func TestGenerateAndRunBacktick(t *testing.T) {
 	require.Equal(t, "Run `toki generate` first", strings.TrimSpace(string(out)))
 }
 
+// TestGenerateMultiLineTIK makes sure multi-line TIKs
+// stay readable raw strings in the generated bundle.
+func TestGenerateMultiLineTIK(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, "tstmod")
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				fmt.Println(r.String("first line\nsecond line"))
+			}
+		`,
+	})
+	_ = initBundle(t, dir, language.English, "tokibundle", io.Discard, io.Discard)
+
+	bundle, err := os.ReadFile(filepath.Join(dir, "tokibundle", "bundle_gen.go"))
+	require.NoError(t, err)
+	require.Contains(t, string(bundle), "= `first line\nsecond line`\n")
+}
+
 // TestGenerateAndRunSelectOrdinal makes sure selectordinal messages
 // pick their option by the locale's ordinal plural rules.
 func TestGenerateAndRunSelectOrdinal(t *testing.T) {

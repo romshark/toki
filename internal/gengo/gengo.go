@@ -128,7 +128,8 @@ func (w *Writer) WritePackageBundle(
 	w.println("// TIKs")
 	w.printf("const (\n")
 	for msg := range newMsgIter(w.scan, w.scan.DefaultLocale) {
-		if strconv.CanBackquote(msg.TIK) {
+		// Raw strings may span lines, which CanBackquote doesn't allow.
+		if strconv.CanBackquote(strings.ReplaceAll(msg.TIK, "\n", "")) {
 			w.printf("\t%s = `%s`\n", msg.ID, msg.TIK)
 		} else {
 			w.printf("\t%s = %q\n", msg.ID, msg.TIK)
