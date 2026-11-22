@@ -13,6 +13,8 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/romshark/icumsg"
 	"github.com/romshark/tik/tik-go"
+	"golang.org/x/mod/module"
+	"golang.org/x/mod/semver"
 )
 
 var (
@@ -175,11 +177,7 @@ func printCommandUsage(w io.Writer, fs *flag.FlagSet) {
 // printVersion prints the version of Toki and Go to w. With full it adds the
 // build information, including the module dependencies.
 func printVersion(w io.Writer, full bool) {
-	v := Version
-	if len(v) > 0 && v[0] >= '0' && v[0] <= '9' {
-		v = "v" + v // Goreleaser sets the version without "v".
-	}
-	_, _ = fmt.Fprintf(w, "Toki %s\n", v)
+	_, _ = fmt.Fprintf(w, "Toki %s\n", versionTag())
 	if Commit != "" {
 		_, _ = fmt.Fprintf(w, "commit: %s\n", Commit)
 	}
@@ -194,4 +192,22 @@ func printVersion(w io.Writer, full bool) {
 	if info, ok := debug.ReadBuildInfo(); ok {
 		_, _ = fmt.Fprintf(w, "\n%s", info)
 	}
+}
+
+// versionTag returns Version with the "v" that goreleaser leaves out.
+func versionTag() string {
+	if len(Version) > 0 && Version[0] >= '0' && Version[0] <= '9' {
+		return "v" + Version
+	}
+	return Version
+}
+
+// releaseVersion returns the release of this build, as "v1.2.3",
+// or "" for a build that isn't a release, such as one from a pseudo-version.
+func releaseVersion() string {
+	v := versionTag()
+	if !semver.IsValid(v) || semver.Build(v) != "" || module.IsPseudoVersion(v) {
+		return ""
+	}
+	return v
 }

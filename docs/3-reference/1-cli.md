@@ -34,6 +34,7 @@ Or skip the install and run `go run github.com/romshark/toki@latest` in place of
 | `-m path` | The path to the Go module. Default: `.`. |
 | `-b path` | The path to the bundle package relative to the module. Default: `tokibundle`. |
 | `-require-complete` | Fails if a catalog has blank messages or messages that lack plural or select options. |
+| `-ai-skills` | Writes the [skills for AI coding agents](../2-guide/3-ai-agents.md). Default: `true`. Turn it off with `-ai-skills=false`. `lint` ignores it. |
 | `-json` | Prints the result as JSON to stdout, and the logs as JSON to stderr. |
 | `-q` | Logs only errors. |
 | `-v` | Logs more details, among them the options that each message lacks. |

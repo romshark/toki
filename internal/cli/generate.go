@@ -10,11 +10,13 @@ import (
 	"io/fs"
 	"log/slog"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
 	editorapp "github.com/romshark/toki/editor/app"
+	"github.com/romshark/toki/internal/agentskills"
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/codeparse"
 	"github.com/romshark/toki/internal/config"
@@ -308,6 +310,13 @@ func (g *Generate) Run(
 			result.Err = err
 			return result
 		}
+
+		if conf.AISkills {
+			if err := writeAgentSkills(conf, scan.DefaultLocale); err != nil {
+				result.Err = fmt.Errorf("writing AI agent skills: %w", err)
+				return result
+			}
+		}
 	}
 
 	// Synchronization added and removed messages since parsing counted them.
@@ -481,17 +490,12 @@ func generateTokiDomainFile(modPath string) error {
 		return nil // Already exists, don't overwrite.
 	}
 
-	goModPath := filepath.Join(modPath, "go.mod")
-	goModData, err := os.ReadFile(goModPath)
+	modulePath, err := readModulePath(modPath)
 	if err != nil {
-		return fmt.Errorf("reading go.mod for domain name: %w", err)
-	}
-	mf, err := modfile.Parse(goModPath, goModData, nil)
-	if err != nil {
-		return fmt.Errorf("parsing go.mod for domain name: %w", err)
+		return err
 	}
 	// Use the last path segment of the module path as the domain name.
-	name := filepath.Base(mf.Module.Mod.Path)
+	name := path.Base(modulePath)
 
 	content := fmt.Sprintf(
 		"# The TIK domain for this directory tree.\n"+
@@ -508,6 +512,46 @@ func generateTokiDomainFile(modPath string) error {
 		name,
 	)
 	return os.WriteFile(domainFilePath, []byte(content), 0o644)
+}
+
+// readModulePath returns the module path that the go.mod file in modDir declares.
+func readModulePath(modDir string) (string, error) {
+	goModPath := filepath.Join(modDir, "go.mod")
+	goModData, err := os.ReadFile(goModPath)
+	if err != nil {
+		return "", fmt.Errorf("reading go.mod: %w", err)
+	}
+	mf, err := modfile.Parse(goModPath, goModData, nil)
+	if err != nil {
+		return "", fmt.Errorf("parsing go.mod: %w", err)
+	}
+	return mf.Module.Mod.Path, nil
+}
+
+// writeAgentSkills writes the skills for AI coding agents into the module
+// and logs the files it changed.
+func writeAgentSkills(conf *config.ConfigGenerate, defaultLocale language.Tag) error {
+	modulePath, err := readModulePath(conf.ModPath)
+	if err != nil {
+		return err
+	}
+	bundleDir := path.Clean(filepath.ToSlash(conf.BundlePkgPath))
+	var flags string
+	if bundleDir != config.DefaultBundlePkgPath {
+		flags = " -b " + bundleDir
+	}
+	written, err := agentskills.Write(conf.ModPath, agentskills.Project{
+		BundleDir:        bundleDir,
+		BundleImportPath: path.Join(modulePath, bundleDir),
+		DefaultLocale:    defaultLocale.String(),
+		NativeCatalog:    gengo.FileNameWithLocale(defaultLocale, "catalog", ".arb"),
+		Flags:            flags,
+		Version:          releaseVersion(),
+	})
+	for _, f := range written {
+		log.Info("wrote AI agent skill", slog.String("file", f))
+	}
+	return err
 }
 
 func prepareBundlePackageDir(bundlePkgPath string) error {
@@ -553,7 +597,11 @@ func RegenerateBundle(env []string, modDir, bundlePkgPath string) error {
 		tikParser:        tik.NewParser(tik.DefaultConfig),
 		tikICUTranslator: tik.NewICUTranslator(tik.DefaultConfig),
 	}
-	osArgs := []string{"toki", "generate", "-m", modDir, "-b", bundlePkgPath, "-q"}
+	// The editor can't know whether the project runs `toki generate`
+	// with -ai-skills=false, which is why it leaves the skills alone.
+	osArgs := []string{
+		"toki", "generate", "-m", modDir, "-b", bundlePkgPath, "-q", "-ai-skills=false",
+	}
 	r := g.Run(osArgs, env, false, io.Discard, io.Discard, time.Now())
 	return r.Err
 }

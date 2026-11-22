@@ -1,0 +1,67 @@
+---
+name: toki-translate
+description: >-
+  Translate the Toki catalogs of this module: fill in blank and incomplete ICU
+  messages in the catalog_<locale>.arb files of {{.BundleDir}}, with the plural
+  forms each language needs, and add languages. Use when asked to translate the
+  app or add a language, or when toki reports a catalog below 100% completeness.
+---
+
+{{template "header"}}
+
+# Translate Toki catalogs
+
+Each locale has a catalog in `{{.BundleDir}}/`, named after the locale in lowercase with `_` in place of `-`, as `catalog_pt_br.arb` for `pt-BR`. `{{.NativeCatalog}}` holds the messages of the default locale `{{.DefaultLocale}}`, which Toki writes from the TIKs in the source code.
+
+A catalog is a JSON file in the ARB format. It holds each message as an ICU message under its ID, and the metadata of the message under `@` and the ID:
+
+```json
+"msgbe2fefc496f64dfb": "{var0, plural, one {# Datei kopiert} other {# Dateien kopiert}}",
+"@msgbe2fefc496f64dfb": {
+	"description": "Status line after a copy finishes.",
+	...
+}
+```
+
+## Run toki
+
+{{template "run" .}}
+
+## Find what to translate
+
+- A message with the value `""` is untranslated. Readers of the catalog get the text in `{{.DefaultLocale}}` instead.
+- `toki lint{{.Flags}} -v` lists each message that lacks plural options, with the options it lacks.
+- The last lines of `toki generate` and `toki lint` give the completeness of each catalog, which counts both.
+
+To add a language, run `toki generate{{.Flags}} -t <locale>` with a BCP 47 locale, as `-t de` or `-t pt-BR`. It creates the catalog with every message blank. Repeat `-t` for more languages.
+
+## Translate a message
+
+1. Read the message with the same ID in `{{.NativeCatalog}}`, and its `description`, which comes from the comment above the TIK in the source code. When that leaves doubt, search the source code for the TIK to see where the text appears.
+2. Read the `description` in the `.tokidomain.yml` closest above the code that uses the TIK. It gives the tone and terms of its texts.
+3. Write the translation as the value of the message. Change nothing else: not the ID, not the `@` metadata, not `@@locale`.
+
+Keep the ICU arguments of the source message:
+
+- Keep every argument, as `{var0}`, `{var1, number}` and `{var2, date, short}`, with its name and style. Move it to where the language puts it. The bundle formats numbers, dates, times and currencies for the locale of the catalog.
+- Give every `{varN, plural, ...}` the options that the language of the catalog has: `one` and `other` in English and German, `one`, `few`, `many` and `other` in Russian, Ukrainian and Polish, only `other` in Japanese, Chinese and Korean. `#` renders the number. `toki generate` rejects options the language doesn't have, and `toki lint{{.Flags}} -v` lists the missing ones. `=0 {...}` matches exactly 0, in any language.
+- `{varN, selectordinal, ...}` works the same with the ordinal options. English needs `one {#st} two {#nd} few {#rd} other {#th}`.
+- Don't use a `select` on the gender of a `{varN}` that comes from `{name}`, as `{var0_gender, select, ...}`. Toki can't render it yet. Write a translation that fits every gender.
+- Write an apostrophe as `''`. Write `'{'` and `'}'` for braces, and `'#'` for `#` inside a plural option.
+- Escape `"` as `\"` and `\` as `\\`, as JSON requires.
+
+Write what a native speaker would write. Match the tone, the terms and the form of address, as German "Sie" or "du", of the translations already in the catalog. Keep labels about as long as the source. Leave product names and code as they are. When the tone or the form of address isn't settled, ask the user.
+
+## Complete the default locale
+
+A message in `{{.NativeCatalog}}` may need plural options that its TIK can't express, as English `one` for `{# files}`:
+
+```json
+"msgd1c9be5db1bc2f12": "{var0, plural, one {# file} other {# files}} copied.",
+```
+
+Add only the missing options to such a message and keep the rest as Toki wrote it. A message that its TIK fully determines can't change in the catalog: `toki generate` fails on it with "bundle contains corrupt native-locale messages". Change its TIK in the source code instead.
+
+## Check the translations
+
+Run `toki generate{{.Flags}}` after editing the catalogs. It checks every message, formats the catalogs and compiles them into the bundle. `toki lint{{.Flags}} -require-complete` then fails while a catalog is incomplete. People can review translations in the editor that `toki edit{{.Flags}}` opens.

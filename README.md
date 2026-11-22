@@ -26,6 +26,7 @@ built from [docs/](docs/README.md) with [docpages](https://github.com/romshark/d
 - [Continuous integration](docs/1-get-started/3-ci.md)
 - [Domains](docs/2-guide/1-domains.md)
 - [Bundle files](docs/2-guide/2-bundle-files.md)
+- [AI coding agents](docs/2-guide/3-ai-agents.md)
 - [CLI](docs/3-reference/1-cli.md)
 - [TIK cheatsheet](https://romshark.github.io/tik/cheatsheet/)
 - [TIK specification](https://github.com/romshark/tik/blob/main/SPECIFICATION.md)

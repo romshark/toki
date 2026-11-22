@@ -10,6 +10,9 @@ import (
 	"golang.org/x/text/language"
 )
 
+// DefaultBundlePkgPath is the bundle package path that the flag -b defaults to.
+const DefaultBundlePkgPath = "tokibundle"
+
 type ConfigGenerate struct {
 	Locale          language.Tag
 	Translations    []language.Tag
@@ -20,6 +23,7 @@ type ConfigGenerate struct {
 	VerboseMode     bool
 	BundlePkgPath   string
 	RequireComplete bool
+	AISkills        bool
 }
 
 var ErrLocaleNotBCP47 = errors.New("must be a valid non-und BCP 47 locale")
@@ -43,10 +47,13 @@ func ParseCLIArgsGenerate(cli *flag.FlagSet, args []string) (*ConfigGenerate, er
 	cli.BoolVar(&c.JSON, "json", false, "enables JSON output")
 	cli.BoolVar(&c.QuietMode, "q", false, "disable all console logging")
 	cli.BoolVar(&c.VerboseMode, "v", false, "enables verbose console logging")
-	cli.StringVar(&c.BundlePkgPath, "b", "tokibundle",
+	cli.StringVar(&c.BundlePkgPath, "b", DefaultBundlePkgPath,
 		"path to generated Go bundle package relative to module path (-m)")
 	cli.BoolVar(&c.RequireComplete, "require-complete", false,
 		"fails the command if any active catalog has a completeness < 1.0 (under 100%)")
+	cli.BoolVar(&c.AISkills, "ai-skills", true,
+		"writes skills for AI coding agents to .claude/skills and .agents/skills "+
+			"in the module, replacing earlier versions")
 
 	if err := cli.Parse(args); err != nil {
 		return nil, fmt.Errorf("parsing: %w", err)

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/romshark/toki/editor"
+	"github.com/romshark/toki/internal/config"
 	"github.com/romshark/toki/internal/log"
 )
 
@@ -17,7 +18,8 @@ func (e *Edit) Run(osArgs, env []string, stderr, stdout io.Writer) error {
 	fs := newFlagSet("edit")
 	server := fs.String("server", "",
 		"run as plain HTTP server on this address instead of the native desktop app")
-	bundlePkg := fs.String("b", "tokibundle", "path to generated Go bundle package")
+	bundlePkg := fs.String("b", config.DefaultBundlePkgPath,
+		"path to generated Go bundle package")
 	if err := flagError(fs, stdout, fs.Parse(osArgs[2:])); err != nil {
 		return err
 	}

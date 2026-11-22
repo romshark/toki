@@ -10,6 +10,10 @@ Releases up to v0.8.5 have their notes on
 
 ### Added
 
+#### `toki generate` and `toki lint`
+
+- Write skills for AI coding agents to `.claude/skills/` and `.agents/skills/` in the module: `toki` for writing TIKs and `toki-translate` for translating the catalogs. Toki owns these files and rewrites them whenever they differ from what it writes. `-ai-skills=false` turns this off.
+
 #### `toki edit`
 
 - Add `toki edit`, a translation editor that replaces `toki webedit`. It lists the TIKs of the module with their messages in every catalog, filters them by status, locale and domain, searches them and shows where the source code uses each TIK. It validates ICU messages while you type, writes the edits to the catalogs and regenerates the bundle. When the bundle is out of date or corrupt, it offers to run `toki generate` or `toki repair`.

@@ -1137,6 +1137,59 @@ func TestGenerateDomainFileNotOverwritten(t *testing.T) {
 	require.Equal(t, customDomain, string(content))
 }
 
+// TestGenerateAISkills makes sure `toki generate` writes the skills for AI coding
+// agents into the module unless run with -ai-skills=false, and `toki lint` doesn't.
+func TestGenerateAISkills(t *testing.T) {
+	skills := []string{
+		".claude/skills/toki/SKILL.md",
+		".claude/skills/toki-translate/SKILL.md",
+		".agents/skills/toki/SKILL.md",
+		".agents/skills/toki-translate/SKILL.md",
+	}
+	// run runs the commands in another directory than the module,
+	// which -m points them to.
+	run := func(t *testing.T, commands ...[]string) (dir string) {
+		t.Helper()
+		dir = t.TempDir()
+		initGoMod(t, dir, ModName)
+		other := t.TempDir()
+		runInDir(t, other, func() {
+			for _, c := range commands {
+				args := append([]string{"toki"}, c...)
+				args = append(args, "-m="+dir)
+				result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+				require.NoError(t, result.Err)
+				require.Zero(t, exitCode)
+			}
+		})
+		require.NoDirExists(t, filepath.Join(other, ".claude"))
+		require.NoDirExists(t, filepath.Join(other, ".agents"))
+		return dir
+	}
+
+	t.Run("generate", func(t *testing.T) {
+		dir := run(t, []string{"generate", "-l=en", "-b=internal/i18n"})
+		for _, f := range skills {
+			content, err := os.ReadFile(filepath.Join(dir, f))
+			require.NoError(t, err)
+			require.Contains(t, string(content), "toki generate -b internal/i18n #")
+			require.Contains(t, string(content), "`catalog_en.arb`")
+		}
+		content, err := os.ReadFile(filepath.Join(dir, skills[0]))
+		require.NoError(t, err)
+		require.Contains(t, string(content), "`tstmod/internal/i18n`")
+	})
+
+	t.Run("opt out", func(t *testing.T) {
+		dir := run(t,
+			[]string{"generate", "-l=en", "-ai-skills=false"},
+			[]string{"lint"},
+		)
+		require.NoDirExists(t, filepath.Join(dir, ".claude"))
+		require.NoDirExists(t, filepath.Join(dir, ".agents"))
+	})
+}
+
 // TestGenerateSameTextDifferentDomains verifies that TIKs in different domains
 // (including parent vs. sub-domain) can share a text when their contexts differ.
 func TestGenerateSameTextDifferentDomains(t *testing.T) {

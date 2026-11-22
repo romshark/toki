@@ -15,6 +15,7 @@ import (
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/bundlerepair"
 	"github.com/romshark/toki/internal/codeparse"
+	"github.com/romshark/toki/internal/config"
 	"github.com/romshark/toki/internal/log"
 )
 
@@ -28,7 +29,8 @@ type Repair struct{}
 
 func (e *Repair) Run(osArgs, env []string, stderr, stdout io.Writer) error {
 	fs := newFlagSet("repair")
-	bundlePkg := fs.String("b", "tokibundle", "path to generated Go bundle package")
+	bundlePkg := fs.String("b", config.DefaultBundlePkgPath,
+		"path to generated Go bundle package")
 	if err := flagError(fs, stdout, fs.Parse(osArgs[2:])); err != nil {
 		return err
 	}
