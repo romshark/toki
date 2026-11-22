@@ -18,4 +18,4 @@ git diff --exit-code
 ```
 
 > [!IMPORTANT]
-> The bundle records the version of Toki that generated it. Run the same version in CI as locally, as `github.com/romshark/toki@v1.2.3` in place of `@latest`. Another version changes the generated files and fails the check.
+> The bundle and the [skills for AI coding agents](../2-guide/3-ai-agents.md) name the version of Toki that generated them. Run the same version in CI as locally, as `github.com/romshark/toki@v1.2.3` in place of `@latest`. Another version changes the generated files and fails the check.

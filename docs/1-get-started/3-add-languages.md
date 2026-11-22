@@ -19,4 +19,4 @@ Toki rejects plural options that the locale of a catalog doesn't have, and repor
 > [!TIP]
 > If you write your TIKs in a language other than English, the [CLDR plural rules table](https://www.unicode.org/cldr/charts/47/supplemental/language_plural_rules.html) shows the plural options of each language.
 
-Next, check your translations in [continuous integration](3-ci.md).
+Next, check your translations in [continuous integration](4-ci.md).

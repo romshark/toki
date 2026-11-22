@@ -4,7 +4,13 @@ suggested: true
 
 # Quick start
 
-## Create a Go project
+This guide internationalizes a small example program. To start with a Go module of your own, skip to [Generate a bundle](#generate-a-bundle) and run the commands in the root of your module.
+
+You need Go 1.27.4 or later. On Linux, check the [requirements of the desktop editor](1-installation.md#the-desktop-editor) first.
+
+## The example program
+
+Create a module with a program that prints a message:
 
 ```sh
 mkdir tokiexample && cd tokiexample
@@ -36,9 +42,11 @@ Generate a new Toki bundle package with the default language `en` (English):
 go run github.com/romshark/toki@latest generate -l en && go mod tidy
 ```
 
+This creates the bundle package `tokibundle/`, the [domain](../2-guide/1-domains.md) file `.tokidomain.yml` and the [skills for AI coding agents](../2-guide/3-ai-agents.md) in `.claude/skills/` and `.agents/skills/`.
+
 ## Write TIKs
 
-Adjust the messages in your source code to TIKs. Use the [TIK cheatsheet](https://romshark.github.io/tik/cheatsheet/) for help and guidance.
+Adjust the messages in your source code to TIKs. Use the [TIK cheatsheet](https://romshark.github.io/tik/cheatsheet/) for help and guidance. The bundle package is `tokibundle` in the root of the module, imported here as `tokiexample/tokibundle`.
 
 ```go title="main.go"
 package main
@@ -105,4 +113,4 @@ After editing the catalog files, rerun the generator to update your bundle:
 go run github.com/romshark/toki@latest generate
 ```
 
-Next, [add languages](2-add-languages.md) to your program.
+Next, [add languages](3-add-languages.md) to your program.

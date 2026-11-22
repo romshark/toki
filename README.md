@@ -13,17 +13,17 @@ processor implementation.
 
 `toki generate` parses the source code, lints it reporting any misuse or errors,
 extracts localized texts and generates a localization bundle.
-`toki edit` opens a desktop editor app for comfortable manual translation editing,
-or serves it over HTTP with `-server <addr>`.
+`toki edit` opens a desktop editor app for comfortable manual translation editing.
 
 ## Documentation
 
 The documentation is at [romshark.github.io/toki](https://romshark.github.io/toki/),
 built from [docs/](docs/README.md) with [docpages](https://github.com/romshark/docpages):
 
-- [Quick start](docs/1-get-started/1-quick-start.md)
-- [Add languages](docs/1-get-started/2-add-languages.md)
-- [Continuous integration](docs/1-get-started/3-ci.md)
+- [Installation](docs/1-get-started/1-installation.md)
+- [Quick start](docs/1-get-started/2-quick-start.md)
+- [Add languages](docs/1-get-started/3-add-languages.md)
+- [Continuous integration](docs/1-get-started/4-ci.md)
 - [Domains](docs/2-guide/1-domains.md)
 - [Bundle files](docs/2-guide/2-bundle-files.md)
 - [AI coding agents](docs/2-guide/3-ai-agents.md)

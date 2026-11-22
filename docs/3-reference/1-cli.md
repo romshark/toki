@@ -15,14 +15,6 @@ toki <command> [flags]
 
 `toki help` lists the commands. `toki help <command>` and `toki <command> -h` print the usage of a command.
 
-## Install
-
-```sh
-go install github.com/romshark/toki@latest
-```
-
-Or skip the install and run `go run github.com/romshark/toki@latest` in place of `toki`. The [releases](https://github.com/romshark/toki/releases) also hold binaries for Linux, macOS and Windows, which open the editor only with [`-server`](#edit).
-
 ## generate and lint
 
 `toki generate` scans the Go module for TIKs, adds new messages to the catalogs, removes the messages that the source code no longer uses and generates the [bundle package](../2-guide/2-bundle-files.md). `toki lint` runs the same checks without writing any files.
@@ -51,7 +43,7 @@ Toki scans the packages that the current build configuration includes. TIKs in f
 | `-server addr` | Serves the editor over HTTP on `addr` instead of opening the desktop app. |
 | `-b path` | The path to the bundle package relative to the current folder. Default: `tokibundle`. |
 
-The desktop app needs a toki built with cgo, which `go install` and `go run` use where a C compiler is available. Builds without cgo, such as the release binaries, need `-server`.
+The desktop app needs a toki built with cgo, which `go install` and `go run` use where a C compiler is available. Builds without cgo, such as the release binaries for Linux and Windows, need `-server`.
 
 > [!WARNING]
 > The editor has no authentication: anyone who reaches `addr` can change your catalogs. Serve it on a loopback address, as `127.0.0.1:8080`.
