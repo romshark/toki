@@ -287,15 +287,37 @@ templ componentMainArea(extra templ.Attributes) {
 // deliberately omitted: under Morpheus's command-attribute contract an
 // absent boolean leaves the client's current state alone, so a fat
 // morph never slams the sidebar open or shut.
+//
+// A <neo-resizable> wraps the sidebar, whose right edge drags its width
+// between SidebarMinWidth and SidebarMaxWidth. The width it starts with
+// is --sidebar-width, which the head sets from the cookie that
+// App.POSTSetSidebarWidth writes when a drag ends. data-preserve-attr
+// keeps a fat morph from resetting the width a drag set in its style.
 templ componentSidebar(ariaLabel string) {
-	@neo.SidebarAttrs(
-		neo.SidebarOpts{
-			Side:      neo.Set(neo.SideLeft),
-			AriaLabel: neo.Set(ariaLabel),
+	@neo.ResizableAttrs(
+		neo.ResizableOpts[float64]{
+			Handles:  neo.Set(neo.ResizableRight),
+			MinWidth: neo.Set(SidebarMinWidth),
+			MaxWidth: neo.Set(SidebarMaxWidth),
 		},
-		templ.Attributes{"id": "editor-sidebar"},
+		templ.Attributes{
+			"id":                 "sidebar-resizable",
+			"class":              "sidebar-resizable",
+			"data-preserve-attr": "style",
+			"data-on:neo-resizable-end": action.App.SetSidebarWidth.POST(
+				action.WithPayload("{width: el.getBoundingClientRect().width}"),
+			),
+		},
 	) {
-		{ children... }
+		@neo.SidebarAttrs(
+			neo.SidebarOpts{
+				Side:      neo.Set(neo.SideLeft),
+				AriaLabel: neo.Set(ariaLabel),
+			},
+			templ.Attributes{"id": "editor-sidebar"},
+		) {
+			{ children... }
+		}
 	}
 }
 

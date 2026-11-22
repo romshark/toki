@@ -1,8 +1,11 @@
 cmd: cmd/editor-server
 watch:
-  flags: "--server=localhost:8080 --dir=./examples/simple"
+  # The editor opens this repository, whose texts it localizes itself.
+  flags: "--server=localhost:8080 --dir=. -b=internal/tokibundle"
   exclude:
     - ".git/**"
+    # The index database of the editor, which writes it as it runs.
+    - ".toki/**"
     - ".*"
     - "*~"
     - "examples/**"

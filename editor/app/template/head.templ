@@ -8,7 +8,8 @@ import (
 
 func prefsStyleTag(p UIPrefs) string {
 	if p.UIFontCSS == "" && p.EditorFontCSS == "" &&
-		p.UIFontSizeCSS == "" && p.EditorFontSizeCSS == "" {
+		p.UIFontSizeCSS == "" && p.EditorFontSizeCSS == "" &&
+		p.SidebarWidthCSS == "" {
 		return ""
 	}
 	var s strings.Builder
@@ -31,6 +32,11 @@ func prefsStyleTag(p UIPrefs) string {
 	if p.EditorFontSizeCSS != "" {
 		s.WriteString("--font-size-editor:")
 		s.WriteString(p.EditorFontSizeCSS)
+		s.WriteByte(';')
+	}
+	if p.SidebarWidthCSS != "" {
+		s.WriteString("--sidebar-width:")
+		s.WriteString(p.SidebarWidthCSS)
 		s.WriteByte(';')
 	}
 	s.WriteString("}</style>")

@@ -41,6 +41,13 @@ const (
 	SectionFilter  = "filter"
 )
 
+// The bounds of the width that the user drags the sidebar to. The minimum
+// keeps every label of the sidebar on 1 line in every language.
+const (
+	SidebarMinWidth = "15rem"
+	SidebarMaxWidth = "32rem"
+)
+
 // SidebarSections lists the keys of the collapsible sections of the sidebar.
 var SidebarSections = []string{SectionDomains, SectionLocales, SectionFilter}
 
@@ -137,6 +144,7 @@ type UIPrefs struct {
 	EditorFontCSS     string // CSS font-family
 	UIFontSizeCSS     string // CSS font-size
 	EditorFontSizeCSS string // CSS font-size
+	SidebarWidthCSS   string // CSS width of the sidebar, "" for the default
 }
 
 // DashboardStats holds statistics for the dashboard page.

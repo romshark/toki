@@ -84,6 +84,27 @@ main {
 	min-inline-size: 0;
 }
 
+/* The <neo-resizable> that lets the user drag the width of the sidebar,
+   which takes the width of the wrapper: the width a drag set, else
+   --sidebar-width, which the head sets from the cookie. */
+.sidebar-resizable {
+	flex-shrink: 0;
+	inline-size: var(--sidebar-width, 16rem);
+	--neo-sidebar-width: var(--neo-resizable-width, var(--sidebar-width, 16rem));
+
+	/* A closed sidebar, or one that overlays the page on a narrow screen,
+	   leaves the row to the main area. The important overrides the size a
+	   drag set inline, which --neo-resizable-width keeps for the sidebar
+	   when it opens again. */
+	&:has(> neo-sidebar:defined:not([open])),
+	&:has(> neo-sidebar:state(overlay)) {
+		inline-size: 0 !important;
+		min-inline-size: 0 !important;
+		max-inline-size: 0 !important;
+		flex-basis: 0;
+	}
+}
+
 /* Centred single-card pages have no sidebar; fill the shell. */
 .page-center {
 	flex: 1 1 auto;
@@ -637,6 +658,14 @@ main {
 		font-size: 1.8rem;
 		line-height: 1;
 	}
+}
+
+/* A stat card stacks its label below its figure: beside it, a long label,
+   as in Russian, runs into the arrow in the corner or wraps in some cards
+   only. */
+.dashboard-stat-link [data-neo-card-header] {
+	flex-direction: column;
+	gap: 0.4rem;
 }
 
 .dashboard-stat-label {

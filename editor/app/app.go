@@ -734,6 +734,7 @@ func (*App) Head(r *http.Request) datapages.Head {
 		EditorFontCSS:     p.EditorFontFamily(),
 		UIFontSizeCSS:     p.UIFontSizeCSS(),
 		EditorFontSizeCSS: p.EditorFontSizeCSS(),
+		SidebarWidthCSS:   p.SidebarWidthCSS(),
 	})
 }
 

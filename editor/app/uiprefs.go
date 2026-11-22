@@ -2,7 +2,9 @@ package app
 
 import (
 	"fmt"
+	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -42,6 +44,9 @@ type UIPrefs struct {
 	EditorFont     string `json:"editor_font"`      // "mono-system", "mono-firacode", etc.
 	UIFontSize     string `json:"ui_font_size"`     // "default", "small", "big", etc.
 	EditorFontSize string `json:"editor_font_size"` // "default", "small", "big", etc.
+	// SidebarWidth is the width in pixels the user dragged the sidebar to,
+	// 0 for the default.
+	SidebarWidth int `json:"sidebar_width"`
 }
 
 // PrefSignals are the pref_* signals of the settings page. POSTSetPref
@@ -110,6 +115,14 @@ func (p UIPrefs) UIFontSizeCSS() string { return fontSizes[p.UIFontSize] }
 // EditorFontSizeCSS returns the CSS font-size for the editor.
 func (p UIPrefs) EditorFontSizeCSS() string { return fontSizes[p.EditorFontSize] }
 
+// SidebarWidthCSS returns the CSS width of the sidebar, "" for the default.
+func (p UIPrefs) SidebarWidthCSS() string {
+	if p.SidebarWidth == 0 {
+		return ""
+	}
+	return strconv.Itoa(p.SidebarWidth) + "px"
+}
+
 func ReadUIPrefs(r *http.Request) UIPrefs {
 	p := uiPrefsDefaults
 	if c, err := r.Cookie("toki-theme"); err == nil && c.Value != "" {
@@ -132,6 +145,11 @@ func ReadUIPrefs(r *http.Request) UIPrefs {
 	}
 	if c, err := r.Cookie("toki-editor-font-size"); err == nil && c.Value != "" {
 		p.EditorFontSize = c.Value
+	}
+	if c, err := r.Cookie(sidebarWidthCookie); err == nil {
+		if w, err := strconv.Atoi(c.Value); err == nil && isValidSidebarWidth(float64(w)) {
+			p.SidebarWidth = w
+		}
 	}
 	return p
 }
@@ -206,6 +224,52 @@ func (s PrefSignals) Normalized() PrefSignals {
 		s.PrefThemeResolved = "light"
 	}
 	return s
+}
+
+// sidebarWidthCookie names the cookie that keeps the width in pixels the
+// user dragged the sidebar to.
+const sidebarWidthCookie = "toki-sidebar-width"
+
+// isValidSidebarWidth reports whether w is a width in pixels the cookie may
+// keep. The CSS bounds the width by [template.SidebarMinWidth] and
+// [template.SidebarMaxWidth], which depend on the font size: this only
+// keeps the value sane.
+func isValidSidebarWidth(w float64) bool { return w > 0 && w <= 4096 }
+
+// EventSidebarResized is "editor.sidebar_resized"
+//
+// Dispatched when the user drags the sidebar to another width, which every
+// open tab keeps.
+type EventSidebarResized struct {
+	Width int `json:"width"` // In pixels.
+}
+
+// POSTSetSidebarWidth is /set-sidebar-width/{$}
+//
+// The sidebar sends the width the user dragged it to.
+func (*App) POSTSetSidebarWidth(
+	_ *http.Request,
+	signals datapages.Signals[struct {
+		Width float64 `json:"width"`
+	}],
+	resized datapages.Dispatcher[EventSidebarResized],
+) error {
+	if !isValidSidebarWidth(signals.Values.Width) {
+		return datapages.ErrBadRequest
+	}
+	return resized.Dispatch(EventSidebarResized{
+		Width: int(math.Round(signals.Values.Width)),
+	})
+}
+
+// OnSidebarResized keeps the width in the cookie for the next page load and
+// in --sidebar-width, which sizes a sidebar the tab hasn't dragged itself.
+func (PrefsSync) OnSidebarResized(e EventSidebarResized, sse datapages.SSE) error {
+	p := UIPrefs{SidebarWidth: e.Width}
+	var script strings.Builder
+	writeUIPrefCookieScript(&script, sidebarWidthCookie, strconv.Itoa(e.Width))
+	writeRootStyleScript(&script, "--sidebar-width", p.SidebarWidthCSS())
+	return sse.ExecuteScript(script.String())
 }
 
 // uiPrefCookieMaxAge is how long a UI pref cookie lasts.

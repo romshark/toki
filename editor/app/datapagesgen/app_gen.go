@@ -261,10 +261,11 @@ const (
 
 	// Public events:
 
-	EvSubjLangChanged  = "editor.lang_changed"
-	EvSubjPrefsChanged = "editor.prefs_changed"
-	EvSubjReset        = "editor.reset"
-	EvSubjUpdated      = "editor.updated"
+	EvSubjLangChanged    = "editor.lang_changed"
+	EvSubjPrefsChanged   = "editor.prefs_changed"
+	EvSubjReset          = "editor.reset"
+	EvSubjSidebarResized = "editor.sidebar_resized"
+	EvSubjUpdated        = "editor.updated"
 )
 
 func MessageBrokerStreamSubjects() []string {
@@ -272,6 +273,7 @@ func MessageBrokerStreamSubjects() []string {
 		EvSubjLangChanged,
 		EvSubjPrefsChanged,
 		EvSubjReset,
+		EvSubjSidebarResized,
 		EvSubjUpdated,
 	}
 }
@@ -280,29 +282,34 @@ var evSubjPageBuildBundle = []string{
 	EvSubjUpdated,
 	EvSubjLangChanged,
 	EvSubjPrefsChanged,
+	EvSubjSidebarResized,
 }
 
 var evSubjPageIndex = []string{
 	EvSubjUpdated,
 	EvSubjLangChanged,
 	EvSubjPrefsChanged,
+	EvSubjSidebarResized,
 }
 
 var evSubjPageProjectDir = []string{
 	EvSubjUpdated,
 	EvSubjLangChanged,
 	EvSubjPrefsChanged,
+	EvSubjSidebarResized,
 }
 
 var evSubjPageSettings = []string{
 	EvSubjLangChanged,
 	EvSubjPrefsChanged,
+	EvSubjSidebarResized,
 }
 
 var evSubjPageTIK = []string{
 	EvSubjUpdated,
 	EvSubjLangChanged,
 	EvSubjPrefsChanged,
+	EvSubjSidebarResized,
 	EvSubjReset,
 }
 
@@ -310,6 +317,7 @@ var evSubjPageTIKs = []string{
 	EvSubjUpdated,
 	EvSubjLangChanged,
 	EvSubjPrefsChanged,
+	EvSubjSidebarResized,
 	EvSubjReset,
 }
 
@@ -595,6 +603,9 @@ func setupHandlers(s *Server) {
 		"POST /open-new-window/{$}",
 		appHandlers{s}.POSTOpenNewWindow)
 	s.Mux().HandleFunc(
+		"POST /set-sidebar-width/{$}",
+		appHandlers{s}.POSTSetSidebarWidth)
+	s.Mux().HandleFunc(
 		"POST /project-dir/pick/{$}",
 		pageProjectDirHandlers{s}.POSTPick)
 	s.Mux().HandleFunc(
@@ -817,6 +828,33 @@ func (s appHandlers) POSTOpenNewWindow(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s appHandlers) POSTSetSidebarWidth(w http.ResponseWriter, r *http.Request) {
+	defer s.recoverPanic(w, r, nil, "App.SetSidebarWidth")
+	if !s.CheckDatastarRequest(w, r) {
+		return
+	}
+
+	httpserve.LimitRequestBody(w, r, s.BodySizeLimit())
+	var signals datapages.Signals[struct {
+		Width float64 `json:"width"`
+	}]
+	if err := dpsse.ReadSignals(r, &signals.Values); err != nil {
+		s.HTTPErrBad(w, "reading signals", err)
+		return
+	}
+
+	dispatchSidebarResized := dispatcherEventSidebarResized{s: s.Server, ctx: r.Context()}
+	err := s.app.POSTSetSidebarWidth(
+		r,
+		signals,
+		dispatchSidebarResized,
+	)
+	if err != nil {
+		s.httpErrIntern(w, r, nil, "handling action App.SetSidebarWidth", err)
+		return
+	}
+}
+
 type pageBuildBundleHandlers struct{ *Server }
 
 func (s pageBuildBundleHandlers) GET(w http.ResponseWriter, r *http.Request) {
@@ -926,6 +964,7 @@ func (s pageBuildBundleHandlers) GETStream(w http.ResponseWriter, r *http.Reques
 			var eventUpdated dpapp.EventUpdated
 			var eventLangChanged dpapp.EventLangChanged
 			var eventPrefsChanged dpapp.EventPrefsChanged
+			var eventSidebarResized dpapp.EventSidebarResized
 			for msg := range ch {
 				switch msg.Subject {
 				case EvSubjUpdated:
@@ -972,6 +1011,18 @@ func (s pageBuildBundleHandlers) GETStream(w http.ResponseWriter, r *http.Reques
 						sse,
 					); err != nil {
 						s.LogErr("handling PageBuildBundle.OnPrefsChanged", err)
+					}
+				case EvSubjSidebarResized:
+					eventSidebarResized = dpapp.EventSidebarResized{}
+					if err := json.Unmarshal(msg.Data, &eventSidebarResized); err != nil {
+						s.LogErr("unmarshaling EventSidebarResized JSON", err)
+						continue
+					}
+					if err := p.OnSidebarResized(
+						eventSidebarResized,
+						sse,
+					); err != nil {
+						s.LogErr("handling PageBuildBundle.OnSidebarResized", err)
 					}
 				}
 			}
@@ -1103,6 +1154,7 @@ func (s pageIndexHandlers) GETStream(w http.ResponseWriter, r *http.Request) {
 			var eventUpdated dpapp.EventUpdated
 			var eventLangChanged dpapp.EventLangChanged
 			var eventPrefsChanged dpapp.EventPrefsChanged
+			var eventSidebarResized dpapp.EventSidebarResized
 			for msg := range ch {
 				switch msg.Subject {
 				case EvSubjUpdated:
@@ -1149,6 +1201,18 @@ func (s pageIndexHandlers) GETStream(w http.ResponseWriter, r *http.Request) {
 						sse,
 					); err != nil {
 						s.LogErr("handling PageIndex.OnPrefsChanged", err)
+					}
+				case EvSubjSidebarResized:
+					eventSidebarResized = dpapp.EventSidebarResized{}
+					if err := json.Unmarshal(msg.Data, &eventSidebarResized); err != nil {
+						s.LogErr("unmarshaling EventSidebarResized JSON", err)
+						continue
+					}
+					if err := p.OnSidebarResized(
+						eventSidebarResized,
+						sse,
+					); err != nil {
+						s.LogErr("handling PageIndex.OnSidebarResized", err)
 					}
 				}
 			}
@@ -1261,6 +1325,7 @@ func (s pageProjectDirHandlers) GETStream(w http.ResponseWriter, r *http.Request
 			var eventUpdated dpapp.EventUpdated
 			var eventLangChanged dpapp.EventLangChanged
 			var eventPrefsChanged dpapp.EventPrefsChanged
+			var eventSidebarResized dpapp.EventSidebarResized
 			for msg := range ch {
 				switch msg.Subject {
 				case EvSubjUpdated:
@@ -1307,6 +1372,18 @@ func (s pageProjectDirHandlers) GETStream(w http.ResponseWriter, r *http.Request
 						sse,
 					); err != nil {
 						s.LogErr("handling PageProjectDir.OnPrefsChanged", err)
+					}
+				case EvSubjSidebarResized:
+					eventSidebarResized = dpapp.EventSidebarResized{}
+					if err := json.Unmarshal(msg.Data, &eventSidebarResized); err != nil {
+						s.LogErr("unmarshaling EventSidebarResized JSON", err)
+						continue
+					}
+					if err := p.OnSidebarResized(
+						eventSidebarResized,
+						sse,
+					); err != nil {
+						s.LogErr("handling PageProjectDir.OnSidebarResized", err)
 					}
 				}
 			}
@@ -1437,6 +1514,7 @@ func (s pageSettingsHandlers) GETStream(w http.ResponseWriter, r *http.Request) 
 			defer s.recoverPanic(w, r, sse, "PageSettings stream")
 			var eventLangChanged dpapp.EventLangChanged
 			var eventPrefsChanged dpapp.EventPrefsChanged
+			var eventSidebarResized dpapp.EventSidebarResized
 			for msg := range ch {
 				switch msg.Subject {
 				case EvSubjLangChanged:
@@ -1462,6 +1540,18 @@ func (s pageSettingsHandlers) GETStream(w http.ResponseWriter, r *http.Request) 
 						sse,
 					); err != nil {
 						s.LogErr("handling PageSettings.OnPrefsChanged", err)
+					}
+				case EvSubjSidebarResized:
+					eventSidebarResized = dpapp.EventSidebarResized{}
+					if err := json.Unmarshal(msg.Data, &eventSidebarResized); err != nil {
+						s.LogErr("unmarshaling EventSidebarResized JSON", err)
+						continue
+					}
+					if err := p.OnSidebarResized(
+						eventSidebarResized,
+						sse,
+					); err != nil {
+						s.LogErr("handling PageSettings.OnSidebarResized", err)
 					}
 				}
 			}
@@ -1659,6 +1749,7 @@ func (s pageTIKHandlers) GETStream(w http.ResponseWriter, r *http.Request) {
 			var eventUpdated dpapp.EventUpdated
 			var eventLangChanged dpapp.EventLangChanged
 			var eventPrefsChanged dpapp.EventPrefsChanged
+			var eventSidebarResized dpapp.EventSidebarResized
 			var eventReset dpapp.EventReset
 			for msg := range ch {
 				switch msg.Subject {
@@ -1707,6 +1798,18 @@ func (s pageTIKHandlers) GETStream(w http.ResponseWriter, r *http.Request) {
 						sse,
 					); err != nil {
 						s.LogErr("handling PageTIK.OnPrefsChanged", err)
+					}
+				case EvSubjSidebarResized:
+					eventSidebarResized = dpapp.EventSidebarResized{}
+					if err := json.Unmarshal(msg.Data, &eventSidebarResized); err != nil {
+						s.LogErr("unmarshaling EventSidebarResized JSON", err)
+						continue
+					}
+					if err := p.OnSidebarResized(
+						eventSidebarResized,
+						sse,
+					); err != nil {
+						s.LogErr("handling PageTIK.OnSidebarResized", err)
 					}
 				case EvSubjReset:
 					eventReset = dpapp.EventReset{}
@@ -1994,6 +2097,7 @@ func (s pageTIKsHandlers) GETStream(w http.ResponseWriter, r *http.Request) {
 			var eventUpdated dpapp.EventUpdated
 			var eventLangChanged dpapp.EventLangChanged
 			var eventPrefsChanged dpapp.EventPrefsChanged
+			var eventSidebarResized dpapp.EventSidebarResized
 			var eventReset dpapp.EventReset
 			for msg := range ch {
 				switch msg.Subject {
@@ -2042,6 +2146,18 @@ func (s pageTIKsHandlers) GETStream(w http.ResponseWriter, r *http.Request) {
 						sse,
 					); err != nil {
 						s.LogErr("handling PageTIKs.OnPrefsChanged", err)
+					}
+				case EvSubjSidebarResized:
+					eventSidebarResized = dpapp.EventSidebarResized{}
+					if err := json.Unmarshal(msg.Data, &eventSidebarResized); err != nil {
+						s.LogErr("unmarshaling EventSidebarResized JSON", err)
+						continue
+					}
+					if err := p.OnSidebarResized(
+						eventSidebarResized,
+						sse,
+					); err != nil {
+						s.LogErr("handling PageTIKs.OnSidebarResized", err)
 					}
 				case EvSubjReset:
 					eventReset = dpapp.EventReset{}
@@ -2589,6 +2705,29 @@ func (d dispatcherEventReset) DispatchCtx(
 	err = d.s.messageBroker.Publish(ctx, d.s.messageBrokerMetrics, EvSubjReset, j)
 	if err != nil {
 		return fmt.Errorf("publishing subject %q: %w", EvSubjReset, err)
+	}
+	return nil
+}
+
+type dispatcherEventSidebarResized struct {
+	s   *Server
+	ctx context.Context
+}
+
+func (d dispatcherEventSidebarResized) Dispatch(e dpapp.EventSidebarResized) error {
+	return d.DispatchCtx(d.ctx, e)
+}
+
+func (d dispatcherEventSidebarResized) DispatchCtx(
+	ctx context.Context, e dpapp.EventSidebarResized,
+) error {
+	j, err := json.Marshal(e)
+	if err != nil {
+		return fmt.Errorf("marshaling EventSidebarResized JSON: %w", err)
+	}
+	err = d.s.messageBroker.Publish(ctx, d.s.messageBrokerMetrics, EvSubjSidebarResized, j)
+	if err != nil {
+		return fmt.Errorf("publishing subject %q: %w", EvSubjSidebarResized, err)
 	}
 	return nil
 }

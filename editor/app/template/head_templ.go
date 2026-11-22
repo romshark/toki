@@ -17,7 +17,8 @@ import (
 
 func prefsStyleTag(p UIPrefs) string {
 	if p.UIFontCSS == "" && p.EditorFontCSS == "" &&
-		p.UIFontSizeCSS == "" && p.EditorFontSizeCSS == "" {
+		p.UIFontSizeCSS == "" && p.EditorFontSizeCSS == "" &&
+		p.SidebarWidthCSS == "" {
 		return ""
 	}
 	var s strings.Builder
@@ -40,6 +41,11 @@ func prefsStyleTag(p UIPrefs) string {
 	if p.EditorFontSizeCSS != "" {
 		s.WriteString("--font-size-editor:")
 		s.WriteString(p.EditorFontSizeCSS)
+		s.WriteByte(';')
+	}
+	if p.SidebarWidthCSS != "" {
+		s.WriteString("--sidebar-width:")
+		s.WriteString(p.SidebarWidthCSS)
 		s.WriteByte(';')
 	}
 	s.WriteString("}</style>")
@@ -70,7 +76,7 @@ func Head(prefs UIPrefs) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templruntime.NewAttributeExpression(assets.Path("morpheus.css")).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 44, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 50, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -83,7 +89,7 @@ func Head(prefs UIPrefs) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templruntime.NewAttributeExpression(assets.Path("theme-default.css")).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 45, Col: 63}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 51, Col: 63}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -145,7 +151,7 @@ func Head(prefs UIPrefs) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templruntime.NewAttributeExpression(assets.Path("morpheus.js")).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 87, Col: 55}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 93, Col: 55}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -158,7 +164,7 @@ func Head(prefs UIPrefs) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templruntime.NewAttributeExpression(assets.Path("bundle.js")).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 88, Col: 39}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 94, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -171,7 +177,7 @@ func Head(prefs UIPrefs) templ.Component {
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templruntime.NewAttributeExpression(assets.Path("style.min.css")).ResolveURL(ctx)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 89, Col: 59}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `editor/app/template/head.templ`, Line: 95, Col: 59}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {
