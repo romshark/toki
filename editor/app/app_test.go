@@ -6,10 +6,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/romshark/datapages"
 	"github.com/romshark/toki/editor/app"
 	"github.com/romshark/toki/editor/app/template"
 	"github.com/romshark/toki/editor/indexdb"
@@ -57,6 +59,23 @@ func TestTryInitIndexDB(t *testing.T) {
 	require.Equal(t, 1, a.NumMissing())
 	require.Len(t, findTIK(t, a, "second").Occurrences, 1)
 	requireUnsavedEdit(a)
+}
+
+// TestSetMessageReadOnly makes sure the server rejects edits of messages
+// the TIK fully determines.
+func TestSetMessageReadOnly(t *testing.T) {
+	p := newProject(t, "first")
+	a := p.start()
+	tk := findTIK(t, a, "first")
+	i := slices.IndexFunc(tk.ICU, func(m *template.ICUMessage) bool {
+		return m.Catalog.Locale == "en"
+	})
+	require.True(t, tk.ICU[i].IsReadOnly, "native message of a plain TIK")
+
+	err := a.SetMessage(tk.ID, "en", "changed")
+	require.ErrorIs(t, err, datapages.ErrForbidden)
+	require.Equal(t, "first", tk.ICU[i].Message)
+	require.Empty(t, a.Changed())
 }
 
 // TestSearchIndexFollowsEdits makes sure search matches the current messages.

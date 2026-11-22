@@ -350,7 +350,8 @@ func (a *App) fullRebuildLocked() error {
 			return errors.New(a.initErr)
 		}
 		for _, m := range unsaved {
-			// Edits of TIKs that are gone from the source are dropped.
+			// Edits that no longer apply, to TIKs gone from the source or
+			// to messages that became read-only, are dropped.
 			_ = a.setMessageLocked(m.TIKID, m.Locale, m.ICUMessage)
 		}
 	}
@@ -801,6 +802,9 @@ func (a *App) setMessageLocked(id, locale, newMessage string) error {
 
 	if icuMsg.Message == newMessage {
 		return nil
+	}
+	if icuMsg.IsReadOnly {
+		return datapages.ErrForbidden // The TIK fully determines the message.
 	}
 
 	loc := a.localeTags[iCatalog]
@@ -1413,7 +1417,8 @@ func (a *App) repairCorruptLocked() error {
 
 	// Restore user changes that were not part of the repair.
 	for _, sc := range userChanges {
-		// Edits of TIKs that are gone from the source are dropped.
+		// Edits that no longer apply, to TIKs gone from the source or
+		// to messages that became read-only, are dropped.
 		_ = a.setMessageLocked(sc.tikID, sc.locale, sc.message)
 	}
 
