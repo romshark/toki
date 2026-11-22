@@ -126,6 +126,7 @@ func InitEditorSignalsOne(tk *TIK) string {
 // UIPrefs holds user interface appearance preferences read from cookies.
 type UIPrefs struct {
 	Theme          string // "light", "dark", "system"
+	Motion         string // "animated", "reduced", "system"
 	UIFont         string
 	EditorFont     string
 	UIFontSize     string

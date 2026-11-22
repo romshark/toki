@@ -17,6 +17,13 @@
 	font-display: swap;
 }
 
+/* Every animation and transition scales its duration by the scale of Morpheus,
+   which is 0 where the user or the OS asks for less motion.
+   The user's pick of animations overrides the OS preference. */
+:root[data-pref-full-motion] {
+	--neo-duration-scale: 1;
+}
+
 /* Enable cross-document view transitions on navigation */
 @view-transition {
 	navigation: auto;
@@ -33,11 +40,11 @@ main {
 }
 
 ::view-transition-old(main-content) {
-	animation: 150ms ease-out both slide-out-left;
+	animation: calc(150ms * var(--neo-duration-scale, 1)) ease-out both slide-out-left;
 }
 
 ::view-transition-new(main-content) {
-	animation: 150ms ease-out both slide-in-left;
+	animation: calc(150ms * var(--neo-duration-scale, 1)) ease-out both slide-in-left;
 }
 
 @keyframes slide-out-left {
@@ -635,7 +642,7 @@ main {
 	text-decoration: none;
 	color: inherit;
 	cursor: pointer;
-	transition: border-color 0.15s;
+	transition: border-color calc(0.15s * var(--neo-duration-scale, 1));
 	position: relative;
 	display: block;
 	block-size: 100%;
@@ -649,7 +656,9 @@ main {
 		inset-block-start: 0.75rem;
 		inset-inline-end: 0.75rem;
 		opacity: 0.3;
-		transition: opacity 0.15s, transform 0.15s;
+		transition:
+			opacity calc(0.15s * var(--neo-duration-scale, 1)),
+			transform calc(0.15s * var(--neo-duration-scale, 1));
 
 		& svg { width: 1rem; height: 1rem; }
 	}
@@ -745,7 +754,7 @@ main {
 	block-size: 100%;
 	border-radius: 9999px;
 	background: var(--accent, oklch(0.55 0.15 250));
-	transition: inline-size 0.3s;
+	transition: inline-size calc(0.3s * var(--neo-duration-scale, 1));
 }
 
 /* --- TIK skeletons --- */
@@ -761,7 +770,7 @@ main {
 	block-size: 0.75rem;
 	border-radius: 0.25rem;
 	background: var(--btn-border, oklch(0 0 0 / 0.1));
-	animation: skeleton-pulse 1.5s ease-in-out infinite;
+	animation: skeleton-pulse calc(1.5s * var(--neo-duration-scale, 1)) ease-in-out infinite;
 	inline-size: 80%;
 }
 
@@ -773,7 +782,7 @@ main {
 	to { transform: rotate(360deg); }
 }
 .icon-spin {
-	animation: icon-spin 1s linear infinite;
+	animation: icon-spin calc(1s * var(--neo-duration-scale, 1)) linear infinite;
 }
 .btn-loading-label {
 	display: inline-flex;
@@ -1053,7 +1062,7 @@ neo-card {
 		border-radius: 50%;
 		background: var(--page-fg, oklch(0.3 0 0));
 		opacity: 0.4;
-		animation: dot-bounce 1.2s ease-in-out infinite;
+		animation: dot-bounce calc(1.2s * var(--neo-duration-scale, 1)) ease-in-out infinite;
 
 		&:nth-child(2) {
 			animation-delay: 0.15s;
@@ -1149,7 +1158,7 @@ neo-card {
 
 .egg-line {
 	opacity: 0;
-	animation: egg-reveal 0.3s ease-out both;
+	animation: egg-reveal calc(0.3s * var(--neo-duration-scale, 1)) ease-out both;
 }
 
 .egg-danger {
@@ -1203,7 +1212,7 @@ neo-card {
 	gap: 0.5rem;
 	text-decoration: none;
 	color: inherit;
-	transition: background 0.15s;
+	transition: background calc(0.15s * var(--neo-duration-scale, 1));
 	position: relative;
 
 	&:hover { background: var(--btn-border, oklch(0 0 0 / 0.12)); }
@@ -1213,7 +1222,9 @@ neo-card {
 		inset-block-start: 0.4rem;
 		inset-inline-end: 0.4rem;
 		opacity: 0.3;
-		transition: opacity 0.15s, transform 0.15s;
+		transition:
+			opacity calc(0.15s * var(--neo-duration-scale, 1)),
+			transform calc(0.15s * var(--neo-duration-scale, 1));
 
 		& svg { width: 0.7rem; height: 0.7rem; }
 	}
@@ -1293,7 +1304,7 @@ neo-card {
 			text-decoration: none;
 			color: inherit;
 			background: var(--page-bg, oklch(0.97 0 0));
-			transition: background 0.15s;
+			transition: background calc(0.15s * var(--neo-duration-scale, 1));
 
 			&:hover { background: var(--btn-border, oklch(0.9 0 0)); }
 			& > svg { width: 0.75rem; height: 0.75rem; }
@@ -1347,13 +1358,14 @@ neo-card {
 		align-self: start;
 	}
 
-	& .theme-picker {
+	/* The cards of the options of a preference, as the theme. */
+	& .pref-picker {
 		display: flex;
 		gap: 1rem;
 		flex-wrap: wrap;
 	}
 
-	& .theme-card {
+	& .pref-card {
 		all: unset;
 		cursor: pointer;
 		display: flex;
@@ -1363,7 +1375,7 @@ neo-card {
 		padding: 0.75rem;
 		border-radius: 0.5rem;
 		border: 2px solid var(--btn-border, oklch(0 0 0 / 0.15));
-		transition: border-color 0.15s;
+		transition: border-color calc(0.15s * var(--neo-duration-scale, 1));
 		min-inline-size: 8rem;
 
 		&:hover { border-color: var(--accent, oklch(0.55 0.15 250)); }
@@ -1374,10 +1386,10 @@ neo-card {
 		}
 	}
 
-	& .theme-card-label { font-weight: 600; font-size: 0.9rem; }
-	& .theme-card-desc { font-size: 0.75rem; opacity: 0.6; }
+	& .pref-card-label { font-weight: 600; font-size: 0.9rem; }
+	& .pref-card-desc { font-size: 0.75rem; opacity: 0.6; }
 
-	& .theme-preview {
+	& .pref-preview {
 		display: flex;
 		inline-size: 7rem;
 		block-size: 4.5rem;
@@ -1400,8 +1412,8 @@ neo-card {
 		& .tp-line    { background: #444; }
 	}
 
-	& .theme-preview-system { display: flex; overflow: hidden; }
-	& .theme-preview-half { display: flex; inline-size: 50%; overflow: hidden; }
+	& .pref-preview-split { display: flex; overflow: hidden; }
+	& .pref-preview-half { display: flex; inline-size: 50%; overflow: hidden; }
 	& .tp-sidebar { inline-size: 25%; flex-shrink: 0; }
 	& .tp-main { flex: 1; display: flex; flex-direction: column; }
 	& .tp-navbar { block-size: 0.5rem; flex-shrink: 0; }
@@ -1419,6 +1431,26 @@ neo-card {
 		border-radius: 0.1rem;
 		inline-size: 80%;
 		&.tp-short { inline-size: 50%; }
+	}
+
+	/* A dot that moves, with its trail, or that stands still. */
+	& .motion-preview {
+		align-items: center;
+		justify-content: center;
+		gap: 0.2rem;
+		background: var(--btn-hover-bg, oklch(0 0 0 / 0.04));
+
+		& + .motion-preview { border-inline-start: 1px solid oklch(0 0 0 / 0.1); }
+	}
+
+	& .mp-dot {
+		inline-size: 0.75rem;
+		block-size: 0.75rem;
+		border-radius: 50%;
+		background: currentColor;
+
+		&.mp-dim { opacity: 0.4; }
+		&.mp-faint { opacity: 0.15; }
 	}
 
 	& .font-section {

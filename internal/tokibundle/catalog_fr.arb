@@ -70,6 +70,10 @@
 		"context": "[TIKs]",
 		"type": "text"
 	},
+	"msg2085c1027cfec53d": "Animations",
+	"@msg2085c1027cfec53d": {
+		"type": "text"
+	},
 	"msg2090b23ec7d104f9": "Locale par défaut",
 	"@msg2090b23ec7d104f9": {
 		"type": "text"
@@ -207,6 +211,10 @@
 	},
 	"msg4369aee9fa785170": "Navigation des paramètres",
 	"@msg4369aee9fa785170": {
+		"type": "text"
+	},
+	"msg437c524159649eac": "Toutes les animations",
+	"@msg437c524159649eac": {
 		"type": "text"
 	},
 	"msg46c348538fd08a05": "erreurs dans le code source",
@@ -399,6 +407,11 @@
 	"@msg6a45ce589847ac96": {
 		"type": "text"
 	},
+	"msg6c000ea0e2788512": "Animées",
+	"@msg6c000ea0e2788512": {
+		"context": "[motion]",
+		"type": "text"
+	},
 	"msg6c0e8f51f7f708f": "/chemin/vers/votre/projet",
 	"@msg6c0e8f51f7f708f": {
 		"type": "text"
@@ -524,6 +537,11 @@
 	"msg89485d5f890f252e": "s’exécuter comme simple serveur HTTP à cette adresse au lieu de l’application de bureau native",
 	"@msg89485d5f890f252e": {
 		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msg8954af56736f60f": "Réduites",
+	"@msg8954af56736f60f": {
+		"context": "[motion]",
 		"type": "text"
 	},
 	"msg895e0af8c527483b": "le bundle est cohérent, rien à réparer",
@@ -833,6 +851,10 @@
 	"@msgc84d11054784a204": {
 		"type": "text"
 	},
+	"msgc94eb47532556dbe": "Animations minimales",
+	"@msgc94eb47532556dbe": {
+		"type": "text"
+	},
 	"msgc9ab8b18e394542": "Par page",
 	"@msgc9ab8b18e394542": {
 		"type": "text"
@@ -1018,6 +1040,11 @@
 	},
 	"msgf750d55d5e9ea48c": "Lecture seule",
 	"@msgf750d55d5e9ea48c": {
+		"type": "text"
+	},
+	"msgf78987793eec38c": "Système",
+	"@msgf78987793eec38c": {
+		"context": "[motion]",
 		"type": "text"
 	},
 	"msgf8e36be5c372bf1a": "le bundle contient des messages corrompus de la locale source — exécutez `toki repair` ({var0, plural, one {# entrée corrompue} many {# d’entrées corrompues} other {# entrées corrompues}})",

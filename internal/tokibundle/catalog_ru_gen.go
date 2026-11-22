@@ -228,6 +228,9 @@ var writers_ru = map[string]func(w io.Writer, args ...any) (int, error){
 	msg20457981691d7945: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Без перевода")
 	},
+	msg2085c1027cfec53d: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Движение")
+	},
 	msg2090b23ec7d104f9: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Локаль по умолчанию")
 	},
@@ -533,6 +536,9 @@ var writers_ru = map[string]func(w io.Writer, args ...any) (int, error){
 	},
 	msg4369aee9fa785170: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Навигация по настройкам")
+	},
+	msg437c524159649eac: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Все анимации")
 	},
 	msg46c348538fd08a05: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "ошибки в исходном коде")
@@ -864,6 +870,9 @@ var writers_ru = map[string]func(w io.Writer, args ...any) (int, error){
 	msg6a45ce589847ac96: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Чтобы изменить его, отредактируйте TIK в исходном коде.")
 	},
+	msg6c000ea0e2788512: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Полное")
+	},
 	msg6c0e8f51f7f708f: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "/путь/к/вашему/проекту")
 	},
@@ -1086,6 +1095,9 @@ var writers_ru = map[string]func(w io.Writer, args ...any) (int, error){
 	},
 	msg89485d5f890f252e: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "работать как обычный HTTP-сервер по этому адресу вместо нативного настольного приложения")
+	},
+	msg8954af56736f60f: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Уменьшенное")
 	},
 	msg895e0af8c527483b: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "бандл согласован, восстанавливать нечего")
@@ -1636,6 +1648,9 @@ var writers_ru = map[string]func(w io.Writer, args ...any) (int, error){
 	msgc84d11054784a204: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Восстановить бандл")
 	},
+	msgc94eb47532556dbe: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Минимум анимаций")
+	},
 	msgc9ab8b18e394542: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "На странице")
 	},
@@ -1909,6 +1924,9 @@ var writers_ru = map[string]func(w io.Writer, args ...any) (int, error){
 	},
 	msgf750d55d5e9ea48c: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Только для чтения")
+	},
+	msgf78987793eec38c: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Системное")
 	},
 	msgf8e36be5c372bf1a: func(w io.Writer, args ...any) (written int, err error) {
 		var n int

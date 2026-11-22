@@ -43,6 +43,7 @@ func (p PageSettings) GET(
 		SystemLang: p.App.systemReader(r).Locale(),
 		Prefs: template.UIPrefs{
 			Theme:          prefs.Theme,
+			Motion:         prefs.Motion,
 			UIFont:         prefs.UIFont,
 			EditorFont:     prefs.EditorFont,
 			UIFontSize:     prefs.UIFontSize,
@@ -158,6 +159,7 @@ func (p PageSettings) POSTSetPref(
 	return prefsChanged.Dispatch(EventPrefsChanged{
 		Theme:          p2.Theme,
 		ThemeResolved:  prefSignals.PrefThemeResolved,
+		Motion:         p2.Motion,
 		UIFont:         p2.UIFont,
 		EditorFont:     p2.EditorFont,
 		UIFontSize:     p2.UIFontSize,

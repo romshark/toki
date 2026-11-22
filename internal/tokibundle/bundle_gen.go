@@ -362,6 +362,7 @@ const (
 	msg1b2ec9bba2cafae0 = `3. Just kidding! I tried translating your messages but I kept outputting {text}. You're welcome.`
 	msg1e94eb7cfa2c00d7 = `parameter -l ("{text}") must either match DefaultLocale ("{text}") in package "{text}" or not be set at all`
 	msg20457981691d7945 = `[TIKs] Untranslated`
+	msg2085c1027cfec53d = `Motion`
 	msg2090b23ec7d104f9 = `Default locale`
 	msg210443ed66fb781a = `[font size] Default`
 	msg2135dd122d53583  = `The source code contains errors.`
@@ -393,6 +394,7 @@ const (
 	msg425cb813b1635b14 = `Go forward`
 	msg43343e9e4667b439 = `Pending changes`
 	msg4369aee9fa785170 = `Settings navigation`
+	msg437c524159649eac = `All animations`
 	msg46c348538fd08a05 = `source errors`
 	msg4709b18128b120f3 = `Native locale`
 	msg47463dd161059ba9 = `Usage: toki {text} [flags]`
@@ -434,6 +436,7 @@ const (
 	msg684c5db7650c469  = `Open the translation editor`
 	msg69ecef84ecc0d505 = `Hide All`
 	msg6a45ce589847ac96 = `To change it, edit the TIK in the source code.`
+	msg6c000ea0e2788512 = `[motion] Animated`
 	msg6c0e8f51f7f708f  = `/path/to/your/project`
 	msg6c2c8442427f2791 = `Completeness`
 	msg6f26008b4129abf5 = `Rewrite native-locale messages that disagree with their TIK`
@@ -463,6 +466,7 @@ const (
 	msg88b978125da2bd55 = `Click Regenerate Bundle or run {text} to update the bundle.`
 	msg893d5b55fa207f2a = `Discard Changes`
 	msg89485d5f890f252e = `run as plain HTTP server on this address instead of the native desktop app`
+	msg8954af56736f60f  = `[motion] Reduced Motion`
 	msg895e0af8c527483b = `bundle is consistent, nothing to repair`
 	msg89e314b28e6dab4b = `Filter`
 	msg8a49a4ca171ca660 = `Print version information`
@@ -533,6 +537,7 @@ const (
 	msgc7a580e00ced50c7 = `Dark theme`
 	msgc81ed59767eb5248 = `enable source code path trimming`
 	msgc84d11054784a204 = `Repair Bundle`
+	msgc94eb47532556dbe = `Minimal animations`
 	msgc9ab8b18e394542  = `Per page`
 	msgcce935f040e8287f = `{text} s`
 	msgce3e71939c48e386 = `[message] Incomplete`
@@ -577,6 +582,7 @@ const (
 	msgf53a53c1b5e8d054 = `Error at index {integer}: {text}`
 	msgf6c1bdee7c4a02f1 = `Build Successful`
 	msgf750d55d5e9ea48c = `Read only`
+	msgf78987793eec38c  = `[motion] System`
 	msgf8e36be5c372bf1a = "bundle contains corrupt native-locale messages — run `toki repair` ({# corrupt native-locale entries})"
 	msgf9de86316817f08  = `The TIKs in the source code are written in this locale. Other locales fall back to its messages wherever they have no translation.`
 	msgfb472db9466db27c = `[font size] Big`

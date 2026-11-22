@@ -70,6 +70,10 @@
 		"context": "[TIKs]",
 		"type": "text"
 	},
+	"msg2085c1027cfec53d": "Bewegung",
+	"@msg2085c1027cfec53d": {
+		"type": "text"
+	},
 	"msg2090b23ec7d104f9": "Standard-Locale",
 	"@msg2090b23ec7d104f9": {
 		"type": "text"
@@ -207,6 +211,10 @@
 	},
 	"msg4369aee9fa785170": "Einstellungsnavigation",
 	"@msg4369aee9fa785170": {
+		"type": "text"
+	},
+	"msg437c524159649eac": "Alle Animationen",
+	"@msg437c524159649eac": {
 		"type": "text"
 	},
 	"msg46c348538fd08a05": "Fehler im Quellcode",
@@ -399,6 +407,11 @@
 	"@msg6a45ce589847ac96": {
 		"type": "text"
 	},
+	"msg6c000ea0e2788512": "Animiert",
+	"@msg6c000ea0e2788512": {
+		"context": "[motion]",
+		"type": "text"
+	},
 	"msg6c0e8f51f7f708f": "/pfad/zu/ihrem/projekt",
 	"@msg6c0e8f51f7f708f": {
 		"type": "text"
@@ -524,6 +537,11 @@
 	"msg89485d5f890f252e": "statt der nativen Desktop-App als einfacher HTTP-Server unter dieser Adresse laufen",
 	"@msg89485d5f890f252e": {
 		"description": "The usage of a flag.",
+		"type": "text"
+	},
+	"msg8954af56736f60f": "Reduziert",
+	"@msg8954af56736f60f": {
+		"context": "[motion]",
 		"type": "text"
 	},
 	"msg895e0af8c527483b": "Bundle ist konsistent, nichts zu reparieren",
@@ -833,6 +851,10 @@
 	"@msgc84d11054784a204": {
 		"type": "text"
 	},
+	"msgc94eb47532556dbe": "Minimale Animationen",
+	"@msgc94eb47532556dbe": {
+		"type": "text"
+	},
 	"msgc9ab8b18e394542": "Pro Seite",
 	"@msgc9ab8b18e394542": {
 		"type": "text"
@@ -1018,6 +1040,11 @@
 	},
 	"msgf750d55d5e9ea48c": "Schreibgeschützt",
 	"@msgf750d55d5e9ea48c": {
+		"type": "text"
+	},
+	"msgf78987793eec38c": "System",
+	"@msgf78987793eec38c": {
+		"context": "[motion]",
 		"type": "text"
 	},
 	"msgf8e36be5c372bf1a": "Bundle enthält beschädigte Nachrichten der Quell-Locale — führen Sie `toki repair` aus ({var0, plural, one {# beschädigter Eintrag} other {# beschädigte Einträge}})",

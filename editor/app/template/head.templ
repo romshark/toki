@@ -56,6 +56,18 @@ templ Head(prefs UIPrefs) {
 				}
 			</script>
 	}
+	// Set the motion attribute before any content renders, which keeps it
+	// from animating. System leaves the OS preference to the CSS.
+	switch prefs.Motion {
+		case "reduced":
+			<script>
+				document.documentElement.setAttribute('data-pref-reduced-motion','')
+			</script>
+		case "animated":
+			<script>
+				document.documentElement.setAttribute('data-pref-full-motion','')
+			</script>
+	}
 	// Inject CSS custom properties for user font preferences on :root.
 	// templ.Raw is acceptable here because templ has no native construct
 	// for <style> tags with dynamic content.

@@ -228,6 +228,9 @@ var writers_uk = map[string]func(w io.Writer, args ...any) (int, error){
 	msg20457981691d7945: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Без перекладу")
 	},
+	msg2085c1027cfec53d: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Рух")
+	},
 	msg2090b23ec7d104f9: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Локаль за замовчуванням")
 	},
@@ -533,6 +536,9 @@ var writers_uk = map[string]func(w io.Writer, args ...any) (int, error){
 	},
 	msg4369aee9fa785170: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Навігація налаштувань")
+	},
+	msg437c524159649eac: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Усі анімації")
 	},
 	msg46c348538fd08a05: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "помилки у вихідному коді")
@@ -864,6 +870,9 @@ var writers_uk = map[string]func(w io.Writer, args ...any) (int, error){
 	msg6a45ce589847ac96: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Щоб змінити його, відредагуйте TIK у вихідному коді.")
 	},
+	msg6c000ea0e2788512: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Повний")
+	},
 	msg6c0e8f51f7f708f: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "/шлях/до/вашого/проєкту")
 	},
@@ -1086,6 +1095,9 @@ var writers_uk = map[string]func(w io.Writer, args ...any) (int, error){
 	},
 	msg89485d5f890f252e: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "працювати як звичайний HTTP-сервер за цією адресою замість нативного настільного застосунку")
+	},
+	msg8954af56736f60f: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Зменшений")
 	},
 	msg895e0af8c527483b: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "бандл узгоджений, нічого відновлювати")
@@ -1636,6 +1648,9 @@ var writers_uk = map[string]func(w io.Writer, args ...any) (int, error){
 	msgc84d11054784a204: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Відновити бандл")
 	},
+	msgc94eb47532556dbe: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Мінімум анімацій")
+	},
 	msgc9ab8b18e394542: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "На сторінці")
 	},
@@ -1909,6 +1924,9 @@ var writers_uk = map[string]func(w io.Writer, args ...any) (int, error){
 	},
 	msgf750d55d5e9ea48c: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Лише для читання")
+	},
+	msgf78987793eec38c: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Системний")
 	},
 	msgf8e36be5c372bf1a: func(w io.Writer, args ...any) (written int, err error) {
 		var n int

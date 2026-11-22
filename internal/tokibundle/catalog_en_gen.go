@@ -206,6 +206,9 @@ var writers_en = map[string]func(w io.Writer, args ...any) (int, error){
 	msg20457981691d7945: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Untranslated")
 	},
+	msg2085c1027cfec53d: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Motion")
+	},
 	msg2090b23ec7d104f9: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Default locale")
 	},
@@ -489,6 +492,9 @@ var writers_en = map[string]func(w io.Writer, args ...any) (int, error){
 	},
 	msg4369aee9fa785170: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Settings navigation")
+	},
+	msg437c524159649eac: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "All animations")
 	},
 	msg46c348538fd08a05: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "source errors")
@@ -798,6 +804,9 @@ var writers_en = map[string]func(w io.Writer, args ...any) (int, error){
 	msg6a45ce589847ac96: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "To change it, edit the TIK in the source code.")
 	},
+	msg6c000ea0e2788512: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Animated")
+	},
 	msg6c0e8f51f7f708f: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "/path/to/your/project")
 	},
@@ -976,6 +985,9 @@ var writers_en = map[string]func(w io.Writer, args ...any) (int, error){
 	},
 	msg89485d5f890f252e: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "run as plain HTTP server on this address instead of the native desktop app")
+	},
+	msg8954af56736f60f: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Reduced Motion")
 	},
 	msg895e0af8c527483b: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "bundle is consistent, nothing to repair")
@@ -1504,6 +1516,9 @@ var writers_en = map[string]func(w io.Writer, args ...any) (int, error){
 	msgc84d11054784a204: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Repair Bundle")
 	},
+	msgc94eb47532556dbe: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Minimal animations")
+	},
 	msgc9ab8b18e394542: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Per page")
 	},
@@ -1755,6 +1770,9 @@ var writers_en = map[string]func(w io.Writer, args ...any) (int, error){
 	},
 	msgf750d55d5e9ea48c: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Read only")
+	},
+	msgf78987793eec38c: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "System")
 	},
 	msgf8e36be5c372bf1a: func(w io.Writer, args ...any) (written int, err error) {
 		var n int

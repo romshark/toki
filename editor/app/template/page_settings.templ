@@ -56,6 +56,7 @@ templ PageSettings(tr tokibundle.Reader, version string, data DataSettingsPrevie
 	@page("page-settings", templ.Attributes{
 		"data-signals:_ZWdnMQ":               "false",
 		"data-signals:pref_theme":            strfmt.SingleQuote(data.Prefs.Theme),
+		"data-signals:pref_motion":           strfmt.SingleQuote(data.Prefs.Motion),
 		"data-signals:pref_ui_font":          strfmt.SingleQuote(data.Prefs.UIFont),
 		"data-signals:pref_editor_font":      strfmt.SingleQuote(data.Prefs.EditorFont),
 		"data-signals:pref_ui_font_size":     strfmt.SingleQuote(data.Prefs.UIFontSize),
@@ -138,13 +139,27 @@ templ PageSettings(tr tokibundle.Reader, version string, data DataSettingsPrevie
 						}
 						@componentField("pref_theme", tr.String("Theme")) {
 							<div
-								class="theme-picker"
+								class="pref-picker"
 								role="group"
 								aria-labelledby={ fieldLabelID("pref_theme") }
 							>
 								@themeCard(data.Prefs, "light", tr.String("[theme] Light"), tr.String("Bright theme"))
 								@themeCard(data.Prefs, "dark", tr.String("[theme] Dark"), tr.String("Dark theme"))
 								@themeCard(data.Prefs, "system", tr.String("[theme] System"),
+									tr.String("Match OS setting"))
+							</div>
+						}
+						@componentField("pref_motion", tr.String("Motion")) {
+							<div
+								class="pref-picker"
+								role="group"
+								aria-labelledby={ fieldLabelID("pref_motion") }
+							>
+								@motionCard(data.Prefs, "animated", tr.String("[motion] Animated"),
+									tr.String("All animations"))
+								@motionCard(data.Prefs, "reduced", tr.String("[motion] Reduced Motion"),
+									tr.String("Minimal animations"))
+								@motionCard(data.Prefs, "system", tr.String("[motion] System"),
 									tr.String("Match OS setting"))
 							</div>
 						}
@@ -320,62 +335,94 @@ templ PageSettings(tr tokibundle.Reader, version string, data DataSettingsPrevie
 	}
 }
 
-templ themeCard(prefs UIPrefs, value, label, desc string) {
+// prefCard renders an option of a preference as a card, which previews it
+// with its children. signal is the signal of the preference, current its
+// value and value the option. set is the Datastar expression that sets the
+// signals of the option before the card posts them.
+templ prefCard(signal, current, value, label, desc, set string) {
 	<button
 		type="button"
-		class="theme-card"
-		if prefs.Theme == value {
+		class="pref-card"
+		if current == value {
 			aria-pressed="true"
 		}
-		data-attr:aria-pressed={ fmt.Sprintf(
-			"$pref_theme==='%s' ? 'true' : 'false'", value,
-		) }
-		data-theme={ value }
-		data-on:click={ action.PageSettings.SetPref.POST(NoEditorSignals, action.WithBefore(fmt.Sprintf(
-			"$pref_theme=%q;$pref_theme_resolved=%s", value,
-			map[string]string{
-				"light":  "'light'",
-				"dark":   "'dark'",
-				"system": "matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'",
-			}[value],
-		))) }
+		data-attr:aria-pressed={ fmt.Sprintf("$%s==='%s' ? 'true' : 'false'", signal, value) }
+		data-on:click={ action.PageSettings.SetPref.POST(NoEditorSignals, action.WithBefore(set)) }
 	>
+		{ children... }
+		<span class="pref-card-label">{ label }</span>
+		<span class="pref-card-desc">{ desc }</span>
+	</button>
+}
+
+templ themeCard(prefs UIPrefs, value, label, desc string) {
+	@prefCard("pref_theme", prefs.Theme, value, label, desc, fmt.Sprintf(
+		"$pref_theme=%q;$pref_theme_resolved=%s", value,
+		map[string]string{
+			"light":  "'light'",
+			"dark":   "'dark'",
+			"system": "matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'",
+		}[value],
+	)) {
 		if value == "system" {
-			<div class="theme-preview theme-preview-system">
-				<div class="theme-preview-half theme-preview-light">
-					<div class="tp-sidebar"></div>
-					<div class="tp-main">
-						<div class="tp-navbar"></div>
-						<div class="tp-content">
-							<div class="tp-line"></div>
-							<div class="tp-line tp-short"></div>
-						</div>
-					</div>
+			<div class="pref-preview pref-preview-split">
+				<div class="pref-preview-half theme-preview-light">
+					@themePreviewPage()
 				</div>
-				<div class="theme-preview-half theme-preview-dark">
-					<div class="tp-sidebar"></div>
-					<div class="tp-main">
-						<div class="tp-navbar"></div>
-						<div class="tp-content">
-							<div class="tp-line"></div>
-							<div class="tp-line tp-short"></div>
-						</div>
-					</div>
+				<div class="pref-preview-half theme-preview-dark">
+					@themePreviewPage()
 				</div>
 			</div>
 		} else {
-			<div class={ "theme-preview theme-preview-" + value }>
-				<div class="tp-sidebar"></div>
-				<div class="tp-main">
-					<div class="tp-navbar"></div>
-					<div class="tp-content">
-						<div class="tp-line"></div>
-						<div class="tp-line tp-short"></div>
-					</div>
-				</div>
+			<div class={ "pref-preview theme-preview-" + value }>
+				@themePreviewPage()
 			</div>
 		}
-		<span class="theme-card-label">{ label }</span>
-		<span class="theme-card-desc">{ desc }</span>
-	</button>
+	}
+}
+
+// themePreviewPage sketches a page of the editor for a theme preview.
+templ themePreviewPage() {
+	<div class="tp-sidebar"></div>
+	<div class="tp-main">
+		<div class="tp-navbar"></div>
+		<div class="tp-content">
+			<div class="tp-line"></div>
+			<div class="tp-line tp-short"></div>
+		</div>
+	</div>
+}
+
+// motionCard renders an option of the motion preference. Its preview stands
+// still: an animated preview would move for the people who pick less motion.
+templ motionCard(prefs UIPrefs, value, label, desc string) {
+	@prefCard("pref_motion", prefs.Motion, value, label, desc,
+		fmt.Sprintf("$pref_motion=%q", value)) {
+		switch value {
+			case "animated":
+				<div class="pref-preview motion-preview">
+					@motionPreviewTrail()
+				</div>
+			case "reduced":
+				<div class="pref-preview motion-preview">
+					<span class="mp-dot"></span>
+				</div>
+			default:
+				<div class="pref-preview pref-preview-split">
+					<div class="pref-preview-half motion-preview">
+						@motionPreviewTrail()
+					</div>
+					<div class="pref-preview-half motion-preview">
+						<span class="mp-dot"></span>
+					</div>
+				</div>
+		}
+	}
+}
+
+// motionPreviewTrail sketches a moving dot with the trail it leaves.
+templ motionPreviewTrail() {
+	<span class="mp-dot mp-faint"></span>
+	<span class="mp-dot mp-dim"></span>
+	<span class="mp-dot"></span>
 }
