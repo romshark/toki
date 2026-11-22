@@ -6,10 +6,8 @@ package template
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
-import (
-	"github.com/a-h/templ"
-	templruntime "github.com/a-h/templ/runtime"
-)
+import "github.com/a-h/templ"
+import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
@@ -1342,7 +1340,7 @@ func themeCard(prefs UIPrefs, value, label, desc string) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Var63 := []any{"theme-preview theme-preview-" + value}
+				var templ_7745c5c3_Var63 = []any{"theme-preview theme-preview-" + value}
 				templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_ElementWriter, templ_7745c5c3_Var63...)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

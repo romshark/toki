@@ -6,10 +6,8 @@ package template
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
-import (
-	"github.com/a-h/templ"
-	templruntime "github.com/a-h/templ/runtime"
-)
+import "github.com/a-h/templ"
+import templruntime "github.com/a-h/templ/runtime"
 
 // page wraps every page body. Its root is what the page's event handlers
 // morph: they re-render the whole page from current state, which makes
