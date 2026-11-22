@@ -61,10 +61,12 @@ func (m *Map[K, V]) Access(fn func(s map[K]V) error) error {
 	return fn(m.items)
 }
 
+// Seq iterates over the map exclusively.
+// Calling other methods of m in the loop body deadlocks.
 func (m *Map[K, V]) Seq() iter.Seq2[K, V] {
-	m.lock.Lock()
-	defer m.lock.Unlock()
 	return func(yield func(K, V) bool) {
+		m.lock.Lock()
+		defer m.lock.Unlock()
 		for k, v := range m.items {
 			if !yield(k, v) {
 				break
@@ -73,10 +75,12 @@ func (m *Map[K, V]) Seq() iter.Seq2[K, V] {
 	}
 }
 
+// SeqRead iterates over the map holding a read lock.
+// Calling other methods of m in the loop body deadlocks.
 func (m *Map[K, V]) SeqRead() iter.Seq2[K, V] {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
 	return func(yield func(K, V) bool) {
+		m.lock.RLock()
+		defer m.lock.RUnlock()
 		for k, v := range m.items {
 			if !yield(k, v) {
 				break

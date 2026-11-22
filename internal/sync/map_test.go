@@ -2,8 +2,10 @@ package sync
 
 import (
 	"errors"
+	"iter"
 	"maps"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -78,4 +80,31 @@ func TestMap(t *testing.T) {
 		require.Equal(t, errTest, err)
 	}
 	require.Equal(t, 1, m.Len())
+}
+
+// TestMapSeqLock makes sure writers wait for iterations to finish.
+func TestMapSeqLock(t *testing.T) {
+	for name, seq := range map[string]func(*Map[int, int]) iter.Seq2[int, int]{
+		"Seq":     (*Map[int, int]).Seq,
+		"SeqRead": (*Map[int, int]).SeqRead,
+	} {
+		t.Run(name, func(t *testing.T) {
+			m := NewMap[int, int](0)
+			m.Set(1, 1)
+			setDone := make(chan struct{})
+			for range seq(m) {
+				go func() {
+					m.Set(2, 2)
+					close(setDone)
+				}()
+				select {
+				case <-setDone:
+					t.Fatal("Set completed during iteration")
+				case <-time.After(50 * time.Millisecond):
+				}
+			}
+			<-setDone
+			require.Equal(t, 2, m.Len())
+		})
+	}
 }
