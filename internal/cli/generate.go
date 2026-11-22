@@ -163,23 +163,18 @@ func (g *Generate) Run(
 		}
 	}
 
-	var nativeCatalog *codeparse.Catalog
 	var nativeARB *arb.File
-	var nativeARBFilePath string
 	for catalog := range scan.Catalogs.SeqRead() {
 		if catalog.ARB.Locale == scan.DefaultLocale {
-			nativeCatalog = catalog
 			nativeARB = catalog.ARB
-			nativeARBFilePath = catalog.ARBFilePath
 		}
 	}
 
 	if nativeARB == nil {
-		nativeARBFilePath = filepath.Join(
+		nativeARBFilePath, err := filepath.Abs(filepath.Join(
 			conf.BundlePkgPath,
 			gengo.FileNameWithLocale(scan.DefaultLocale, "catalog", ".arb"),
-		)
-		nativeARBFilePath, err := filepath.Abs(nativeARBFilePath)
+		))
 		if err != nil {
 			panic(err)
 		}
@@ -192,11 +187,10 @@ func (g *Generate) Run(
 		}
 		setARBMetadata(nativeARB)
 
-		nativeCatalog = &codeparse.Catalog{
+		scan.Catalogs.Append(&codeparse.Catalog{
 			ARB:         nativeARB,
 			ARBFilePath: nativeARBFilePath,
-		}
-		scan.Catalogs.Append(nativeCatalog)
+		})
 	}
 
 	// Check for new messages and repair corrupt native messages.
@@ -214,11 +208,6 @@ func (g *Generate) Run(
 				slog.String("position", log.FmtPos(text.Position)),
 				slog.String("id", newMsg.ID))
 			nativeARB.Messages[newMsg.ID] = newMsg
-			if incomplete := codeparse.IsMsgIncomplete(
-				scan, nativeARB, nativeARBFilePath, &newMsg,
-			); incomplete {
-				nativeCatalog.MessagesIncomplete.Add(1)
-			}
 		} else {
 			// Repair corrupt native locale messages:
 			//  1. Empty - always repopulate from TIK.
@@ -318,6 +307,11 @@ func (g *Generate) Run(
 			result.Err = err
 			return result
 		}
+	}
+
+	// Synchronization added and removed messages since parsing counted them.
+	for catalog := range scan.Catalogs.SeqRead() {
+		catalog.CountIncomplete()
 	}
 
 	if !conf.QuietMode && conf.VerboseMode {
@@ -456,12 +450,10 @@ func writeMissingARBFilesAndUpdateCatalogs(
 			}
 
 			// Add a new catalog.
-			newCatalog := &codeparse.Catalog{
+			catalogs.Append(&codeparse.Catalog{
 				ARB:         newFile,
 				ARBFilePath: filePath,
-			}
-			newCatalog.MessagesIncomplete.Store(int64(len(newFile.Messages)))
-			catalogs.Append(newCatalog)
+			})
 
 			return nil
 		}()

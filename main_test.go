@@ -709,6 +709,70 @@ func TestGenerate(t *testing.T) {
 	}
 }
 
+// TestGenerateRequireCompleteAfterSync makes sure -require-complete judges the
+// catalogs after synchronizing them with the source, not as they were loaded.
+func TestGenerateRequireCompleteAfterSync(t *testing.T) {
+	const mainHeader = `
+		package main
+		import "fmt"
+		import "tstmod/tokibundle"
+		import "golang.org/x/text/language"
+		func main() {
+			r, _ := tokibundle.Match(language.English)
+	`
+	generate := func(t *testing.T, dir string, args ...string) error {
+		t.Helper()
+		var err error
+		runInDir(t, dir, func() {
+			res, _ := cli.Run(
+				append([]string{"toki", "generate"}, args...),
+				osEnv(), io.Discard, io.Discard, TimeNow,
+			)
+			err = res.Err
+		})
+		return err
+	}
+
+	t.Run("new blank translation", func(t *testing.T) {
+		dir := t.TempDir()
+		initGoMod(t, dir, ModName)
+		writeFiles(t, dir, map[string]string{
+			"main.go": mainHeader + `fmt.Println(r.String("first")) }`,
+		})
+		require.NoError(t, generate(t, dir, "-l=en", "-t=de"))
+		setOnlyMessage(t, filepath.Join(dir, "tokibundle", "catalog_de.arb"), "erste")
+		require.NoError(t, generate(t, dir, "-require-complete"))
+
+		writeFiles(t, dir, map[string]string{
+			"main.go": mainHeader + `
+				fmt.Println(r.String("first"))
+				fmt.Println(r.String("second"))
+			}`,
+		})
+		require.ErrorIs(t, generate(t, dir, "-require-complete"), cli.ErrBundleIncomplete)
+	})
+
+	t.Run("obsolete incomplete translation", func(t *testing.T) {
+		dir := t.TempDir()
+		initGoMod(t, dir, ModName)
+		writeFiles(t, dir, map[string]string{
+			"main.go": mainHeader + `fmt.Println(r.String("{# apples}", 2)) }`,
+		})
+		require.NoError(t, generate(t, dir, "-l=en", "-t=de"))
+		setOnlyMessage(t, filepath.Join(dir, "tokibundle", "catalog_en.arb"),
+			"{var0, plural, one {# apple} other {# apples}}")
+		// German requires the "one" option too.
+		setOnlyMessage(t, filepath.Join(dir, "tokibundle", "catalog_de.arb"),
+			"{var0, plural, other {# Äpfel}}")
+		require.ErrorIs(t, generate(t, dir, "-require-complete"), cli.ErrBundleIncomplete)
+
+		writeFiles(t, dir, map[string]string{
+			"main.go": "package main\nfunc main() {}",
+		})
+		require.NoError(t, generate(t, dir, "-require-complete"))
+	})
+}
+
 // TestGenerateJSONPackageError makes sure JSON output reports errors
 // that stop the source scan.
 func TestGenerateJSONPackageError(t *testing.T) {

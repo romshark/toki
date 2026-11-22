@@ -101,8 +101,8 @@ type SourceError struct {
 }
 
 type CatalogStatistics struct {
-	// MessagesIncomplete counts non-empty messages that fail
-	// [IsMsgIncomplete] (e.g. missing required plural/select options).
+	// MessagesIncomplete counts messages that are blank or miss required
+	// plural/select options (see [IsMsgIncomplete]).
 	MessagesIncomplete atomic.Int64
 	// MessagesMissing counts native-locale messages that are present as TIKs
 	// in source code but absent from the ARB. An out-of-date bundle — fixed
@@ -321,15 +321,13 @@ func (p *Parser) CollectARBFiles(bundlePkgDir string, scan *Scan) error {
 	})
 }
 
+// IsMsgIncomplete reports whether msg is blank or misses required plural or
+// select options. Select options msg mustn't use become source errors in scan.
 func IsMsgIncomplete(
 	scan *Scan, arbFile *arb.File, fileName string, msg *arb.Message,
 ) bool {
-	incomplete := false
-	_, _ = icumsg.Analyze(
-		arbFile.Locale, msg.ICUMessage, msg.ICUMessageTokens,
-		ICUSelectOptions,
-		func(index int) error { incomplete = true; return nil }, // On incomplete.
-		func(indexArgument, indexOption int) error { // On rejected.
+	return isMsgIncomplete(arbFile.Locale, msg,
+		func(indexArgument, indexOption int) error {
 			name := msg.ICUMessageTokens[indexArgument+1].String(
 				msg.ICUMessage, msg.ICUMessageTokens,
 			)
@@ -340,7 +338,36 @@ func IsMsgIncomplete(
 				},
 			})
 			return nil
-		},
+		})
+}
+
+// CountIncomplete sets MessagesIncomplete to the number of messages in c
+// that [IsMsgIncomplete] reports. Unlike IsMsgIncomplete, it doesn't report
+// rejected select options, which parsing already did.
+func (c *Catalog) CountIncomplete() {
+	var n int64
+	for _, msg := range c.ARB.Messages {
+		if isMsgIncomplete(c.ARB.Locale, &msg,
+			func(indexArgument, indexOption int) error { return nil }) {
+			n++
+		}
+	}
+	c.MessagesIncomplete.Store(n)
+}
+
+func isMsgIncomplete(
+	locale language.Tag, msg *arb.Message,
+	onRejected func(indexArgument, indexOption int) error,
+) bool {
+	if msg.ICUMessage == "" {
+		return true
+	}
+	incomplete := false
+	_, _ = icumsg.Analyze(
+		locale, msg.ICUMessage, msg.ICUMessageTokens,
+		ICUSelectOptions,
+		func(index int) error { incomplete = true; return nil },
+		onRejected,
 	)
 	return incomplete
 }
