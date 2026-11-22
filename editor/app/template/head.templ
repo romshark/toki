@@ -90,7 +90,6 @@ templ Head(prefs UIPrefs) {
 	// templ.Raw is acceptable here because templ has no native construct
 	// for <style> tags with dynamic content.
 	@templ.Raw(prefsStyleTag(prefs))
-	<script type="module" src={ assets.Path("morpheus.js") }></script>
 	<script src={ assets.Path("bundle.js") }></script>
 	<link rel="stylesheet" href={ assets.Path("style.min.css") }/>
 }

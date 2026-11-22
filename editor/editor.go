@@ -106,8 +106,9 @@ func Setup(
 		datapagesgen.Server,
 	](a, inmem.New(messaging.DefaultBrokerChanBuffer),
 		datapages.WithAssets(app.StaticFS, false),
-		// Self-hosted: the editor must work offline.
-		datapages.WithDatastarJS(assets.Path("datastar.js")),
+		// Self-hosted: the editor must work offline. It loads Datastar after
+		// Morpheus, which data-bind on Morpheus elements needs.
+		datapages.WithDatastarJS(assets.Path("datastar-morpheus.js")),
 		datapages.WithMiddleware(noBFCache),
 	)
 	if err != nil {
