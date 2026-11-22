@@ -13,7 +13,9 @@ permissions:
 
 jobs:
   goreleaser:
-    runs-on: ubuntu-latest
+    # macOS, not Linux: the darwin build needs cgo for the desktop app of
+    # `toki edit`, and cgo builds for macOS only on macOS.
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -35,3 +37,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GOFLAGS: -buildvcs=true
+          # The cask is pushed to romshark/homebrew-tools, another repository,
+          # which the job's own GITHUB_TOKEN cannot write to. A PAT with
+          # contents:write on that repository, as a repository secret of this one.
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
