@@ -10,7 +10,7 @@ require (
 	github.com/goccy/go-yaml v1.19.2
 	github.com/romshark/datapages v0.11.4
 	github.com/romshark/icumsg v0.5.0
-	github.com/romshark/morpheus v0.6.1
+	github.com/romshark/morpheus v0.7.0
 	github.com/romshark/tik/tik-go v0.10.0
 	github.com/stretchr/testify v1.12.1
 	github.com/wailsapp/wails/v3 v3.1.0

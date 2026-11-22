@@ -46,8 +46,8 @@ github.com/romshark/datapages v0.11.4 h1:z4pS0zmyT43BfOI3Vmy5vtrXCiHNIoouJD2Rb6E
 github.com/romshark/datapages v0.11.4/go.mod h1:+GiDbNylLl2uG6bvMic9WQVXBhbHn7KmP5VphkF+aks=
 github.com/romshark/icumsg v0.5.0 h1:ytyBN0WwNwJH3es+jCadHDtOqAqJGh8LppgTJMrmcW4=
 github.com/romshark/icumsg v0.5.0/go.mod h1:gYyFym8yMLPF3OSp9KtaN6LPZA4t+lukL2UZkmXwCRg=
-github.com/romshark/morpheus v0.6.1 h1:Il9/zPloYM1YoRPn3uBhHueFlnNjG5gHdwtA9175M4k=
-github.com/romshark/morpheus v0.6.1/go.mod h1:ea+Y2jWXtdRM2gWTAE3EpAQLgbR+Pn0+cTryGZOUqeY=
+github.com/romshark/morpheus v0.7.0 h1:5HLYiD7rtuDVyq4CYCgnT0aMIbFdkrSTlW3VVAKjAyY=
+github.com/romshark/morpheus v0.7.0/go.mod h1:ea+Y2jWXtdRM2gWTAE3EpAQLgbR+Pn0+cTryGZOUqeY=
 github.com/romshark/tik/tik-go v0.10.0 h1:9zwTnBdqRZ0IOZHJRWCvaeeTHKNZ4pZ+04u3rmozHFI=
 github.com/romshark/tik/tik-go v0.10.0/go.mod h1:9szH0CsLcuML+k+iXEEPc6t227XRinjPBPKmOxlUwN0=
 github.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWDWE=
