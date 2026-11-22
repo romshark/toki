@@ -63,9 +63,12 @@ func (g *Generate) Run(
 		log.Info("linting mode")
 	}
 
+	// The bundle package lives in the module, not the working directory.
+	bundleDir := filepath.Join(conf.ModPath, conf.BundlePkgPath)
+
 	if !lintOnly {
 		// Create bundle package directory if it doesn't exist yet.
-		if err := prepareBundlePackageDir(conf.BundlePkgPath); err != nil {
+		if err := prepareBundlePackageDir(bundleDir); err != nil {
 			result.Err = err
 			return result
 		}
@@ -73,7 +76,7 @@ func (g *Generate) Run(
 
 	// Read/create head.txt.
 	createIfNotExist := !lintOnly
-	headTxt, err := readOrCreateHeadTxt(conf, createIfNotExist)
+	headTxt, err := readOrCreateHeadTxt(bundleDir, createIfNotExist)
 	if err != nil {
 		result.Err = err
 		return result
@@ -87,9 +90,7 @@ func (g *Generate) Run(
 			return result
 		}
 
-		mainBundleFile := filepath.Join(
-			conf.ModPath, conf.BundlePkgPath, MainBundleFileGo,
-		)
+		mainBundleFile := filepath.Join(bundleDir, MainBundleFileGo)
 		if _, err := os.Stat(mainBundleFile); errors.Is(err, os.ErrNotExist) {
 			// Require the locale parameter in this case.
 			if conf.Locale == language.Und {
@@ -102,7 +103,7 @@ func (g *Generate) Run(
 			// Otherwise if the bundle existed and was imported before, later got removed
 			// and then toki generate was rerun it will first generate an incorrect bundle
 			// codeparse will be missing method receiver type information on first scan.
-			if err := generateGoBundle(conf.BundlePkgPath, scan, headTxt); err != nil {
+			if err := generateGoBundle(bundleDir, scan, headTxt); err != nil {
 				result.Err = err
 				return result
 			}
@@ -119,7 +120,7 @@ func (g *Generate) Run(
 
 	// Parse source code and bundle.
 	result.Scan, result.Err = parser.Parse(
-		env, "", conf.ModPath, conf.BundlePkgPath, conf.TrimPath,
+		env, conf.ModPath, ".", conf.BundlePkgPath, conf.TrimPath,
 	)
 	if result.Err != nil {
 		result.Err = fmt.Errorf("%w: %w", ErrAnalyzingSource, result.Err)
@@ -172,7 +173,7 @@ func (g *Generate) Run(
 
 	if nativeARB == nil {
 		nativeARBFilePath, err := filepath.Abs(filepath.Join(
-			conf.BundlePkgPath,
+			bundleDir,
 			gengo.FileNameWithLocale(scan.DefaultLocale, "catalog", ".arb"),
 		))
 		if err != nil {
@@ -274,13 +275,13 @@ func (g *Generate) Run(
 
 	// (Re-)Generate .arb files.
 	if !lintOnly {
-		if err := writeARBFiles(conf.BundlePkgPath, scan.Catalogs); err != nil {
+		if err := writeARBFiles(bundleDir, scan.Catalogs); err != nil {
 			result.Err = err
 			return result
 		}
 
 		if err := writeMissingARBFilesAndUpdateCatalogs(
-			now, conf.BundlePkgPath, scan.DefaultLocale, conf.Translations,
+			now, bundleDir, scan.DefaultLocale, conf.Translations,
 			nativeARB, scan.Catalogs,
 		); err != nil {
 			result.Err = err
@@ -289,7 +290,7 @@ func (g *Generate) Run(
 
 		// Generate the Go bundle before clearing the old one
 		// to keep it if generation fails.
-		files, err := renderGoBundle(conf.BundlePkgPath, scan, headTxt)
+		files, err := renderGoBundle(bundleDir, scan, headTxt)
 		if err != nil {
 			result.Err = err
 			return result
@@ -297,13 +298,13 @@ func (g *Generate) Run(
 
 		if scan.TokiVersion == "" || scan.TokiVersion != Version {
 			// Clear generated files on version mismatch.
-			if err := deleteAllTokiGeneratedFiles(conf.BundlePkgPath); err != nil {
+			if err := deleteAllTokiGeneratedFiles(bundleDir); err != nil {
 				result.Err = fmt.Errorf("removing sources of existing bundle: %w", err)
 				return result
 			}
 		}
 
-		if err := writeGoFiles(conf.BundlePkgPath, files); err != nil {
+		if err := writeGoFiles(bundleDir, files); err != nil {
 			result.Err = err
 			return result
 		}
@@ -545,10 +546,6 @@ func CleanGenerated(bundlePkgPath string, defaultLocale language.Tag) error {
 //
 // modDir is the absolute path to the Go module root.
 // bundlePkgPath is the bundle package path relative to modDir.
-//
-// Implementation note: Generate.Run currently derives its working
-// directory from the process cwd, so this helper chdirs to modDir for
-// the duration of the call. Callers must serialize invocations.
 func RegenerateBundle(env []string, modDir, bundlePkgPath string) error {
 	g := &Generate{
 		hasher:           xxhash.New(),
@@ -556,17 +553,7 @@ func RegenerateBundle(env []string, modDir, bundlePkgPath string) error {
 		tikParser:        tik.NewParser(tik.DefaultConfig),
 		tikICUTranslator: tik.NewICUTranslator(tik.DefaultConfig),
 	}
-
-	oldWd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("getting cwd: %w", err)
-	}
-	if err := os.Chdir(modDir); err != nil {
-		return fmt.Errorf("chdir to %q: %w", modDir, err)
-	}
-	defer func() { _ = os.Chdir(oldWd) }()
-
-	osArgs := []string{"toki", "generate", "-b", bundlePkgPath, "-q"}
+	osArgs := []string{"toki", "generate", "-m", modDir, "-b", bundlePkgPath, "-q"}
 	r := g.Run(osArgs, env, false, io.Discard, time.Now())
 	return r.Err
 }
@@ -748,11 +735,8 @@ func writeGoFiles(bundlePkgPath string, files []goFile) error {
 }
 
 // readOrCreateHeadTxt reads the head.txt file if it exists, otherwise creates it.
-func readOrCreateHeadTxt(
-	conf *config.ConfigGenerate,
-	createIfNotExist bool,
-) ([]string, error) {
-	headFilePath := filepath.Join(conf.BundlePkgPath, "head.txt")
+func readOrCreateHeadTxt(bundleDir string, createIfNotExist bool) ([]string, error) {
+	headFilePath := filepath.Join(bundleDir, "head.txt")
 	if fc, err := os.ReadFile(headFilePath); errors.Is(err, os.ErrNotExist) {
 		if !createIfNotExist {
 			log.Warn("head.txt not found")

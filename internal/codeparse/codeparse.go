@@ -216,7 +216,9 @@ func (p *Parser) Parse(
 		scan.Domains = domains
 	}
 
-	p.collectTexts(fset, pkgs, bundlePkg, pathPattern, trimpath, scan)
+	// Trim positions relative to the directory the pattern is rooted in.
+	trimDir := filepath.Join(dir, strings.TrimSuffix(pathPattern, "/..."))
+	p.collectTexts(fset, pkgs, bundlePkg, trimDir, trimpath, scan)
 
 	p.classifyNativeMessages(scan)
 
@@ -424,7 +426,7 @@ func PlaceholdersMismatch(tk tik.TIK, msg arb.Message) bool {
 
 func (p *Parser) collectTexts(
 	fset *token.FileSet, pkgs []*packages.Package,
-	bundlePkg, pathPattern string, trimpath bool,
+	bundlePkg, trimDir string, trimpath bool,
 	scan *Scan,
 ) {
 	seenFiles := make(map[string]struct{})
@@ -496,7 +498,7 @@ func (p *Parser) collectTexts(
 					}
 
 					if trimpath {
-						posCall.Filename = mustTrimPath(pathPattern, posCall.Filename)
+						posCall.Filename = mustTrimPath(trimDir, posCall.Filename)
 					}
 
 					comments := findLeadingComments(fset, file, call)
@@ -953,9 +955,9 @@ func isPkgBundle(bundlePkg string, pkg *packages.Package) bool {
 	return false
 }
 
-func mustTrimPath(basePattern, s string) string {
-	basePattern = strings.TrimSuffix(basePattern, "/...")
-	abs, err := filepath.Abs(basePattern)
+// mustTrimPath trims the absolute path of dir from s.
+func mustTrimPath(dir, s string) string {
+	abs, err := filepath.Abs(dir)
 	if err != nil {
 		panic(fmt.Errorf("getting absolute path: %w", err))
 	}

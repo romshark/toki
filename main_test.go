@@ -773,6 +773,48 @@ func TestGenerateRequireCompleteAfterSync(t *testing.T) {
 	})
 }
 
+// TestGenerateModPath makes sure -m generates a module
+// outside the module of the working directory.
+func TestGenerateModPath(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, ModName)
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				fmt.Println(r.String("hello"))
+			}
+		`,
+	})
+	other := t.TempDir()
+	initGoMod(t, other, "othermod")
+
+	var result cli.Result
+	runInDir(t, other, func() {
+		var exitCode int
+		result, exitCode = cli.Run(
+			[]string{"toki", "generate", "-l=en", "-m=" + dir},
+			osEnv(), io.Discard, io.Discard, TimeNow,
+		)
+		require.NoError(t, result.Err)
+		require.Zero(t, exitCode)
+	})
+	require.Equal(t, 1, result.Scan.Texts.Len())
+	// -trimpath trims the module directory.
+	require.Equal(t, "/main.go", result.Scan.Texts.At(0).Position.Filename)
+	require.NoDirExists(t, filepath.Join(other, "tokibundle"))
+
+	cmd := exec.Command("go", "run", ".")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %q", string(out))
+	require.Equal(t, "hello", strings.TrimSpace(string(out)))
+}
+
 // TestGenerateJSONPackageError makes sure JSON output reports errors
 // that stop the source scan.
 func TestGenerateJSONPackageError(t *testing.T) {
