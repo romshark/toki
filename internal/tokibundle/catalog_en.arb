@@ -1017,6 +1017,17 @@
 		},
 		"type": "text"
 	},
+	"msgbf24470d768d992d": "System Default ({var0})",
+	"@msgbf24470d768d992d": {
+		"description": "The option of the language picker that follows the language of the browser, or of the terminal in the desktop app. The placeholder names that language in itself, as Deutsch, as the other options do.",
+		"placeholders": {
+			"var0": {
+				"type": "String",
+				"description": "arbitrary string"
+			}
+		},
+		"type": "text"
+	},
 	"msgc005958c84933ddf": "Delete Change",
 	"@msgc005958c84933ddf": {
 		"type": "text"
@@ -1146,6 +1157,10 @@
 	},
 	"msgd92c6e7bb9ca6efa": "Regenerate Bundle",
 	"@msgd92c6e7bb9ca6efa": {
+		"type": "text"
+	},
+	"msgdb17cbf25369678b": "Theme",
+	"@msgdb17cbf25369678b": {
 		"type": "text"
 	},
 	"msgdd2635266015180": "All",

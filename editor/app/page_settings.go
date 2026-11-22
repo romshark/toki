@@ -38,8 +38,9 @@ func (p PageSettings) GET(
 	icuPreview := "{ plural, one {# item} other {# items} }"
 	prefs := ReadUIPrefs(r)
 	data := template.DataSettingsPreview{
-		IsHybrid: p.App.OpenNewWindow != nil,
-		Lang:     readLangPref(r),
+		IsHybrid:   p.App.OpenNewWindow != nil,
+		Lang:       readLangPref(r),
+		SystemLang: p.App.systemReader(r).Locale(),
 		Prefs: template.UIPrefs{
 			Theme:          prefs.Theme,
 			UIFont:         prefs.UIFont,

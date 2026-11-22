@@ -370,7 +370,9 @@ templ PageDashboard(tr tokibundle.Reader, stats DashboardStats) {
 templ dashboardDomainCard(tr tokibundle.Reader, d DomainInfo) {
 	@neo.CardAttrs(neo.CardOpts{}, templ.Attributes{"class": "domain-card"}) {
 		@neo.CardHeader() {
-			<h2>{ d.Name }</h2>
+			@neo.CardTitle() {
+				{ d.Name }
+			}
 		}
 		@neo.CardBody() {
 			@componentFieldStack() {

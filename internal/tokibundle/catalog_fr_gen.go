@@ -1499,6 +1499,28 @@ var writers_fr = map[string]func(w io.Writer, args ...any) (int, error){
 		written += n
 		return written, nil
 	},
+	msgbf24470d768d992d: func(w io.Writer, args ...any) (written int, err error) {
+		var n int
+		n, err = wrs(w, "Par défaut du système (")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		{
+			s, _ := sv(args[0])
+			n, err = wrs(w, s)
+		}
+		if err != nil {
+			return written, err
+		}
+		written += n
+		n, err = wrs(w, ")")
+		if err != nil {
+			return written, err
+		}
+		written += n
+		return written, nil
+	},
 	msgc005958c84933ddf: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Supprimer la modification")
 	},
@@ -1661,6 +1683,9 @@ var writers_fr = map[string]func(w io.Writer, args ...any) (int, error){
 	},
 	msgd92c6e7bb9ca6efa: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Régénérer le bundle")
+	},
+	msgdb17cbf25369678b: func(w io.Writer, args ...any) (written int, err error) {
+		return wrs(w, "Thème")
 	},
 	msgdd2635266015180: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Tous")

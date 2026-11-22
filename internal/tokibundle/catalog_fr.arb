@@ -786,6 +786,11 @@
 		"description": "Follows the usage of a flag. The placeholder is its default value, as \"tokibundle\" or true.",
 		"type": "text"
 	},
+	"msgbf24470d768d992d": "Par défaut du système ({var0})",
+	"@msgbf24470d768d992d": {
+		"description": "The option of the language picker that follows the language of the browser, or of the terminal in the desktop app. The placeholder names that language in itself, as Deutsch, as the other options do.",
+		"type": "text"
+	},
 	"msgc005958c84933ddf": "Supprimer la modification",
 	"@msgc005958c84933ddf": {
 		"type": "text"
@@ -890,6 +895,10 @@
 	},
 	"msgd92c6e7bb9ca6efa": "Régénérer le bundle",
 	"@msgd92c6e7bb9ca6efa": {
+		"type": "text"
+	},
+	"msgdb17cbf25369678b": "Thème",
+	"@msgdb17cbf25369678b": {
 		"type": "text"
 	},
 	"msgdd2635266015180": "Tous",

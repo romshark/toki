@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/romshark/morpheus/neo"
+	"golang.org/x/text/language"
 
 	"github.com/romshark/toki/editor/app/datapagesgen/action"
 	"github.com/romshark/toki/editor/app/datapagesgen/href"
@@ -32,7 +33,9 @@ type DataSettingsPreview struct {
 	IsHybrid bool // True when running as a native Wails desktop app.
 	// Lang is the interface language the user picked: LangSystem or a
 	// locale of the bundle.
-	Lang                string
+	Lang string
+	// SystemLang is the language that LangSystem picks.
+	SystemLang          language.Tag
 	Prefs               UIPrefs
 	UIFonts             []FontOption
 	EditorFonts         []FontOption
@@ -65,10 +68,6 @@ templ PageSettings(tr tokibundle.Reader, version string, data DataSettingsPrevie
 					<div role="group" aria-labelledby="settings-nav-label">
 						<h3 id="settings-nav-label">{ tr.String("Settings") }</h3>
 						<ul class="sidebar-nav-list">
-							@componentSidebarNavLink("#language") {
-								@iconLanguages()
-								<span class="sidebar-nav-text">{ tr.String("Language") }</span>
-							}
 							@componentSidebarNavLink("#appearance") {
 								@iconPalette()
 								<span class="sidebar-nav-text">{ tr.String("Appearance") }</span>
@@ -107,42 +106,49 @@ templ PageSettings(tr tokibundle.Reader, version string, data DataSettingsPrevie
 			}, 0, false)
 			<main>
 				<div class="contents">
-					<h2 id="language">
-						@iconLanguages()
-						{ tr.String("Language") }
-					</h2>
-					@neo.SelectAttrs(
-						neo.SelectOpts{
-							Value:     neo.Set(data.Lang),
-							AriaLabel: neo.Set(tr.String("Language")),
-						},
-						templ.Attributes{
-							"class": "lang-select",
-							// <neo-select> reports selection only through its own event.
-							"data-on:neo-select-change": action.PageSettings.SetLang.POST(
-								action.WithPayload("{lang: evt.detail.value}"),
-							),
-						},
-					) {
-						@neo.Option(neo.OptionOpts{Value: neo.Set(LangSystem)}) {
-							{ tr.String("System Default") }
-						}
-						for _, t := range tokibundle.Locales() {
-							@neo.Option(neo.OptionOpts{Value: neo.Set(t.String())}) {
-								{ ownLangName(t) }
-							}
-						}
-					}
 					<h2 id="appearance">
 						@iconPalette()
 						{ tr.String("Appearance") }
 					</h2>
-					<div class="theme-picker">
-						@themeCard(data.Prefs, "light", tr.String("[theme] Light"), tr.String("Bright theme"))
-						@themeCard(data.Prefs, "dark", tr.String("[theme] Dark"), tr.String("Dark theme"))
-						@themeCard(data.Prefs, "system", tr.String("[theme] System"),
-							tr.String("Match OS setting"))
-					</div>
+					@neo.Layout(neo.LayoutOpts{
+						Direction: neo.Set(neo.Column),
+						Gap:       neo.Set(neo.GapMd),
+					}) {
+						@componentField("lang", tr.String("Language")) {
+							@neo.SelectAttrs(
+								neo.SelectOpts{Value: neo.Set(data.Lang)},
+								templ.Attributes{
+									"class":           "lang-select",
+									"aria-labelledby": fieldLabelID("lang"),
+									// <neo-select> reports selection only through its own event.
+									"data-on:neo-select-change": action.PageSettings.SetLang.POST(
+										action.WithPayload("{lang: evt.detail.value}"),
+									),
+								},
+							) {
+								@neo.Option(neo.OptionOpts{Value: neo.Set(LangSystem)}) {
+									{ systemLangLabel(tr, data.SystemLang) }
+								}
+								for _, t := range tokibundle.Locales() {
+									@neo.Option(neo.OptionOpts{Value: neo.Set(t.String())}) {
+										{ ownLangName(t) }
+									}
+								}
+							}
+						}
+						@componentField("pref_theme", tr.String("Theme")) {
+							<div
+								class="theme-picker"
+								role="group"
+								aria-labelledby={ fieldLabelID("pref_theme") }
+							>
+								@themeCard(data.Prefs, "light", tr.String("[theme] Light"), tr.String("Bright theme"))
+								@themeCard(data.Prefs, "dark", tr.String("[theme] Dark"), tr.String("Dark theme"))
+								@themeCard(data.Prefs, "system", tr.String("[theme] System"),
+									tr.String("Match OS setting"))
+							</div>
+						}
+					}
 					<!-- Interface Font -->
 					<h2 id="ui-font">
 						@iconType()

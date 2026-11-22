@@ -522,6 +522,7 @@ const (
 	msgbc2385db03256648 = `Analyzing the source code failed: {text}`
 	msgbd6bd031bcc07840 = `Failed after {text}`
 	msgbe543c713e80306c = `(default {text})`
+	msgbf24470d768d992d = `System Default ({text})`
 	msgc005958c84933ddf = `Delete Change`
 	msgc03456d5430b02f0 = `Search sizes`
 	msgc0a2ac0e6e17a6a2 = `Absolutely! Now let's break this down…`
@@ -547,6 +548,7 @@ const (
 	msgd8a1edc072b8e5ee = `{# native-locale messages disagree} with the source code (locked ICU or placeholder mismatch).`
 	msgd8b9c1ce5482baa  = `Directory`
 	msgd92c6e7bb9ca6efa = `Regenerate Bundle`
+	msgdb17cbf25369678b = `Theme`
 	msgdd2635266015180  = `[TIKs] All`
 	msge263572cec2161dd = `System Mono`
 	msge30d90f457fce251 = `Search`

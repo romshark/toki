@@ -349,6 +349,11 @@ a {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		/* The button's line-height of 1 makes the box as tall as the font size,
+		   which clips descenders such as g and accents such as Ü.
+		   The padding makes room for them and the margin keeps the layout. */
+		padding-block: 0.2em;
+		margin-block: -0.2em;
 	}
 }
 
@@ -1337,8 +1342,9 @@ neo-card {
 		& > svg { width: 1.25rem; height: 1.25rem; }
 	}
 
+	/* As wide as the language it shows, not as the row. */
 	& .lang-select {
-		max-inline-size: 20rem;
+		align-self: start;
 	}
 
 	& .theme-picker {

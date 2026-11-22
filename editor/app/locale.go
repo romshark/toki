@@ -51,12 +51,18 @@ func readLangPref(r *http.Request) string {
 }
 
 // readerFor returns the reader of the interface language for r: the one
-// the user picked, else a.SystemReader in the desktop app, else the best
-// match for the languages r accepts.
+// the user picked, else the system language, see [App.systemReader].
 func (a *App) readerFor(r *http.Request) tokibundle.Reader {
 	if pref := readLangPref(r); pref != template.LangSystem {
 		return uilang.Reader(language.MustParse(pref))
 	}
+	return a.systemReader(r)
+}
+
+// systemReader returns the reader of the language that the preference
+// [template.LangSystem] picks for r: a.SystemReader in the desktop app,
+// else the best match for the languages r accepts.
+func (a *App) systemReader(r *http.Request) tokibundle.Reader {
 	if a.SystemReader != nil {
 		return a.SystemReader
 	}

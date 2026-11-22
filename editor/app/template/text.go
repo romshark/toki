@@ -59,6 +59,15 @@ func localeName(tr tokibundle.Reader, locale string) string {
 	return capitalize(namer.Name(tag))
 }
 
+// systemLangLabel labels the option of the language picker that follows
+// the system, which picks language t.
+func systemLangLabel(tr tokibundle.Reader, t language.Tag) string {
+	// The option of the language picker that follows the language of the browser,
+	// or of the terminal in the desktop app. The placeholder names
+	// that language in itself, as Deutsch, as the other options do.
+	return tr.String("System Default ({text})", ownLangName(t))
+}
+
 // ownLangName names language t in t itself, as Deutsch for de, which is how a
 // language picker lists it.
 func ownLangName(t language.Tag) string {
