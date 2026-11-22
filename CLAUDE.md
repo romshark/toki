@@ -14,6 +14,10 @@ Toki is an i18n (internationalization) framework for Go. See [README.md](README.
 - **Never suppress errors or warnings** — do not add `nolint`, `//datapages:nolint`, or similar suppression directives unless the user explicitly asks for it. Errors and warnings exist for a reason — fix the underlying issue instead of silencing it. If there's no other way but to suppress the error then ask the user first and state the reason.
 - **Never edit generated files**: `*_templ.go`, `*_gen.go`, and any file with the "DO NOT EDIT" header comment. Only edit source files owned by the user.
 
+## Changelog
+
+Read `.claude/skills/changelog/SKILL.md` before writing a `CHANGELOG.md` entry or releasing.
+
 ## Editor
 
 The following instructions apply to the Toki editor under `editor/`.
