@@ -268,48 +268,21 @@ func (db *DB) UpdateSearchEntry(tikID, content string) error {
 	)
 }
 
-// SearchResult holds the result of a paginated FTS search.
-type SearchResult struct {
-	TIKIDs []string // TIK IDs for the requested window
-	Total  int      // total number of matches
-}
-
-// SearchTIKs performs a paginated full-text search.
-func (db *DB) SearchTIKs(query string, offset, limit int) (SearchResult, error) {
-	fq := ftsQuery(query)
-
-	// Count total matches.
-	countRows, err := db.sq.QueryRows(
-		"SELECT count(*) FROM search_index WHERE search_index MATCH ?",
-		[]sqinn.Value{sqinn.StringValue(fq)},
-		[]byte{sqinn.ValInt32},
-	)
-	if err != nil {
-		return SearchResult{}, err
-	}
-	total := 0
-	if len(countRows) > 0 {
-		total = countRows[0][0].Int32
-	}
-
-	// Fetch the window.
+// SearchTIKs returns the IDs of all TIKs matching query, best matches first.
+func (db *DB) SearchTIKs(query string) ([]string, error) {
 	rows, err := db.sq.QueryRows(
-		"SELECT tik_id FROM search_index WHERE search_index MATCH ? ORDER BY rank LIMIT ? OFFSET ?",
-		[]sqinn.Value{
-			sqinn.StringValue(fq),
-			sqinn.Int32Value(limit),
-			sqinn.Int32Value(offset),
-		},
+		"SELECT tik_id FROM search_index WHERE search_index MATCH ? ORDER BY rank",
+		[]sqinn.Value{sqinn.StringValue(ftsQuery(query))},
 		[]byte{sqinn.ValString},
 	)
 	if err != nil {
-		return SearchResult{}, err
+		return nil, err
 	}
 	ids := make([]string, len(rows))
 	for i, row := range rows {
 		ids[i] = row[0].String
 	}
-	return SearchResult{TIKIDs: ids, Total: total}, nil
+	return ids, nil
 }
 
 // ftsQuery converts a user search string into an FTS5 query.

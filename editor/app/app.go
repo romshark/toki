@@ -1477,8 +1477,8 @@ func (a *App) buildTIKForDisplay(
 // and pagination. Only TIKs within the current page get full ICU
 // validation; the rest are just counted for filter stats.
 //
-// When searchQuery is non-empty, filter stats are skipped and results
-// are fetched directly from the FTS5 index with LIMIT/OFFSET.
+// When searchQuery is non-empty, only the TIKs the FTS5 index matches
+// are filtered, best matches first.
 func (a *App) buildFilteredDataIndex(
 	filterType string, showLocales, showDomains map[string]bool,
 	pageIdx, pageSize int, searchQuery string,
@@ -1527,53 +1527,30 @@ func (a *App) buildFilteredDataIndex(
 		})
 	}
 
+	candidates := a.tiks
 	if searchQuery != "" && a.indexDB != nil {
-		return a.buildSearchDataIndex(data, showLocales, pageIdx, searchQuery)
-	}
-	return a.buildFilterDataIndex(data, showLocales, pageIdx, filterType)
-}
-
-// buildSearchDataIndex handles the FTS search path — paginated DB query,
-// no full iteration over a.tiks, no filter stats.
-func (a *App) buildSearchDataIndex(
-	data template.DataIndex, showLocales map[string]bool,
-	pageIdx int, searchQuery string,
-) template.DataIndex {
-	if pageIdx < 0 {
-		pageIdx = 0
-	}
-
-	result, err := a.indexDB.SearchTIKs(
-		searchQuery, pageIdx*data.PageSize, data.PageSize,
-	)
-	if err != nil {
-		return data
-	}
-
-	data.TotalFiltered = result.Total
-	totalPages := data.TotalPages()
-	if totalPages > 0 && pageIdx >= totalPages {
-		pageIdx = totalPages - 1
-	}
-	data.PageIdx = pageIdx
-
-	for _, id := range result.TIKIDs {
-		if tk := a.tiksByID[id]; tk != nil {
-			data.TIKs = append(data.TIKs, a.buildTIKForDisplay(tk, showLocales))
+		ids, err := a.indexDB.SearchTIKs(searchQuery)
+		if err != nil {
+			return data
+		}
+		candidates = make([]*template.TIK, 0, len(ids))
+		for _, id := range ids {
+			if tk := a.tiksByID[id]; tk != nil {
+				candidates = append(candidates, tk)
+			}
 		}
 	}
-
-	return data
+	return a.buildFilterDataIndex(data, candidates, showLocales, pageIdx, filterType)
 }
 
-// buildFilterDataIndex handles the non-search path — full iteration
-// over a.tiks with filter stats and pagination.
+// buildFilterDataIndex filters candidates, counting them for filter stats,
+// and builds the requested page of the result.
 func (a *App) buildFilterDataIndex(
-	data template.DataIndex, showLocales map[string]bool,
-	pageIdx int, filterType string,
+	data template.DataIndex, candidates []*template.TIK,
+	showLocales map[string]bool, pageIdx int, filterType string,
 ) template.DataIndex {
-	filtered := make([]int, 0, len(a.tiks))
-	for i, tk := range a.tiks {
+	filtered := make([]int, 0, len(candidates))
+	for i, tk := range candidates {
 		// Domain filter: skip TIKs not in any shown domain.
 		if data.ShownDomains != nil && !data.ShownDomains[tk.Domain] {
 			continue
@@ -1638,7 +1615,7 @@ func (a *App) buildFilterDataIndex(
 
 	// Build full TIKs only for the current page.
 	for _, idx := range filtered[start:end] {
-		tk := a.buildTIKForDisplay(a.tiks[idx], showLocales)
+		tk := a.buildTIKForDisplay(candidates[idx], showLocales)
 		data.TIKs = append(data.TIKs, tk)
 	}
 

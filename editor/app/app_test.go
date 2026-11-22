@@ -66,9 +66,9 @@ func TestSearchIndexFollowsEdits(t *testing.T) {
 	id := findTIK(t, a, "first").ID
 	search := func(query string) []string {
 		t.Helper()
-		res, err := p.db.SearchTIKs(query, 0, 10)
+		ids, err := p.db.SearchTIKs(query)
 		require.NoError(t, err)
-		return res.TIKIDs
+		return ids
 	}
 
 	require.NoError(t, a.SetMessage(id, "de", "Erste"))
@@ -77,6 +77,36 @@ func TestSearchIndexFollowsEdits(t *testing.T) {
 	_, err := a.ResetMessage(id, "de")
 	require.NoError(t, err)
 	require.Empty(t, search("Erste"))
+}
+
+// TestSearchFiltersAndPages makes sure search results go through the domain
+// and status filters and the page index is clamped before the page is built.
+func TestSearchFiltersAndPages(t *testing.T) {
+	p := newProject(t, "apple one", "apple two", "banana")
+	a := p.start()
+	require.NoError(t, a.SetMessage(findTIK(t, a, "apple one").ID, "de", "Apfel eins"))
+	search := func(
+		filterType string, showDomains map[string]bool, pageIdx int,
+	) (pageIdxShown int, tiks []string) {
+		t.Helper()
+		data := a.BuildFilteredDataIndex(
+			filterType, nil, showDomains, pageIdx, 10, "apple",
+		)
+		for _, tk := range data.TIKs {
+			tiks = append(tiks, tk.TIK)
+		}
+		return data.PageIdx, tiks
+	}
+
+	_, tiks := search("changed", nil, 0)
+	require.Equal(t, []string{"apple one"}, tiks)
+
+	_, tiks = search("", map[string]bool{"other": true}, 0)
+	require.Empty(t, tiks)
+
+	pageIdx, tiks := search("", nil, 5)
+	require.Zero(t, pageIdx)
+	require.ElementsMatch(t, []string{"apple one", "apple two"}, tiks)
 }
 
 // project is a generated Toki project to start the editor on.

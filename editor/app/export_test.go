@@ -21,3 +21,14 @@ func (a *App) SetMessage(id, locale, message string) error {
 func (a *App) ResetMessage(id, locale string) (string, error) {
 	return a.resetMessage(id, locale)
 }
+
+func (a *App) BuildFilteredDataIndex(
+	filterType string, showLocales, showDomains map[string]bool,
+	pageIdx, pageSize int, searchQuery string,
+) template.DataIndex {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	return a.buildFilteredDataIndex(
+		filterType, showLocales, showDomains, pageIdx, pageSize, searchQuery,
+	)
+}
