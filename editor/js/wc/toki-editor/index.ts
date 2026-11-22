@@ -224,6 +224,7 @@ class TokiEditorElement extends HTMLElement {
   _syncing = false;
   _dirty = false;
   _staticDom: HTMLElement | null = null;
+  _built = false;
 
   constructor() {
     super();
@@ -231,6 +232,11 @@ class TokiEditorElement extends HTMLElement {
   }
 
   connectedCallback() {
+    // A morph that reorders the messages moves this element, which connects
+    // it again. Its shadow root keeps what the first connect built.
+    if (this._built) return;
+    this._built = true;
+
     const style = document.createElement("style");
     style.textContent = SHADOW_CSS;
     this._shadow.appendChild(style);
