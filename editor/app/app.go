@@ -235,7 +235,7 @@ func (a *App) defaultLocaleLocked() language.Tag {
 
 // tryInitLocked resets all derived state and then tries to load the bundle:
 // the fast path restores catalogs/TIKs/messages from the index DB when the
-// ARB checksum + schema + toki version all match; otherwise it falls back
+// project checksum + schema + toki version all match; otherwise it falls back
 // to a full codeparse-driven rebuild. Domain discovery runs in both paths.
 // Must be called with a.lock held.
 func (a *App) tryInitLocked() error {
@@ -270,8 +270,7 @@ func (a *App) tryInitLocked() error {
 
 	// Check if we can use the index DB (fast path).
 	if a.indexDB != nil {
-		bundleDir := filepath.Join(a.dir, a.bundlePkgPath)
-		currentChecksum, err := indexdb.ComputeARBChecksum(bundleDir)
+		currentChecksum, err := indexdb.ComputeChecksum(a.dir)
 		if err == nil && currentChecksum != "" {
 			storedChecksum, dbErr := a.indexDB.GetChecksum()
 			schemaOK := a.indexDB.GetSchemaVersion() == indexdb.SchemaVersion
@@ -338,11 +337,21 @@ func (a *App) fullRebuildLocked() error {
 	a.buildTemplateDataFromScanLocked()
 	a.numCorrupt, a.numMissing = a.nativeCatalogStatusCounts()
 
-	// Populate the index DB from the scan results.
+	// Populate the index DB from the scan results,
+	// carrying over the unsaved edits it holds.
 	if a.indexDB != nil {
+		unsaved, err := a.indexDB.ChangedMessages()
+		if err != nil {
+			a.initErr = fmt.Sprintf("Loading unsaved edits: %v", err)
+			return errors.New(a.initErr)
+		}
 		if err := a.populateDBFromScanLocked(); err != nil {
 			a.initErr = fmt.Sprintf("Populating index DB: %v", err)
 			return errors.New(a.initErr)
+		}
+		for _, m := range unsaved {
+			// Edits of TIKs that are gone from the source are dropped.
+			_ = a.setMessageLocked(m.TIKID, m.Locale, m.ICUMessage)
 		}
 	}
 
@@ -468,11 +477,12 @@ func (a *App) populateDBFromScanLocked() error {
 
 	// Save catalogs.
 	for i, c := range a.catalogs {
-		var messagesCorrupt int
+		var messagesCorrupt, messagesMissing int
 		if a.scan != nil {
 			for sc := range a.scan.Catalogs.SeqRead() {
 				if sc.ARB.Locale == a.localeTags[i] {
 					messagesCorrupt = int(sc.MessagesCorrupt.Load())
+					messagesMissing = int(sc.MessagesMissing.Load())
 					break
 				}
 			}
@@ -482,6 +492,7 @@ func (a *App) populateDBFromScanLocked() error {
 			Name:            c.Name,
 			IsDefault:       c.Default,
 			MessagesCorrupt: messagesCorrupt,
+			MessagesMissing: messagesMissing,
 		}); err != nil {
 			return fmt.Errorf("inserting catalog %s: %w", c.Locale, err)
 		}
@@ -496,6 +507,16 @@ func (a *App) populateDBFromScanLocked() error {
 			Domain:      tk.Domain,
 		}); err != nil {
 			return fmt.Errorf("inserting TIK %s: %w", tk.ID, err)
+		}
+		for _, o := range tk.Occurrences {
+			if err := db.InsertOccurrence(indexdb.Occurrence{
+				TIKID:  tk.ID,
+				File:   o.DisplayFile,
+				Line:   o.Line,
+				Column: o.Column,
+			}); err != nil {
+				return fmt.Errorf("inserting occurrence of TIK %s: %w", tk.ID, err)
+			}
 		}
 		for _, msg := range tk.ICU {
 			if err := db.InsertMessage(indexdb.Message{
@@ -527,8 +548,7 @@ func (a *App) populateDBFromScanLocked() error {
 	}
 
 	// Store checksum.
-	bundleDir := filepath.Join(a.dir, a.bundlePkgPath)
-	checksum, err := indexdb.ComputeARBChecksum(bundleDir)
+	checksum, err := indexdb.ComputeChecksum(a.dir)
 	if err != nil {
 		return fmt.Errorf("computing checksum: %w", err)
 	}
@@ -569,6 +589,11 @@ func (a *App) loadFromDBLocked() error {
 		return err
 	}
 
+	dbOccurrences, err := db.LoadOccurrences()
+	if err != nil {
+		return err
+	}
+
 	// Build catalog map for quick lookup.
 	a.catalogs = make([]*template.Catalog, 0, len(dbCatalogs))
 	a.localeTags = make([]language.Tag, 0, len(dbCatalogs))
@@ -582,6 +607,7 @@ func (a *App) loadFromDBLocked() error {
 		}
 		if dc.IsDefault {
 			a.numCorrupt = dc.MessagesCorrupt
+			a.numMissing = dc.MessagesMissing
 		}
 		a.catalogs = append(a.catalogs, c)
 		a.localeTags = append(a.localeTags, tag)
@@ -594,6 +620,22 @@ func (a *App) loadFromDBLocked() error {
 		msgsByTIK[m.TIKID] = append(msgsByTIK[m.TIKID], m)
 	}
 
+	// Group occurrences by TIK ID.
+	occurrencesByTIK := make(map[string][]template.SourceOccurrence, len(dbTIKs))
+	for _, o := range dbOccurrences {
+		file := o.File
+		if !filepath.IsAbs(file) {
+			file = filepath.Join(a.dir, file)
+		}
+		occurrencesByTIK[o.TIKID] = append(occurrencesByTIK[o.TIKID],
+			template.SourceOccurrence{
+				File:        file,
+				DisplayFile: o.File,
+				Line:        o.Line,
+				Column:      o.Column,
+			})
+	}
+
 	// Build TIKs.
 	a.tiks = make([]*template.TIK, 0, len(dbTIKs))
 	for _, dt := range dbTIKs {
@@ -603,6 +645,7 @@ func (a *App) loadFromDBLocked() error {
 			Description: dt.Description,
 			Domain:      dt.Domain,
 			ICU:         make([]*template.ICUMessage, 0, len(a.catalogs)),
+			Occurrences: occurrencesByTIK[dt.ID],
 		}
 		for _, dm := range msgsByTIK[dt.ID] {
 			cat := catalogMap[dm.Locale]
@@ -738,7 +781,11 @@ func (a *App) setMessageFromTab(
 func (a *App) setMessage(id, locale, newMessage string) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
+	return a.setMessageLocked(id, locale, newMessage)
+}
 
+// setMessageLocked is [App.setMessage] for callers holding a.lock.
+func (a *App) setMessageLocked(id, locale, newMessage string) error {
 	if id == "" || locale == "" {
 		return datapages.ErrBadRequest
 	}
@@ -1356,25 +1403,8 @@ func (a *App) repairCorruptLocked() error {
 
 	// Restore user changes that were not part of the repair.
 	for _, sc := range userChanges {
-		for _, tk := range a.tiks {
-			if tk.ID != sc.tikID {
-				continue
-			}
-			for _, msg := range tk.ICU {
-				if msg.Catalog.Locale != sc.locale {
-					continue
-				}
-				msg.Changed = true
-				msg.MessageOriginal = msg.Message
-				msg.Message = sc.message
-				a.changed = append(a.changed, msg)
-				if a.indexDB != nil {
-					_ = a.indexDB.UpdateMessage(sc.tikID, sc.locale, sc.message)
-				}
-				break
-			}
-			break
-		}
+		// Edits of TIKs that are gone from the source are dropped.
+		_ = a.setMessageLocked(sc.tikID, sc.locale, sc.message)
 	}
 
 	return nil

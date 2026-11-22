@@ -1,6 +1,6 @@
 // Package indexdb provides a SQLite-based index database for the Toki editor.
-// It caches translation data so the editor can start quickly when .arb files
-// haven't changed, and persists edits independently of the .arb files.
+// It caches translation data so the editor can start quickly when the project
+// files haven't changed, and persists edits independently of the .arb files.
 package indexdb
 
 import (
@@ -8,12 +8,13 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	sqinn "github.com/cvilsmeier/sqinn-go/v2"
+	"github.com/romshark/toki/internal/codeparse"
 )
 
 // DB wraps a sqinn-go SQLite connection for the index database.
@@ -28,6 +29,7 @@ type Catalog struct {
 	Name            string
 	IsDefault       bool
 	MessagesCorrupt int
+	MessagesMissing int
 }
 
 // TIK represents a translation key stored in the index DB.
@@ -36,6 +38,14 @@ type TIK struct {
 	Raw         string
 	Description string
 	Domain      string // Fully qualified domain name (e.g. "myapp.storefront").
+}
+
+// Occurrence represents a TIK's position in the source code.
+type Occurrence struct {
+	TIKID  string
+	File   string // Relative to the project directory unless outside of it.
+	Line   int
+	Column int
 }
 
 // Message represents a single ICU message stored in the index DB.
@@ -82,13 +92,20 @@ func createSchema(sq *sqinn.Sqinn) error {
 			locale TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
 			is_default INTEGER NOT NULL DEFAULT 0,
-			messages_corrupt INTEGER NOT NULL DEFAULT 0
+			messages_corrupt INTEGER NOT NULL DEFAULT 0,
+			messages_missing INTEGER NOT NULL DEFAULT 0
 		)`,
 		`CREATE TABLE IF NOT EXISTS tik (
 			id TEXT PRIMARY KEY,
 			raw TEXT NOT NULL,
 			description TEXT NOT NULL DEFAULT '',
 			domain TEXT NOT NULL DEFAULT ''
+		)`,
+		`CREATE TABLE IF NOT EXISTS occurrence (
+			tik_id TEXT NOT NULL,
+			file TEXT NOT NULL,
+			line INTEGER NOT NULL,
+			col INTEGER NOT NULL
 		)`,
 		`CREATE TABLE IF NOT EXISTS message (
 			tik_id TEXT NOT NULL,
@@ -115,6 +132,7 @@ func createSchema(sq *sqinn.Sqinn) error {
 	migrations := []string{
 		`ALTER TABLE catalog ADD COLUMN messages_corrupt INTEGER NOT NULL DEFAULT 0`,
 		`ALTER TABLE tik ADD COLUMN domain TEXT NOT NULL DEFAULT ''`,
+		`ALTER TABLE catalog ADD COLUMN messages_missing INTEGER NOT NULL DEFAULT 0`,
 	}
 	for _, m := range migrations {
 		_ = sq.ExecSql(m) // Ignore "duplicate column" errors.
@@ -124,7 +142,7 @@ func createSchema(sq *sqinn.Sqinn) error {
 
 // SchemaVersion is incremented when the index DB schema or detection logic
 // changes in a way that requires a full rebuild of the cached data.
-const SchemaVersion = "4"
+const SchemaVersion = "5"
 
 // GetSchemaVersion returns the stored schema version, or "" if none.
 func (db *DB) GetSchemaVersion() string {
@@ -181,11 +199,12 @@ func (db *DB) Close() error {
 	return db.sq.Close()
 }
 
-// GetChecksum returns the stored ARB file checksum, or "" if none.
+// GetChecksum returns the stored project checksum, or "" if none.
+// See [ComputeChecksum].
 func (db *DB) GetChecksum() (string, error) {
 	rows, err := db.sq.QueryRows(
 		"SELECT value FROM meta WHERE key = ?",
-		[]sqinn.Value{sqinn.StringValue("arb_checksum")},
+		[]sqinn.Value{sqinn.StringValue("checksum")},
 		[]byte{sqinn.ValString},
 	)
 	if err != nil {
@@ -197,22 +216,24 @@ func (db *DB) GetChecksum() (string, error) {
 	return rows[0][0].String, nil
 }
 
-// SetChecksum stores the ARB file checksum.
+// SetChecksum stores the project checksum.
 func (db *DB) SetChecksum(checksum string) error {
 	return db.sq.ExecParams(
 		"INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
 		1, 2,
 		[]sqinn.Value{
-			sqinn.StringValue("arb_checksum"),
+			sqinn.StringValue("checksum"),
 			sqinn.StringValue(checksum),
 		},
 	)
 }
 
-// Clear removes all data from the database (catalogs, TIKs, messages, search index)
-// but preserves the meta table.
+// Clear removes all data from the database (catalogs, TIKs, occurrences,
+// messages, search index) but preserves the meta table.
 func (db *DB) Clear() error {
-	for _, table := range []string{"search_index", "message", "tik", "catalog"} {
+	for _, table := range []string{
+		"search_index", "message", "occurrence", "tik", "catalog",
+	} {
 		if err := db.sq.ExecSql("DELETE FROM " + table); err != nil {
 			return fmt.Errorf("clearing %s: %w", table, err)
 		}
@@ -300,13 +321,16 @@ func (db *DB) InsertCatalog(c Catalog) error {
 		isDefault = 1
 	}
 	return db.sq.ExecParams(
-		"INSERT OR REPLACE INTO catalog (locale, name, is_default, messages_corrupt) VALUES (?, ?, ?, ?)",
-		1, 4,
+		"INSERT OR REPLACE INTO catalog "+
+			"(locale, name, is_default, messages_corrupt, messages_missing) "+
+			"VALUES (?, ?, ?, ?, ?)",
+		1, 5,
 		[]sqinn.Value{
 			sqinn.StringValue(c.Locale),
 			sqinn.StringValue(c.Name),
 			sqinn.Int32Value(isDefault),
 			sqinn.Int32Value(c.MessagesCorrupt),
+			sqinn.Int32Value(c.MessagesMissing),
 		},
 	)
 }
@@ -321,6 +345,20 @@ func (db *DB) InsertTIK(t TIK) error {
 			sqinn.StringValue(t.Raw),
 			sqinn.StringValue(t.Description),
 			sqinn.StringValue(t.Domain),
+		},
+	)
+}
+
+// InsertOccurrence inserts a TIK occurrence into the database.
+func (db *DB) InsertOccurrence(o Occurrence) error {
+	return db.sq.ExecParams(
+		"INSERT INTO occurrence (tik_id, file, line, col) VALUES (?, ?, ?, ?)",
+		1, 4,
+		[]sqinn.Value{
+			sqinn.StringValue(o.TIKID),
+			sqinn.StringValue(o.File),
+			sqinn.Int32Value(o.Line),
+			sqinn.Int32Value(o.Column),
 		},
 	)
 }
@@ -366,9 +404,12 @@ func (db *DB) CommitMessages() error {
 // LoadCatalogs returns all catalogs from the database.
 func (db *DB) LoadCatalogs() ([]Catalog, error) {
 	rows, err := db.sq.QueryRows(
-		"SELECT locale, name, is_default, messages_corrupt FROM catalog ORDER BY is_default DESC, locale",
+		"SELECT locale, name, is_default, messages_corrupt, messages_missing "+
+			"FROM catalog ORDER BY is_default DESC, locale",
 		nil,
-		[]byte{sqinn.ValString, sqinn.ValString, sqinn.ValInt32, sqinn.ValInt32},
+		[]byte{
+			sqinn.ValString, sqinn.ValString, sqinn.ValInt32, sqinn.ValInt32, sqinn.ValInt32,
+		},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("loading catalogs: %w", err)
@@ -380,6 +421,7 @@ func (db *DB) LoadCatalogs() ([]Catalog, error) {
 			Name:            row[1].String,
 			IsDefault:       row[2].Int32 != 0,
 			MessagesCorrupt: row[3].Int32,
+			MessagesMissing: row[4].Int32,
 		}
 	}
 	return catalogs, nil
@@ -405,6 +447,28 @@ func (db *DB) LoadTIKs() ([]TIK, error) {
 		}
 	}
 	return tiks, nil
+}
+
+// LoadOccurrences returns all TIK occurrences in insertion order.
+func (db *DB) LoadOccurrences() ([]Occurrence, error) {
+	rows, err := db.sq.QueryRows(
+		"SELECT tik_id, file, line, col FROM occurrence ORDER BY rowid",
+		nil,
+		[]byte{sqinn.ValString, sqinn.ValString, sqinn.ValInt32, sqinn.ValInt32},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("loading occurrences: %w", err)
+	}
+	occurrences := make([]Occurrence, len(rows))
+	for i, row := range rows {
+		occurrences[i] = Occurrence{
+			TIKID:  row[0].String,
+			File:   row[1].String,
+			Line:   row[2].Int32,
+			Column: row[3].Int32,
+		}
+	}
+	return occurrences, nil
 }
 
 // LoadMessages returns all messages from the database.
@@ -468,41 +532,51 @@ func (db *DB) Rollback() error {
 	return db.sq.ExecSql("ROLLBACK")
 }
 
-// ComputeARBChecksum computes a SHA-256 checksum over all .arb files
-// in the given directory. Files are sorted by name for determinism.
-func ComputeARBChecksum(bundleDir string) (string, error) {
-	entries, err := os.ReadDir(bundleDir)
-	if err != nil {
-		return "", fmt.Errorf("reading bundle dir: %w", err)
-	}
-
-	var arbFiles []string
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		if filepath.Ext(e.Name()) == ".arb" {
-			arbFiles = append(arbFiles, filepath.Join(bundleDir, e.Name()))
-		}
-	}
-	sort.Strings(arbFiles)
-
+// ComputeChecksum computes a SHA-256 checksum over the project files a scan
+// reads: Go sources, .arb catalogs and domain files. It walks modDir the way
+// the go command matches "./...", skipping directories whose names start with
+// "." or "_", testdata directories and nested modules.
+func ComputeChecksum(modDir string) (string, error) {
 	h := sha256.New()
-	for _, path := range arbFiles {
+	err := filepath.WalkDir(modDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil // Skip inaccessible directories.
+		}
+		name := d.Name()
+		if d.IsDir() {
+			if path == modDir {
+				return nil
+			}
+			if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") ||
+				name == "testdata" {
+				return filepath.SkipDir
+			}
+			if _, err := os.Stat(filepath.Join(path, "go.mod")); err == nil {
+				return filepath.SkipDir // Nested module.
+			}
+			return nil
+		}
+		ext := filepath.Ext(name)
+		if !d.Type().IsRegular() ||
+			(ext != ".go" && ext != ".arb" && name != codeparse.DomainFileName) {
+			return nil
+		}
 		f, err := os.Open(path)
 		if err != nil {
-			return "", fmt.Errorf("opening %s: %w", path, err)
+			return err
 		}
-		// Write filename as separator to avoid collisions.
-		_, _ = io.WriteString(h, filepath.Base(path))
+		defer func() { _ = f.Close() }()
+		// Write the path as separator to avoid collisions.
+		_, _ = io.WriteString(h, strings.TrimPrefix(path, modDir))
 		_, _ = io.WriteString(h, "\x00")
 		if _, err := io.Copy(h, f); err != nil {
-			_ = f.Close()
-			return "", fmt.Errorf("reading %s: %w", path, err)
+			return fmt.Errorf("reading %s: %w", path, err)
 		}
-		_ = f.Close()
 		_, _ = io.WriteString(h, "\x00")
+		return nil
+	})
+	if err != nil {
+		return "", err
 	}
-
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
