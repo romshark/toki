@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -97,7 +98,10 @@ type App struct {
 	tiksByID   map[string]*template.TIK
 	catalogs   []*template.Catalog
 	localeTags []language.Tag
-	changed    []*template.ICUMessage
+	// localeOrder is the order of the locales that the user set, kept in
+	// the index DB. See [App.sortLocalesLocked].
+	localeOrder []string
+	changed     []*template.ICUMessage
 	// numCorrupt is the number of native-locale messages that
 	// disagree with the TIK (needs `toki repair`)
 	numCorrupt int
@@ -170,6 +174,7 @@ func NewApp(dir, bundlePkgPath string, env []string, db *indexdb.DB) *App {
 		bundlePkgPath:    bundlePkgPath,
 		env:              env,
 		indexDB:          db,
+		localeOrder:      storedLocaleOrder(db),
 		hasher:           xxhash.New(),
 		icuTokenizer:     new(icumsg.Tokenizer),
 		tikParser:        tik.NewParser(tik.DefaultConfig),
@@ -458,6 +463,7 @@ func (a *App) buildTemplateDataFromScanLocked() {
 	sort.Slice(a.tiks, func(i, j int) bool {
 		return a.tiks[i].ID < a.tiks[j].ID
 	})
+	a.sortLocalesLocked()
 	a.tiksByID = make(map[string]*template.TIK, len(a.tiks))
 	for _, tk := range a.tiks {
 		a.tiksByID[tk.ID] = tk
@@ -680,6 +686,7 @@ func (a *App) loadFromDBLocked() error {
 	}
 
 	// TIKs are already sorted by ID from the DB query.
+	a.sortLocalesLocked()
 	a.tiksByID = make(map[string]*template.TIK, len(a.tiks))
 	for _, tk := range a.tiks {
 		a.tiksByID[tk.ID] = tk
@@ -704,6 +711,7 @@ func (a *App) SetDir(dir string) error {
 			a.indexDB = db
 		}
 	}
+	a.localeOrder = storedLocaleOrder(a.indexDB)
 
 	return a.tryInitLocked()
 }
@@ -998,6 +1006,32 @@ func (a *App) POSTRegenerate(
 	return toDashboard(updated)
 }
 
+// POSTSetLocaleOrder is /set-locale-order/{$}
+//
+// The sortable locale lists of the sidebars send the IDs of their items
+// in their new order.
+func (a *App) POSTSetLocaleOrder(
+	r *http.Request,
+	updated datapages.Dispatcher[EventUpdated],
+	signals datapages.Signals[struct {
+		LocaleOrder []string `json:"localeorder"`
+	}],
+) error {
+	order := make([]string, len(signals.Values.LocaleOrder))
+	for i, id := range signals.Values.LocaleOrder {
+		locale, ok := template.LocaleOfOrderItemID(id)
+		if !ok {
+			return datapages.ErrBadRequest
+		}
+		order[i] = locale
+	}
+	changed, err := a.setLocaleOrder(order)
+	if err != nil || !changed {
+		return err
+	}
+	return updated.Dispatch(EventUpdated{})
+}
+
 // toDashboard notifies every tab that the bundle changed and sends the
 // client to the dashboard, which forwards it to the project-dir page
 // while the bundle still needs attention.
@@ -1259,30 +1293,95 @@ func (a *App) doBuildBundleLocked(changed []*template.ICUMessage) error {
 
 // Helper methods on App (must be called with lock held).
 
-// orderTIK returns a copy of the TIK with ICU messages reordered (default locale first).
-func (a *App) orderTIK(tk *template.TIK) *template.TIK {
-	ordered := make([]*template.ICUMessage, 0, len(tk.ICU))
-	for _, m := range tk.ICU {
-		if m.Catalog.Default {
-			ordered = append(ordered, m)
-			break
+// storedLocaleOrder returns the order of the locales kept in db. Without
+// a db or a readable order, it returns nil, which keeps the default order.
+func storedLocaleOrder(db *indexdb.DB) []string {
+	if db == nil {
+		return nil
+	}
+	order, err := db.GetLocaleOrder()
+	if err != nil {
+		return nil
+	}
+	return order
+}
+
+// copyTIK returns a copy of tk with its own list of messages, which a page
+// renders after it releases the App lock.
+func copyTIK(tk *template.TIK) *template.TIK {
+	c := *tk
+	c.ICU = slices.Clone(tk.ICU)
+	return &c
+}
+
+// sortLocalesLocked orders the catalogs and the messages of every TIK by
+// a.localeOrder. The locales it doesn't list follow it, the default locale
+// first and the others in their current order.
+func (a *App) sortLocalesLocked() {
+	rank := func(c *template.Catalog) int {
+		if i := slices.Index(a.localeOrder, c.Locale); i != -1 {
+			return i
+		}
+		if c.Default {
+			return len(a.localeOrder)
+		}
+		return len(a.localeOrder) + 1
+	}
+	perm := make([]int, len(a.catalogs))
+	for i := range perm {
+		perm[i] = i
+	}
+	slices.SortStableFunc(perm, func(i, j int) int {
+		return cmp.Compare(rank(a.catalogs[i]), rank(a.catalogs[j]))
+	})
+
+	// New slices, as a page may still render the old ones.
+	catalogs := make([]*template.Catalog, len(perm))
+	localeTags := make([]language.Tag, len(perm))
+	position := make(map[*template.Catalog]int, len(perm))
+	for to, from := range perm {
+		catalogs[to], localeTags[to] = a.catalogs[from], a.localeTags[from]
+		position[catalogs[to]] = to
+	}
+	a.catalogs, a.localeTags = catalogs, localeTags
+	for _, tk := range a.tiks {
+		slices.SortStableFunc(tk.ICU, func(x, y *template.ICUMessage) int {
+			return cmp.Compare(position[x.Catalog], position[y.Catalog])
+		})
+	}
+}
+
+// setLocaleOrder sets the order of the locales, which must list each
+// locale once, and reports whether the order changed.
+func (a *App) setLocaleOrder(order []string) (changed bool, err error) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	if len(order) != len(a.catalogs) {
+		return false, datapages.ErrBadRequest
+	}
+	for i, locale := range order {
+		known := slices.ContainsFunc(a.catalogs, func(c *template.Catalog) bool {
+			return c.Locale == locale
+		})
+		if !known || slices.Contains(order[:i], locale) {
+			return false, datapages.ErrBadRequest
 		}
 	}
-	for _, m := range tk.ICU {
-		if !m.Catalog.Default {
-			ordered = append(ordered, m)
+	if slices.EqualFunc(order, a.catalogs, func(l string, c *template.Catalog) bool {
+		return l == c.Locale
+	}) {
+		return false, nil
+	}
+
+	if a.indexDB != nil {
+		if err := a.indexDB.SetLocaleOrder(order); err != nil {
+			return false, fmt.Errorf("saving locale order: %w", err)
 		}
 	}
-	return &template.TIK{
-		ID:          tk.ID,
-		TIK:         tk.TIK,
-		Description: tk.Description,
-		Domain:      tk.Domain,
-		ICU:         ordered,
-		Occurrences: tk.Occurrences,
-		IsChanged:   tk.IsChanged,
-		IsInvalid:   tk.IsInvalid,
-	}
+	a.localeOrder = order
+	a.sortLocalesLocked()
+	return true, nil
 }
 
 func serializeShownSignal(m map[string]bool) string {
@@ -1516,17 +1615,8 @@ func (a *App) buildFilteredDataIndex(
 		SearchQuery:     searchQuery,
 	}
 
-	// Move default catalog to first position in a copy,
-	// so a.catalogs order stays in sync with a.localeTags.
-	cats := make([]*template.Catalog, len(a.catalogs))
-	copy(cats, a.catalogs)
-	for i, c := range cats {
-		if c.Default {
-			cats[0], cats[i] = cats[i], cats[0]
-			break
-		}
-	}
-	data.Catalogs = cats
+	// A copy, as the page renders after the App lock is released.
+	data.Catalogs = slices.Clone(a.catalogs)
 
 	// Populate domain filters.
 	if a.domains != nil {

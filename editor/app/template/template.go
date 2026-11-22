@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/romshark/toki/editor/app/datapagesgen/action"
@@ -20,6 +21,22 @@ var NoEditorSignals = action.WithFilterSignals("", ActionExcludeEditor)
 // TIK tikID in locale.
 func EditorID(tikID, locale string) string {
 	return "editor-" + tikID + "-" + locale
+}
+
+// localeOrderItemIDPrefix starts the element id of each item of a sortable
+// locale list. The list reports its order as these ids.
+const localeOrderItemIDPrefix = "locale-order-"
+
+// localeOrderItemID is the element id of locale's item in a sortable
+// locale list.
+func localeOrderItemID(locale string) string {
+	return localeOrderItemIDPrefix + locale
+}
+
+// LocaleOfOrderItemID returns the locale of the sortable locale list item
+// with element id, and false if id is no such item.
+func LocaleOfOrderItemID(id string) (locale string, ok bool) {
+	return strings.CutPrefix(id, localeOrderItemIDPrefix)
 }
 
 // EditorValueSignal returns the JS expression $editor[tikID][locale].

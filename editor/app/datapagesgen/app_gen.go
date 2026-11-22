@@ -537,6 +537,9 @@ func setupHandlers(s *Server) {
 		"POST /regenerate/{$}",
 		appHandlers{s}.POSTRegenerate)
 	s.Mux().HandleFunc(
+		"POST /set-locale-order/{$}",
+		appHandlers{s}.POSTSetLocaleOrder)
+	s.Mux().HandleFunc(
 		"POST /open-new-window/{$}",
 		appHandlers{s}.POSTOpenNewWindow)
 	s.Mux().HandleFunc(
@@ -712,6 +715,33 @@ func (s appHandlers) POSTRegenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if httpserve.Redirect(w, r, redirect) {
+		return
+	}
+}
+
+func (s appHandlers) POSTSetLocaleOrder(w http.ResponseWriter, r *http.Request) {
+	defer s.recoverPanic(w, r, nil, "App.SetLocaleOrder")
+	if !s.CheckDatastarRequest(w, r) {
+		return
+	}
+
+	httpserve.LimitRequestBody(w, r, s.BodySizeLimit())
+	var signals datapages.Signals[struct {
+		LocaleOrder []string `json:"localeorder"`
+	}]
+	if err := dpsse.ReadSignals(r, &signals.Values); err != nil {
+		s.HTTPErrBad(w, "reading signals", err)
+		return
+	}
+
+	dispatchUpdated := dispatcherEventUpdated{s: s.Server, ctx: r.Context()}
+	err := s.app.POSTSetLocaleOrder(
+		r,
+		dispatchUpdated,
+		signals,
+	)
+	if err != nil {
+		s.httpErrIntern(w, r, nil, "handling action App.SetLocaleOrder", err)
 		return
 	}
 }

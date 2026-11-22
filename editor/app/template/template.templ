@@ -118,9 +118,9 @@ templ sidebarContent(data DataIndex) {
 						Show All
 					}
 				}
-				<ul>
+				@componentLocaleSortable() {
 					for _, catalog := range data.Catalogs {
-						<li>
+						@componentLocaleSortableItem(catalog.Locale) {
 							<label class="switch-label" data-keep-mobile-sidebar-open>
 								@neo.SwitchAttrs(
 									neo.SwitchOpts{
@@ -153,9 +153,9 @@ templ sidebarContent(data DataIndex) {
 									}
 								</span>
 							</label>
-						</li>
+						}
 					}
-				</ul>
+				}
 			</div>
 			<div role="separator"></div>
 			<div role="group" aria-labelledby="filter-label">

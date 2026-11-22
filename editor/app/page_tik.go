@@ -2,7 +2,6 @@ package app
 
 import (
 	"net/http"
-	"slices"
 
 	"github.com/romshark/datapages"
 
@@ -58,7 +57,7 @@ func (p PageTIK) GET(
 		return
 	}
 
-	tk := p.App.orderedTIKLocked(path.Values.ID)
+	tk := p.App.tikCopyLocked(path.Values.ID)
 	if tk == nil {
 		err = datapages.ErrNotFound
 		return
@@ -91,7 +90,7 @@ func (p PageTIK) OnUpdated(
 		return sse.Redirect(href.PageProjectDir())
 	}
 
-	tk := p.App.orderedTIKLocked(state.Values.TIKID)
+	tk := p.App.tikCopyLocked(state.Values.TIKID)
 	if tk == nil {
 		return nil
 	}
@@ -132,14 +131,12 @@ func (p PageTIK) POSTSet(
 	)
 }
 
-// orderedTIKLocked returns TIK id with its default-locale message first,
-// or nil when there is no such TIK. Caller holds the App lock.
-func (a *App) orderedTIKLocked(id string) *template.TIK {
-	i := slices.IndexFunc(a.tiks, func(t *template.TIK) bool {
-		return t.ID == id
-	})
-	if i == -1 {
+// tikCopyLocked returns a copy of TIK id, or nil when there is no such TIK.
+// Caller holds the App lock.
+func (a *App) tikCopyLocked(id string) *template.TIK {
+	tk := a.tiksByID[id]
+	if tk == nil {
 		return nil
 	}
-	return a.orderTIK(a.tiks[i])
+	return copyTIK(tk)
 }

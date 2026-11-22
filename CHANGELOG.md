@@ -15,6 +15,7 @@ Releases up to v0.8.5 have their notes on
 - Add `toki edit`, a translation editor that replaces `toki webedit`. It lists the TIKs of the module with their messages in every catalog, filters them by status, locale and domain, searches them and shows where the source code uses each TIK. It validates ICU messages while you type, writes the edits to the catalogs and regenerates the bundle. When the bundle is out of date or corrupt, it offers to run `toki generate` or `toki repair`.
 - Open the editor as a desktop app when toki is built with cgo, which `go install` uses where a C compiler is available. `-server <address>` serves it over HTTP instead. Builds without cgo, such as the release binaries, require it. `-b` sets the bundle package path.
 - Cache the scan of the module in `.toki/index.db`, together with the edits not yet written to the catalogs. Add `.toki/` to `.gitignore`.
+- Reorder the locales by dragging them in the sidebar. Every page shows them in that order, which `.toki/index.db` keeps. Until then, the default locale comes first.
 
 #### `toki repair`
 

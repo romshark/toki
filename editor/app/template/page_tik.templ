@@ -44,54 +44,56 @@ templ tikSidebarNav(tk *TIK) {
 			</ul>
 			<div role="group" aria-labelledby="tik-nav-label">
 				<h3 id="tik-nav-label">ICU Messages</h3>
-				<ul class="sidebar-nav-list">
+				@componentLocaleSortable() {
 					for _, msg := range tk.ICU {
-						@componentSidebarNavLink(fmt.Sprintf("#icu-%s-%s",
-							tk.ID, msg.Catalog.Locale,
-						)) {
-							<span class="locale-link-name sidebar-nav-text">
-								<strong class="locale-code">
-									{ msg.Catalog.Locale }
-								</strong>
-								if msg.Catalog.Name != "" {
-									– { msg.Catalog.Name }
+						@componentLocaleSortableItem(msg.Catalog.Locale) {
+							@componentSidebarNavAnchor(fmt.Sprintf("#icu-%s-%s",
+								tk.ID, msg.Catalog.Locale,
+							)) {
+								<span class="locale-link-name sidebar-nav-text">
+									<strong class="locale-code">
+										{ msg.Catalog.Locale }
+									</strong>
+									if msg.Catalog.Name != "" {
+										– { msg.Catalog.Name }
+									}
+								</span>
+								if msg.Catalog.Default {
+									@neo.BadgeAttrs(
+										neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantSecondary)},
+										templ.Attributes{"title": "Default locale"},
+									) {
+										@iconCode()
+									}
 								}
-							</span>
-							if msg.Catalog.Default {
-								@neo.BadgeAttrs(
-									neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantSecondary)},
-									templ.Attributes{"title": "Default locale"},
-								) {
-									@iconCode()
+								if msg.Changed {
+									@neo.BadgeAttrs(neo.BadgeOpts{}, templ.Attributes{
+										"class": "badge-changed",
+										"title": "Unsaved change",
+									}) {
+										@iconPencil()
+									}
 								}
-							}
-							if msg.Changed {
-								@neo.BadgeAttrs(neo.BadgeOpts{}, templ.Attributes{
-									"class": "badge-changed",
-									"title": "Unsaved change",
-								}) {
-									@iconPencil()
+								if msg.Message == "" {
+									@neo.BadgeAttrs(
+										neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantSecondary)},
+										templ.Attributes{"title": "Missing Translation"},
+									) {
+										@iconCircleMinus()
+									}
 								}
-							}
-							if msg.Message == "" {
-								@neo.BadgeAttrs(
-									neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantSecondary)},
-									templ.Attributes{"title": "Missing Translation"},
-								) {
-									@iconCircleMinus()
-								}
-							}
-							if msg.Error != "" || len(msg.IncompleteReports) > 0 {
-								@neo.BadgeAttrs(
-									neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantDanger)},
-									templ.Attributes{"title": "Invalid ICU message"},
-								) {
-									@iconAlertTriangle()
+								if msg.Error != "" || len(msg.IncompleteReports) > 0 {
+									@neo.BadgeAttrs(
+										neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantDanger)},
+										templ.Attributes{"title": "Invalid ICU message"},
+									) {
+										@iconAlertTriangle()
+									}
 								}
 							}
 						}
 					}
-				</ul>
+				}
 			</div>
 			if len(tk.Occurrences) > 0 {
 				<ul class="sidebar-nav-list">

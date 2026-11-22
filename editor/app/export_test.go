@@ -11,6 +11,12 @@ var (
 
 func (a *App) TIKs() []*template.TIK { return a.tiks }
 
+func (a *App) Catalogs() []*template.Catalog { return a.catalogs }
+
+func (a *App) SetLocaleOrder(order []string) (changed bool, err error) {
+	return a.setLocaleOrder(order)
+}
+
 func (a *App) NumMissing() int { return a.numMissing }
 
 func (a *App) Changed() []*template.ICUMessage { return a.changed }

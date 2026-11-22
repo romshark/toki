@@ -29,7 +29,7 @@ templ:
 # Add a component when a template starts using it, then run `make morpheus`.
 MORPHEUS_COMPONENTS = alert badge breadcrumb button buttongroup card clipcopy \
 	combobox keys layout link navgroup pagination popover radio-group select \
-	sidebar switch textinput tooltip
+	sidebar sortable switch textinput tooltip
 
 # morpheus bundles MORPHEUS_COMPONENTS into the editor's static assets
 # at the Morpheus version go.mod requires.

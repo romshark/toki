@@ -299,19 +299,45 @@ templ componentSidebar(ariaLabel string) {
 // kit's control padding, hover and focus treatment.
 templ componentSidebarNavLink(hrefURL string) {
 	<li>
-		@neo.LinkAttrs(
-			neo.LinkOpts{
-				Href:    neo.Set(hrefURL),
-				Variant: neo.Set(neo.LinkVariantButtonGhost),
-			},
-			templ.Attributes{
-				"class":               "sidebar-nav-link",
-				"data-ignore-current": true,
-			},
-		) {
+		@componentSidebarNavAnchor(hrefURL) {
 			{ children... }
 		}
 	</li>
+}
+
+templ componentSidebarNavAnchor(hrefURL string) {
+	@neo.LinkAttrs(
+		neo.LinkOpts{
+			Href:    neo.Set(hrefURL),
+			Variant: neo.Set(neo.LinkVariantButtonGhost),
+		},
+		templ.Attributes{
+			"class":               "sidebar-nav-link",
+			"data-ignore-current": true,
+		},
+	) {
+		{ children... }
+	}
+}
+
+// componentLocaleSortable lists items of [componentLocaleSortableItem] that
+// the user drags into the order in which every page shows the locales.
+templ componentLocaleSortable() {
+	@neo.SortableAttrs(neo.SortableOpts{}, templ.Attributes{
+		"class": "locale-sortable",
+		"data-on:neo-sortable-end": action.App.SetLocaleOrder.POST(
+			action.WithPayload("{localeorder: el.order}"),
+		),
+	}) {
+		{ children... }
+	}
+}
+
+templ componentLocaleSortableItem(locale string) {
+	@neo.SortableItem(localeOrderItemID(locale)) {
+		@neo.SortableHandle()
+		{ children... }
+	}
 }
 
 templ componentSidebarHeader(isHybrid bool) {

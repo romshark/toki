@@ -61,6 +61,52 @@ func TestTryInitIndexDB(t *testing.T) {
 	requireUnsavedEdit(a)
 }
 
+// TestSetLocaleOrder makes sure the order of the locales that the user sets
+// orders the catalogs and the messages of every TIK, survives a restart and
+// must list each locale once.
+func TestSetLocaleOrder(t *testing.T) {
+	p := newProject(t, "first", "second")
+	requireOrder := func(a *app.App, want ...string) {
+		t.Helper()
+		var catalogs []string
+		for _, c := range a.Catalogs() {
+			catalogs = append(catalogs, c.Locale)
+		}
+		require.Equal(t, want, catalogs)
+		for _, tk := range a.TIKs() {
+			var messages []string
+			for _, m := range tk.ICU {
+				messages = append(messages, m.Catalog.Locale)
+			}
+			require.Equal(t, want, messages, tk.TIK)
+		}
+	}
+
+	a := p.start()
+	requireOrder(a, "en", "de") // The default locale first.
+
+	changed, err := a.SetLocaleOrder([]string{"de", "en"})
+	require.NoError(t, err)
+	require.True(t, changed)
+	requireOrder(a, "de", "en")
+
+	changed, err = a.SetLocaleOrder([]string{"de", "en"})
+	require.NoError(t, err)
+	require.False(t, changed)
+
+	for _, order := range [][]string{
+		{"de"}, {"de", "de"}, {"de", "fr"}, {"de", "en", "fr"},
+	} {
+		_, err := a.SetLocaleOrder(order)
+		require.ErrorIs(t, err, datapages.ErrBadRequest, order)
+	}
+	requireOrder(a, "de", "en")
+
+	a = p.start()
+	require.True(t, a.LoadedFromIndexDB())
+	requireOrder(a, "de", "en")
+}
+
 // TestSetMessageReadOnly makes sure the server rejects edits of messages
 // the TIK fully determines.
 func TestSetMessageReadOnly(t *testing.T) {

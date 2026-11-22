@@ -352,6 +352,34 @@ a {
 	}
 }
 
+/* A sortable list of locales keeps the nav rows' rhythm. Each row is the
+   drag grip, then the row's own link or switch. */
+.locale-sortable {
+	display: flex;
+	flex-direction: column;
+	gap: 0.125rem;
+
+	/* Plain rows, not the cards that Morpheus draws by default. Only the
+	   row lifted during a drag gets a background, to cover the rows below. */
+	& [data-neo-sortable-item] {
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0;
+		border: 0;
+		background: none;
+
+		&[data-neo-sortable-dragging] {
+			background: var(--page-bg);
+		}
+
+		& > :last-child {
+			flex: 1 1 auto;
+			min-inline-size: 0;
+		}
+	}
+}
+
 /* Switch and radio rows share the nav rows' hit area and rhythm. */
 .switch-label,
 .filter-option {

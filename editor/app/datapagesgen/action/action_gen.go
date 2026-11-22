@@ -174,10 +174,11 @@ func WithRequestCancellationController(expr string) Option {
 var App app
 
 type app struct {
-	OpenNewWindow app_OpenNewWindow
-	Regenerate    app_Regenerate
-	Repair        app_Repair
-	Reset         app_Reset
+	OpenNewWindow  app_OpenNewWindow
+	Regenerate     app_Regenerate
+	Repair         app_Repair
+	Reset          app_Reset
+	SetLocaleOrder app_SetLocaleOrder
 }
 
 type app_OpenNewWindow struct{}
@@ -246,6 +247,24 @@ func (app_Reset) POST(options ...Option) string {
 	b.Grow(bl + len("@post('/reset/'") + actionexpr.OptionsLen(options) + len(")") + al)
 	actionexpr.WriteBefore(&b, options)
 	b.WriteString("@post('/reset/'")
+	actionexpr.WriteOptions(&b, options)
+	b.WriteByte(')')
+	actionexpr.WriteAfter(&b, options)
+	return b.String()
+}
+
+type app_SetLocaleOrder struct{}
+
+// POST references /set-locale-order/
+func (app_SetLocaleOrder) POST(options ...Option) string {
+	if len(options) == 0 {
+		return "@post('/set-locale-order/')"
+	}
+	var b strings.Builder
+	bl, al := actionexpr.BeforeAfterLen(options)
+	b.Grow(bl + len("@post('/set-locale-order/'") + actionexpr.OptionsLen(options) + len(")") + al)
+	actionexpr.WriteBefore(&b, options)
+	b.WriteString("@post('/set-locale-order/'")
 	actionexpr.WriteOptions(&b, options)
 	b.WriteByte(')')
 	actionexpr.WriteAfter(&b, options)

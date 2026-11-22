@@ -144,54 +144,70 @@ func createSchema(sq *sqinn.Sqinn) error {
 // changes in a way that requires a full rebuild of the cached data.
 const SchemaVersion = "5"
 
-// GetSchemaVersion returns the stored schema version, or "" if none.
-func (db *DB) GetSchemaVersion() string {
+// getMeta returns the value of key in the meta table, or "" if none.
+func (db *DB) getMeta(key string) (string, error) {
 	rows, err := db.sq.QueryRows(
 		"SELECT value FROM meta WHERE key = ?",
-		[]sqinn.Value{sqinn.StringValue("schema_version")},
+		[]sqinn.Value{sqinn.StringValue(key)},
 		[]byte{sqinn.ValString},
 	)
-	if err != nil || len(rows) == 0 {
-		return ""
+	if err != nil {
+		return "", err
 	}
-	return rows[0][0].String
+	if len(rows) == 0 {
+		return "", nil
+	}
+	return rows[0][0].String, nil
+}
+
+// setMeta stores value under key in the meta table.
+func (db *DB) setMeta(key, value string) error {
+	return db.sq.ExecParams(
+		"INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
+		1, 2,
+		[]sqinn.Value{sqinn.StringValue(key), sqinn.StringValue(value)},
+	)
+}
+
+// GetSchemaVersion returns the stored schema version, or "" if none.
+func (db *DB) GetSchemaVersion() string {
+	v, _ := db.getMeta("schema_version")
+	return v
 }
 
 // SetSchemaVersion stores the schema version.
 func (db *DB) SetSchemaVersion(version string) error {
-	return db.sq.ExecParams(
-		"INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-		1, 2,
-		[]sqinn.Value{
-			sqinn.StringValue("schema_version"),
-			sqinn.StringValue(version),
-		},
-	)
+	return db.setMeta("schema_version", version)
 }
 
 // GetTokiVersion returns the stored toki version, or "" if none.
 func (db *DB) GetTokiVersion() string {
-	rows, err := db.sq.QueryRows(
-		"SELECT value FROM meta WHERE key = ?",
-		[]sqinn.Value{sqinn.StringValue("toki_version")},
-		[]byte{sqinn.ValString},
-	)
-	if err != nil || len(rows) == 0 {
-		return ""
-	}
-	return rows[0][0].String
+	v, _ := db.getMeta("toki_version")
+	return v
 }
 
 // SetTokiVersion stores the toki version.
 func (db *DB) SetTokiVersion(version string) error {
-	return db.sq.ExecParams(
-		"INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-		1, 2,
-		[]sqinn.Value{
-			sqinn.StringValue("toki_version"),
-			sqinn.StringValue(version),
-		},
-	)
+	return db.setMeta("toki_version", version)
+}
+
+// GetLocaleOrder returns the order of the locales that the user set in
+// the editor, or nil if none.
+func (db *DB) GetLocaleOrder() ([]string, error) {
+	v, err := db.getMeta("locale_order")
+	if err != nil {
+		return nil, fmt.Errorf("querying locale order: %w", err)
+	}
+	if v == "" {
+		return nil, nil
+	}
+	return strings.Split(v, ","), nil
+}
+
+// SetLocaleOrder stores the order of the locales. BCP 47 tags contain no
+// commas, which separate them.
+func (db *DB) SetLocaleOrder(locales []string) error {
+	return db.setMeta("locale_order", strings.Join(locales, ","))
 }
 
 // Close terminates the sqinn subprocess and releases resources.
@@ -202,30 +218,16 @@ func (db *DB) Close() error {
 // GetChecksum returns the stored project checksum, or "" if none.
 // See [ComputeChecksum].
 func (db *DB) GetChecksum() (string, error) {
-	rows, err := db.sq.QueryRows(
-		"SELECT value FROM meta WHERE key = ?",
-		[]sqinn.Value{sqinn.StringValue("checksum")},
-		[]byte{sqinn.ValString},
-	)
+	v, err := db.getMeta("checksum")
 	if err != nil {
 		return "", fmt.Errorf("querying checksum: %w", err)
 	}
-	if len(rows) == 0 {
-		return "", nil
-	}
-	return rows[0][0].String, nil
+	return v, nil
 }
 
 // SetChecksum stores the project checksum.
 func (db *DB) SetChecksum(checksum string) error {
-	return db.sq.ExecParams(
-		"INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)",
-		1, 2,
-		[]sqinn.Value{
-			sqinn.StringValue("checksum"),
-			sqinn.StringValue(checksum),
-		},
-	)
+	return db.setMeta("checksum", checksum)
 }
 
 // Clear removes all data from the database (catalogs, TIKs, occurrences,
