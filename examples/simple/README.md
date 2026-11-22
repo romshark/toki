@@ -3,7 +3,7 @@
 Run this example with `go run .`:
 
 ```
-Supported locales: [de en ru]
+Supported locales: [de en ja ru uk]
 Selected en with confidence: Exact
 translated text
 Nothing found in folder images
@@ -13,4 +13,4 @@ searched 56 files in 21 folders
 Your score: 42
 ```
 
-`-l` selects another locale, as `go run . -l de`.
+`-l` selects another locale, as `go run . -l uk` or `go run . -l ja`.

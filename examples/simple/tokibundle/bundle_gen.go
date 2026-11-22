@@ -334,7 +334,13 @@ func Catalogs() iter.Seq[Reader] {
 		if !yield(catalog_en{}) {
 			return
 		}
+		if !yield(catalog_ja{}) {
+			return
+		}
 		if !yield(catalog_ru{}) {
+			return
+		}
+		if !yield(catalog_uk{}) {
 			return
 		}
 	}
