@@ -29,7 +29,8 @@ templ sidebarContent(tr tokibundle.Reader, data DataIndex) {
 	>
 		<section class="sidebar-filters">
 			if len(data.Domains) > 0 {
-				@componentSidebarSection(SectionDomains, tr.String("Domains"), data.ClosedSections) {
+				@componentSidebarSection(SectionDomains, tr.String("Domains"), data.ClosedSections,
+					tiksSectionToggle(SectionDomains)) {
 					@neo.ButtonGroup(neo.ButtonGroupOpts{}) {
 						@neo.ButtonAttrs(
 							neo.ButtonOpts{
@@ -90,7 +91,8 @@ templ sidebarContent(tr tokibundle.Reader, data DataIndex) {
 				}
 				<div role="separator"></div>
 			}
-			@componentSidebarSection(SectionLocales, tr.String("Locales"), data.ClosedSections) {
+			@componentSidebarSection(SectionLocales, tr.String("Locales"), data.ClosedSections,
+				tiksSectionToggle(SectionLocales)) {
 				@neo.ButtonGroup(neo.ButtonGroupOpts{}) {
 					@neo.ButtonAttrs(
 						neo.ButtonOpts{
@@ -157,7 +159,8 @@ templ sidebarContent(tr tokibundle.Reader, data DataIndex) {
 				}
 			}
 			<div role="separator"></div>
-			@componentSidebarSection(SectionFilter, tr.String("Filter"), data.ClosedSections) {
+			@componentSidebarSection(SectionFilter, tr.String("Filter"), data.ClosedSections,
+				tiksSectionToggle(SectionFilter)) {
 				@neo.RadioGroupAttrs(
 					neo.RadioGroupOpts{
 						Value: neo.Set(normalizeFilterType(data.FilterType)),
@@ -187,16 +190,15 @@ templ sidebarContent(tr tokibundle.Reader, data DataIndex) {
 }
 
 // componentSidebarSection is a section of the sidebar that the user closes
-// and opens. Each toggle saves the state in a cookie, from which the next
-// page load renders the section. See [sectionOpen].
-templ componentSidebarSection(key, title string, closed map[string]bool) {
+// and opens. Each toggle calls the action toggle of the page, which saves the
+// state in a cookie, from which the next page load renders the section.
+// See [sectionOpen].
+templ componentSidebarSection(key, title string, closed map[string]bool, toggle string) {
 	@neo.CollapsibleAttrs(neo.CollapsibleOpts{Open: sectionOpen(closed, key)}, templ.Attributes{
-		"class":           "sidebar-section",
-		"role":            "group",
-		"aria-labelledby": key + "-label",
-		"data-on:neo-collapsible-toggle": action.PageTIKs.SetSectionOpen.POST(
-			action.WithPayload(sectionTogglePayload(key)),
-		),
+		"class":                          "sidebar-section",
+		"role":                           "group",
+		"aria-labelledby":                key + "-label",
+		"data-on:neo-collapsible-toggle": toggle,
 	}) {
 		<h3 slot="summary" id={ key + "-label" }>{ title }</h3>
 		{ children... }

@@ -408,6 +408,13 @@ a {
 	margin: 0;
 }
 
+/* The panel of a collapsible is a grid whose auto column grows to the
+   widest text that doesn't wrap. A column as wide as the collapsible makes
+   its content truncate or wrap that text instead. */
+neo-collapsible::part(panel) {
+	grid-template-columns: minmax(0, 1fr);
+}
+
 /* A sortable list of locales keeps the nav rows' rhythm. Each row is the
    drag grip, then the row's own link or switch. */
 .locale-sortable {
@@ -1381,6 +1388,30 @@ neo-card {
 		gap: 0.5rem;
 
 		& > svg { width: 1.25rem; height: 1.25rem; }
+	}
+
+	/* The rule of a collapsible section's heading runs under its chevron too.
+	   The spacing matches a plain h2's: the margins move out of the summary,
+	   which centers the chevron on the heading. */
+	& .page-section {
+		margin-block-start: 1.25rem;
+
+		&::part(summary) {
+			padding-block: 0 0.5rem;
+			border-block-end: 1px solid var(--btn-border, oklch(0 0 0 / 0.1));
+			border-radius: 0;
+		}
+
+		& > h2[slot="summary"] {
+			margin-block: 0;
+			padding-block-end: 0;
+			border-block-end: 0;
+		}
+
+		/* The bottom margin of a plain h2 and the gap of .contents. */
+		& > neo-card {
+			margin-block-start: 2.25rem;
+		}
 	}
 }
 

@@ -293,7 +293,7 @@ var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
 		return wrs(w, "Reparatur fehlgeschlagen:")
 	},
 	msg33e0696fdbcbb90a: func(w io.Writer, args ...any) (written int, err error) {
-		return wrs(w, "Standard-Locale der Texte im Quellcode, in BCP 47 außer und")
+		return wrs(w, "Standard-Locale der Texte im Quellcode, in BCP 47 außer „und“")
 	},
 	msg352292ce24926a0c: func(w io.Writer, args ...any) (written int, err error) {
 		var n int
@@ -382,7 +382,7 @@ var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
 		return wrs(w, "Editor-Navigation")
 	},
 	msg3a67cca6614073a0: func(w io.Writer, args ...any) (written int, err error) {
-		return wrs(w, "Übersetzungs-Locale in BCP 47 außer und (mehrfach möglich, Duplikate werden ignoriert). Erstellt neue Kataloge für Locales, für die es noch keine gibt.")
+		return wrs(w, "Übersetzungs-Locale in BCP 47 außer „und“ (mehrfach möglich, Duplikate werden ignoriert). Erstellt neue Kataloge für Locales, für die es noch keine gibt.")
 	},
 	msg3b87fd603b6c3c3d: func(w io.Writer, args ...any) (written int, err error) {
 		return wrs(w, "Projektordner")
@@ -438,7 +438,7 @@ var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
 			return written, err
 		}
 		written += n
-		n, err = wrs(w, "“: muss eine gültige BCP-47-Locale außer und sein: ")
+		n, err = wrs(w, "“: muss eine gültige BCP-47-Locale außer „und“ sein: ")
 		if err != nil {
 			return written, err
 		}
@@ -1237,7 +1237,7 @@ var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
 			return written, err
 		}
 		written += n
-		n, err = wrs(w, "“: muss eine gültige BCP-47-Locale außer und sein: ist und")
+		n, err = wrs(w, "“: muss eine gültige BCP-47-Locale außer „und“ sein: ist „und“")
 		if err != nil {
 			return written, err
 		}
@@ -1380,7 +1380,7 @@ var writers_de = map[string]func(w io.Writer, args ...any) (int, error){
 		return written, nil
 	},
 	msgb93d9c05702acdad: func(w io.Writer, args ...any) (written int, err error) {
-		return wrs(w, "bitte geben Sie mit dem Parameter -l eine gültige BCP-47-Locale außer und für die Standardsprache Ihres Quellcodes an")
+		return wrs(w, "bitte geben Sie mit dem Parameter -l eine gültige BCP-47-Locale außer „und“ für die Standardsprache Ihres Quellcodes an")
 	},
 	msgb94ff2aaccd9ec93: func(w io.Writer, args ...any) (written int, err error) {
 		var n int

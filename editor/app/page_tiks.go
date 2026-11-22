@@ -2,8 +2,6 @@ package app
 
 import (
 	"net/http"
-	"slices"
-	"strings"
 
 	"github.com/romshark/datapages"
 
@@ -85,21 +83,6 @@ func (p PageTIKs) GET(
 	return
 }
 
-// sectionCookie names the cookie that keeps whether the user closed the
-// sidebar section key.
-func sectionCookie(key string) string { return "toki-section-" + key }
-
-// readClosedSections returns which sidebar sections the cookies of r mark
-// closed, for every section. A nil map would leave the sections unset.
-func readClosedSections(r *http.Request) map[string]bool {
-	closed := make(map[string]bool, len(template.SidebarSections))
-	for _, key := range template.SidebarSections {
-		c, err := r.Cookie(sectionCookie(key))
-		closed[key] = err == nil && c.Value == "closed"
-	}
-	return closed
-}
-
 // POSTSetSectionOpen is /tiks/set-section-open/{$}
 //
 // A collapsible section of the sidebar sends whether the user opened or
@@ -112,17 +95,7 @@ func (PageTIKs) POSTSetSectionOpen(
 		Open    bool   `json:"open"`
 	}],
 ) error {
-	s := signals.Values
-	if !slices.Contains(template.SidebarSections, s.Section) {
-		return datapages.ErrBadRequest
-	}
-	value := "closed"
-	if s.Open {
-		value = "open"
-	}
-	var script strings.Builder
-	writeUIPrefCookieScript(&script, sectionCookie(s.Section), value)
-	return sse.ExecuteScript(script.String())
+	return setSectionOpen(sse, signals.Values.Section, signals.Values.Open)
 }
 
 func (p PageTIKs) StreamOpen(

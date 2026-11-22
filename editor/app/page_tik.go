@@ -68,7 +68,7 @@ func (p PageTIK) GET(
 		err = datapages.ErrNotFound
 		return
 	}
-	body = template.PageTIK(tr, tk, p.App.OpenNewWindow != nil)
+	body = template.PageTIK(tr, tk, p.App.OpenNewWindow != nil, readClosedSections(r))
 	return
 }
 
@@ -113,8 +113,9 @@ func (p PageTIK) OnUpdated(
 	}); err != nil {
 		return err
 	}
+	// nil closed sections leave each section as the user set it.
 	return sse.PatchElement(
-		template.PageTIK(state.Values.Reader, tk, p.App.OpenNewWindow != nil),
+		template.PageTIK(state.Values.Reader, tk, p.App.OpenNewWindow != nil, nil),
 	)
 }
 
@@ -138,6 +139,24 @@ func (p PageTIK) POSTSet(
 		path.Values.ID, query.Values.Locale, signals.Values.ICUMsg,
 		stateID, updated,
 	)
+}
+
+// POSTSetSectionOpen is /tik/{id}/set-section-open/{$}
+//
+// A collapsible section of the sidebar sends whether the user opened or
+// closed it. Its cookie keeps that for the next page load.
+func (PageTIK) POSTSetSectionOpen(
+	r *http.Request,
+	_ datapages.Path[struct {
+		ID string `path:"id"`
+	}],
+	sse datapages.SSE,
+	signals datapages.Signals[struct {
+		Section string `json:"section"`
+		Open    bool   `json:"open"`
+	}],
+) error {
+	return setSectionOpen(sse, signals.Values.Section, signals.Values.Open)
 }
 
 // tikCopyLocked returns a copy of TIK id, or nil when there is no such TIK.

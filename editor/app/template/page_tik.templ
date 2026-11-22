@@ -11,8 +11,8 @@ import (
 )
 
 // PageTIK renders the whole page of one TIK. It is both the GET body and
-// what PageTIK.OnUpdated morphs.
-templ PageTIK(tr tokibundle.Reader, tk *TIK, isHybrid bool) {
+// what PageTIK.OnUpdated morphs. closedSections is as in [DataIndex.ClosedSections].
+templ PageTIK(tr tokibundle.Reader, tk *TIK, isHybrid bool, closedSections map[string]bool) {
 	@page("page-tik", templ.Attributes{
 		"data-signals:icumsg":            "''",
 		"data-signals:resettikid":        "''",
@@ -24,90 +24,88 @@ templ PageTIK(tr tokibundle.Reader, tk *TIK, isHybrid bool) {
 	}) {
 		@componentSidebar(tr.String("TIK navigation")) {
 			@componentSidebarHeader(tr, isHybrid)
-			@tikSidebarNav(tr, tk)
+			@tikSidebarNav(tr, tk, closedSections)
 		}
-		@tikMainArea(tr, tk)
+		@tikMainArea(tr, tk, closedSections)
 		@componentEditorModals(tr)
 	}
 }
 
-templ tikSidebarNav(tr tokibundle.Reader, tk *TIK) {
+// tikSidebarNav links to the parts of the TIK page. The links to the ICU
+// messages are a collapsible section, whose locales the user reorders.
+templ tikSidebarNav(tr tokibundle.Reader, tk *TIK, closedSections map[string]bool) {
 	<nav
 		{ neo.SidebarContent()... }
 		id="tik-sidebar-content"
 		aria-label={ tr.String("TIK navigation") }
 	>
-		<section>
-			<ul class="sidebar-nav-list">
-				@componentSidebarNavLink("#tik-card") {
-					<span class="sidebar-nav-text">TIK</span>
+		<ul class="sidebar-nav-list">
+			@componentSidebarNavLink("#tik-card") {
+				<span class="sidebar-nav-text">TIK</span>
+			}
+			if len(tk.Occurrences) > 0 {
+				@componentSidebarNavLink("#source-occurrences") {
+					<span class="sidebar-nav-text">{ tr.String("Source Occurrences") }</span>
 				}
-			</ul>
-			<div role="group" aria-labelledby="tik-nav-label">
-				<h3 id="tik-nav-label">{ tr.String("ICU Messages") }</h3>
-				@componentLocaleSortable() {
-					for _, msg := range tk.ICU {
-						@componentLocaleSortableItem(msg.Catalog.Locale) {
-							@componentSidebarNavAnchor(fmt.Sprintf("#icu-%s-%s",
-								tk.ID, msg.Catalog.Locale,
-							)) {
-								<span class="locale-link-name sidebar-nav-text">
-									<strong class="locale-code">
-										{ msg.Catalog.Locale }
-									</strong>
-									if name := localeName(tr, msg.Catalog.Locale); name != "" {
-										– { name }
-									}
-								</span>
-								if msg.Catalog.Default {
-									@neo.BadgeAttrs(
-										neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantSecondary)},
-										templ.Attributes{"title": tr.String("Default locale")},
-									) {
-										@iconCode()
-									}
+			}
+		</ul>
+		@componentSidebarSection(SectionMessages, tr.String("ICU Messages"), closedSections,
+			tikSectionToggle(tk.ID, SectionMessages)) {
+			@componentLocaleSortable() {
+				for _, msg := range tk.ICU {
+					@componentLocaleSortableItem(msg.Catalog.Locale) {
+						@componentSidebarNavAnchor(fmt.Sprintf("#icu-%s-%s",
+							tk.ID, msg.Catalog.Locale,
+						)) {
+							<span class="locale-link-name sidebar-nav-text">
+								<strong class="locale-code">
+									{ msg.Catalog.Locale }
+								</strong>
+								if name := localeName(tr, msg.Catalog.Locale); name != "" {
+									– { name }
 								}
-								if msg.Changed {
-									@neo.BadgeAttrs(neo.BadgeOpts{}, templ.Attributes{
-										"class": "badge-changed",
-										"title": tr.String("Unsaved change"),
-									}) {
-										@iconPencil()
-									}
+							</span>
+							if msg.Catalog.Default {
+								@neo.BadgeAttrs(
+									neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantSecondary)},
+									templ.Attributes{"title": tr.String("Default locale")},
+								) {
+									@iconCode()
 								}
-								if msg.Message == "" {
-									@neo.BadgeAttrs(
-										neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantSecondary)},
-										templ.Attributes{"title": tr.String("Missing Translation")},
-									) {
-										@iconCircleMinus()
-									}
+							}
+							if msg.Changed {
+								@neo.BadgeAttrs(neo.BadgeOpts{}, templ.Attributes{
+									"class": "badge-changed",
+									"title": tr.String("Unsaved change"),
+								}) {
+									@iconPencil()
 								}
-								if msg.Error != nil || len(msg.Problems) > 0 {
-									@neo.BadgeAttrs(
-										neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantDanger)},
-										templ.Attributes{"title": tr.String("Invalid ICU message")},
-									) {
-										@iconAlertTriangle()
-									}
+							}
+							if msg.Message == "" {
+								@neo.BadgeAttrs(
+									neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantSecondary)},
+									templ.Attributes{"title": tr.String("Missing Translation")},
+								) {
+									@iconCircleMinus()
+								}
+							}
+							if msg.Error != nil || len(msg.Problems) > 0 {
+								@neo.BadgeAttrs(
+									neo.BadgeOpts{Variant: neo.Set(neo.BadgeVariantDanger)},
+									templ.Attributes{"title": tr.String("Invalid ICU message")},
+								) {
+									@iconAlertTriangle()
 								}
 							}
 						}
 					}
 				}
-			</div>
-			if len(tk.Occurrences) > 0 {
-				<ul class="sidebar-nav-list">
-					@componentSidebarNavLink("#source-occurrences") {
-						<span class="sidebar-nav-text">{ tr.String("Source Occurrences") }</span>
-					}
-				</ul>
 			}
-		</section>
+		}
 	</nav>
 }
 
-templ tikMainArea(tr tokibundle.Reader, tk *TIK) {
+templ tikMainArea(tr tokibundle.Reader, tk *TIK, closedSections map[string]bool) {
 	@componentMainArea(templ.Attributes{"id": "tik-main-area"}) {
 		@componentNavbar(tr, []Breadcrumb{
 			{Label: tr.String("Dashboard"), Href: href.PageIndex()},
@@ -151,6 +149,9 @@ templ tikMainArea(tr tokibundle.Reader, tk *TIK) {
 						}
 					}
 				}
+				if len(tk.Occurrences) > 0 {
+					@tikOccurrences(tr, tk, closedSections)
+				}
 				<h2 id="icu-messages">
 					@iconLanguages()
 					{ tr.String("ICU Messages") }
@@ -183,36 +184,48 @@ templ tikMainArea(tr tokibundle.Reader, tk *TIK) {
 						}
 					}
 				}
-				if len(tk.Occurrences) > 0 {
-					<h2 id="source-occurrences">
-						@iconCode()
-						{ tr.String("Source Occurrences") }
-					</h2>
-					@neo.Card(neo.CardOpts{}) {
-						@neo.CardBody() {
-							<ul class="occurrence-list">
-								for _, occ := range tk.Occurrences {
-									<li
-										class="occurrence-item"
-										title={ fmt.Sprintf("%s:%d:%d",
-											occ.File, occ.Line, occ.Column) }
-									>
-										<code class="occurrence-file">
-											{ occ.DisplayFile }
-											<span class="occurrence-pos">
-												{ occ.Pos() }
-											</span>
-										</code>
-										@componentCopy(tr, fmt.Sprintf(
-											"%s:%d:%d", occ.File, occ.Line, occ.Column,
-										))
-									</li>
-								}
-							</ul>
-						}
-					}
-				}
 			</div>
 		</main>
+	}
+}
+
+// tikOccurrences lists where the source code uses tk, in a section that the
+// user closes when the list pushes the ICU messages too far down.
+templ tikOccurrences(tr tokibundle.Reader, tk *TIK, closedSections map[string]bool) {
+	@neo.CollapsibleAttrs(neo.CollapsibleOpts{
+		Open: sectionOpen(closedSections, SectionOccurrences),
+	}, templ.Attributes{
+		"class":                          "page-section",
+		"role":                           "group",
+		"aria-labelledby":                "source-occurrences",
+		"data-on:neo-collapsible-toggle": tikSectionToggle(tk.ID, SectionOccurrences),
+	}) {
+		<h2 slot="summary" id="source-occurrences">
+			@iconCode()
+			{ tr.String("Source Occurrences") }
+		</h2>
+		@neo.Card(neo.CardOpts{}) {
+			@neo.CardBody() {
+				<ul class="occurrence-list">
+					for _, occ := range tk.Occurrences {
+						<li
+							class="occurrence-item"
+							title={ fmt.Sprintf("%s:%d:%d",
+								occ.File, occ.Line, occ.Column) }
+						>
+							<code class="occurrence-file">
+								{ occ.DisplayFile }
+								<span class="occurrence-pos">
+									{ occ.Pos() }
+								</span>
+							</code>
+							@componentCopy(tr, fmt.Sprintf(
+								"%s:%d:%d", occ.File, occ.Line, occ.Column,
+							))
+						</li>
+					}
+				</ul>
+			}
+		}
 	}
 }

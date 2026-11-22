@@ -34,11 +34,15 @@ func EditorID(tikID, locale string) string {
 	return "editor-" + tikID + "-" + locale
 }
 
-// The keys of the collapsible sections of the sidebar.
+// The keys of the collapsible sections. The TIKs page has the first 3 in
+// its sidebar. The TIK page has the next in its sidebar and the last in its
+// main area.
 const (
-	SectionDomains = "domains"
-	SectionLocales = "locales"
-	SectionFilter  = "filter"
+	SectionDomains     = "domains"
+	SectionLocales     = "locales"
+	SectionFilter      = "filter"
+	SectionMessages    = "messages"
+	SectionOccurrences = "occurrences"
 )
 
 // The bounds of the width that the user drags the sidebar to. The minimum
@@ -48,10 +52,12 @@ const (
 	SidebarMaxWidth = "32rem"
 )
 
-// SidebarSections lists the keys of the collapsible sections of the sidebar.
-var SidebarSections = []string{SectionDomains, SectionLocales, SectionFilter}
+// CollapsibleSections lists the keys of the collapsible sections.
+var CollapsibleSections = []string{
+	SectionDomains, SectionLocales, SectionFilter, SectionMessages, SectionOccurrences,
+}
 
-// sectionOpen returns the open attribute of sidebar section key. A page load
+// sectionOpen returns the open attribute of collapsible section key. A page load
 // sets it from closed. A server re-render passes nil and leaves the attribute
 // unset, which keeps the section as the user set it.
 func sectionOpen(closed map[string]bool, key string) neo.Attr[bool] {
@@ -61,11 +67,23 @@ func sectionOpen(closed map[string]bool, key string) neo.Attr[bool] {
 	return neo.Set(!closed[key])
 }
 
-// sectionTogglePayload is the payload that sidebar section key sends when
-// the user opens or closes it.
+// sectionTogglePayload is the payload that collapsible section key sends
+// when the user opens or closes it.
 func sectionTogglePayload(key string) string {
 	k, _ := json.Marshal(key) // A string always marshals.
 	return fmt.Sprintf("{section: %s, open: evt.detail.open}", k)
+}
+
+// tiksSectionToggle is the action that collapsible section key of the TIKs
+// page calls when the user opens or closes it.
+func tiksSectionToggle(key string) string {
+	return action.PageTIKs.SetSectionOpen.POST(action.WithPayload(sectionTogglePayload(key)))
+}
+
+// tikSectionToggle is the action that collapsible section key of the page
+// of TIK id calls when the user opens or closes it.
+func tikSectionToggle(id, key string) string {
+	return action.PageTIK.SetSectionOpen.POST(id, action.WithPayload(sectionTogglePayload(key)))
 }
 
 // localeOrderItemIDPrefix starts the element id of each item of a sortable
@@ -192,9 +210,9 @@ type DataIndex struct {
 	Catalogs []*Catalog
 	Domains  []DomainFilter
 
-	// ClosedSections holds the collapsible sidebar sections that the user
-	// closed, read from the cookies on a page load. A server re-render leaves
-	// it nil, which keeps each section as the user set it. See [sectionOpen].
+	// ClosedSections holds the collapsible sections that the user closed,
+	// read from the cookies on a page load. A server re-render leaves it nil,
+	// which keeps each section as the user set it. See [sectionOpen].
 	ClosedSections map[string]bool
 
 	// ShownLocales which locales are shown (nil = all)

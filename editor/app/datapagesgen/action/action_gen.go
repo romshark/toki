@@ -379,7 +379,8 @@ func (pageSettings_SetPref) POST(options ...Option) string {
 var PageTIK pageTIK
 
 type pageTIK struct {
-	Set pageTIK_Set
+	Set            pageTIK_Set
+	SetSectionOpen pageTIK_SetSectionOpen
 }
 
 type pageTIK_Set struct{}
@@ -448,6 +449,27 @@ func (pageTIK_Set) POSTQuery(vLocale string) pageTIK_Set_POSTQuery {
 	return pageTIK_Set_POSTQuery{
 		Locale: vLocale,
 	}
+}
+
+type pageTIK_SetSectionOpen struct{}
+
+// POST references /tik/{id}/set-section-open/
+func (pageTIK_SetSectionOpen) POST(
+	id string,
+	options ...Option,
+) string {
+	s_id := url.PathEscape(id)
+	var b strings.Builder
+	bl, al := actionexpr.BeforeAfterLen(options)
+	b.Grow(bl + len("@post('/tik/") + len(s_id) + len("/set-section-open/'") + actionexpr.OptionsLen(options) + len(")") + al)
+	actionexpr.WriteBefore(&b, options)
+	b.WriteString("@post('/tik/")
+	b.WriteString(s_id)
+	b.WriteString("/set-section-open/'")
+	actionexpr.WriteOptions(&b, options)
+	b.WriteByte(')')
+	actionexpr.WriteAfter(&b, options)
+	return b.String()
 }
 
 var PageTIKs pageTIKs
