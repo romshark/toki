@@ -16,6 +16,7 @@ import (
 	editorapp "github.com/romshark/toki/editor/app"
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/cli"
+	"github.com/romshark/toki/internal/codeparse"
 
 	"github.com/romshark/tik/tik-go"
 	"github.com/stretchr/testify/require"
@@ -325,6 +326,82 @@ func TestGenerateAndRunSelectOrdinal(t *testing.T) {
 		You finished 21st!
 		You finished 22nd!
 		You finished 23rd!
+	`))
+	actual := stripLeadingSpaces(strings.TrimSpace(string(out)))
+	require.Equal(t, expect, actual)
+}
+
+// TestGenerateAndRunApostrophes makes sure apostrophes in catalogs
+// edited by translators are unescaped like ICU does.
+func TestGenerateAndRunApostrophes(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, ModName)
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.German)
+				fmt.Println(r.String("apostrophe"))
+				fmt.Println(r.String("doubled apostrophe"))
+				fmt.Println(r.String("quoted braces"))
+				fmt.Println(r.String("number sign"))
+				fmt.Println(r.String("plural {# files}", 2))
+				fmt.Println(r.String("select {text}", "a"))
+			}
+		`,
+	})
+
+	generate := func() {
+		runInDir(t, dir, func() {
+			args := []string{"toki", "generate", "-l=en"}
+			result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+			require.NoError(t, result.Err)
+			require.Zero(t, exitCode)
+		})
+	}
+	generate()
+
+	// Native messages the TIK fully determines are locked.
+	// Translate them in a German catalog derived from the native one.
+	catalog := filepath.Join(dir, "tokibundle", "catalog_en.arb")
+	contents, err := os.ReadFile(catalog)
+	require.NoError(t, err)
+	patched := strings.Replace(string(contents),
+		`"@@locale": "en"`, `"@@locale": "de"`, 1)
+	for _, r := range [...]struct{ old, new string }{
+		{"apostrophe", "He's here"},
+		{"doubled apostrophe", "It''s fine"},
+		{"quoted braces", "'{'braces'}'"},
+		{"number sign", "Use '#' here"},
+		{
+			"plural {var0, plural, other {# files}}",
+			"{var0, plural, other {# files, '#'1, it's ok}}",
+		},
+		{"select {var0}", "{var0, select, a {He''s} other {They''re}}"},
+	} {
+		before := patched
+		patched = strings.Replace(patched, `"`+r.old+`"`, `"`+r.new+`"`, 1)
+		require.NotEqual(t, before, patched, "%q not found in %s", r.old, catalog)
+	}
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "tokibundle", "catalog_de.arb"), []byte(patched), 0o644,
+	))
+	generate()
+
+	cmd := exec.Command("go", "run", ".")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %q", string(out))
+	expect := stripLeadingSpaces(strings.TrimSpace(`
+		He's here
+		It's fine
+		{braces}
+		Use '#' here
+		2 files, #1, it's ok
+		He's
 	`))
 	actual := stripLeadingSpaces(strings.TrimSpace(string(out)))
 	require.Equal(t, expect, actual)
@@ -646,6 +723,39 @@ func TestGenerate(t *testing.T) {
 			},
 		},
 		{
+			// Generation fills empty native messages from their TIKs,
+			// which completes the catalog.
+			name: "require completeness with empty native message",
+			setup: Setup{
+				InitGoMod: true, InitBundle: true,
+				Files: map[string]string{
+					"main.go": `
+						package main
+						import "tstmod/tokibundle"
+						func main() { print(tokibundle.Default().String("translated")) }
+					`,
+				},
+				FilesAfterInit: map[string]string{
+					"tokibundle/catalog_en.arb": `{
+						"@@locale": "en",
+						"msg9d21e6c2519b8be9": ""
+					}`,
+				},
+			},
+			args: []string{"-require-complete"},
+			expectFiles: map[string]string{
+				"tokibundle/catalog_en.arb": fmt.Sprintf(`{
+					"@@locale": "en",
+					"@@x-generator": "github.com/romshark/toki",
+					"@@x-generator-version": %q,
+					"msg9d21e6c2519b8be9": "translated",
+					"@msg9d21e6c2519b8be9": {
+						"type": "text"
+					}
+				}`, cli.Version),
+			},
+		},
+		{
 			name: "same TIK at multiple call sites",
 			setup: Setup{
 				InitGoMod: true,
@@ -684,6 +794,32 @@ func TestGenerate(t *testing.T) {
 				},
 			},
 			args: []string{"-l=en"},
+		},
+		{
+			name: "require completeness with empty messages of removed TIK",
+			setup: Setup{
+				InitGoMod: true, InitBundle: true,
+				Files: map[string]string{
+					"main.go": `
+						package main
+						import "tstmod/tokibundle"
+						func main() { print(tokibundle.Default().String("translated")) }
+					`,
+				},
+				FilesAfterInit: map[string]string{
+					"tokibundle/catalog_en.arb": `{
+						"@@locale": "en",
+						"msg9d21e6c2519b8be9": "translated",
+						"msg0123456789abcdef": ""
+					}`,
+					"tokibundle/catalog_de.arb": `{
+						"@@locale": "de",
+						"msg9d21e6c2519b8be9": "übersetzt",
+						"msg0123456789abcdef": ""
+					}`,
+				},
+			},
+			args: []string{"-require-complete"},
 		},
 	}
 
@@ -870,9 +1006,9 @@ func TestGenerateDomainFileNotOverwritten(t *testing.T) {
 	require.Equal(t, customDomain, string(content))
 }
 
-// TestGenerateSameTIKDifferentDomains verifies that the same TIK string used in
-// different domains (including parent vs. sub-domain) does not cause a collision.
-func TestGenerateSameTIKDifferentDomains(t *testing.T) {
+// TestGenerateSameTextDifferentDomains verifies that TIKs in different domains
+// (including parent vs. sub-domain) can share a text when their contexts differ.
+func TestGenerateSameTextDifferentDomains(t *testing.T) {
 	dir := t.TempDir()
 	initGoMod(t, dir, "tstmod")
 	writeFiles(t, dir, map[string]string{
@@ -880,11 +1016,12 @@ func TestGenerateSameTIKDifferentDomains(t *testing.T) {
 		"main.go": `
 			package main
 			import "fmt"
+			import "tstmod/sub"
 			import "tstmod/tokibundle"
 			import "golang.org/x/text/language"
 			func main() {
 				r, _ := tokibundle.Match(language.English)
-				fmt.Println(r.String("hello world"))
+				fmt.Println(r.String("hello world"), sub.Hello())
 			}
 		`,
 		"sub/.tokidomain.yml": "name: sub\ndescription: \"\"",
@@ -894,7 +1031,7 @@ func TestGenerateSameTIKDifferentDomains(t *testing.T) {
 			import "golang.org/x/text/language"
 			func Hello() string {
 				r, _ := tokibundle.Match(language.English)
-				return r.String("hello world")
+				return r.String("[sub] hello world")
 			}
 		`,
 	})
@@ -904,12 +1041,98 @@ func TestGenerateSameTIKDifferentDomains(t *testing.T) {
 		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
-		// The same TIK in different domains must produce distinct message IDs.
-		require.Zero(t, result.Scan.SourceErrors.Len(),
-			"expected no source errors (no collision)")
-		require.Equal(t, 2, result.Scan.Texts.Len(),
-			"expected 2 distinct texts from 2 different domains")
 	})
+
+	requireRunOutput(t, dir, ".", "hello world hello world")
+}
+
+// TestGenerateSimilarlyNamedPackage verifies that a package whose path ends
+// in the bundle package name is scanned and isn't mistaken for the bundle.
+func TestGenerateSimilarlyNamedPackage(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, ModName)
+	_ = initBundle(t, dir, language.English, "tokibundle", io.Discard, io.Discard)
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/internal/mytokibundle"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				fmt.Println(mytokibundle.Greet(r))
+			}
+		`,
+		"internal/mytokibundle/mytokibundle.go": `
+			package mytokibundle
+			import "tstmod/tokibundle"
+			func Greet(r tokibundle.Reader) string { return r.String("hello") }
+		`,
+	})
+
+	runInDir(t, dir, func() {
+		args := []string{"toki", "generate"}
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		require.NoError(t, result.Err)
+		require.Zero(t, exitCode)
+	})
+
+	requireRunOutput(t, dir, ".", "hello")
+}
+
+// TestGenerateBundlesWithSameName verifies that -b selects the bundle package
+// by its path when several bundles in a module share a package name.
+func TestGenerateBundlesWithSameName(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, ModName)
+	_ = initBundle(t, dir, language.English, "app1/tokibundle", io.Discard, io.Discard)
+	_ = initBundle(t, dir, language.English, "app2/tokibundle", io.Discard, io.Discard)
+	writeFiles(t, dir, map[string]string{
+		"app1/main.go": `
+			package main
+			import "fmt"
+			import "tstmod/app1/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				fmt.Println(r.String("app one"))
+			}
+		`,
+		"app2/main.go": `
+			package main
+			import "fmt"
+			import "tstmod/app2/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				fmt.Println(r.String("app two"))
+			}
+		`,
+	})
+
+	runInDir(t, dir, func() {
+		for _, bundle := range []string{"app1/tokibundle", "app2/tokibundle"} {
+			args := []string{"toki", "generate", "-b", bundle}
+			result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+			require.NoError(t, result.Err, bundle)
+			require.Zero(t, exitCode, bundle)
+		}
+	})
+
+	requireRunOutput(t, dir, "./app1", "app one")
+	requireRunOutput(t, dir, "./app2", "app two")
+}
+
+// requireRunOutput runs the main package pkg in dir and requires it to print expect.
+func requireRunOutput(tb testing.TB, dir, pkg, expect string) {
+	tb.Helper()
+
+	cmd := exec.Command("go", "run", pkg)
+	cmd.Dir, cmd.Env = dir, osEnv()
+	out, err := cmd.CombinedOutput()
+	require.NoError(tb, err, "go run %s; output: %s", pkg, out)
+	require.Equal(tb, expect, strings.TrimSpace(string(out)))
 }
 
 type SourceError struct {
@@ -1115,6 +1338,51 @@ func TestGenerateErr(t *testing.T) {
 				require.Equal(t, "bundle contains incomplete catalogs", err.Error())
 			},
 		},
+		{
+			name: "require completeness with empty translation",
+			setup: Setup{
+				InitGoMod: true, InitBundle: true,
+				Files: map[string]string{
+					"main.go": `
+						package main
+						import "tstmod/tokibundle"
+						func main() { print(tokibundle.Default().String("translated")) }
+					`,
+				},
+				FilesAfterInit: map[string]string{
+					"tokibundle/catalog_de.arb": `{
+						"@@locale": "de",
+						"msg9d21e6c2519b8be9": ""
+					}`,
+				},
+			},
+			args:           []string{"-require-complete"},
+			expectExitCode: 1,
+			expectErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorIs(tt, err, cli.ErrBundleIncomplete)
+			},
+		},
+		{
+			name: "require completeness with message missing in catalog",
+			setup: Setup{
+				InitGoMod: true, InitBundle: true,
+				Files: map[string]string{
+					"main.go": `
+						package main
+						import "tstmod/tokibundle"
+						func main() { print(tokibundle.Default().String("translated")) }
+					`,
+				},
+				FilesAfterInit: map[string]string{
+					"tokibundle/catalog_de.arb": `{"@@locale": "de"}`,
+				},
+			},
+			args:           []string{"-require-complete"},
+			expectExitCode: 1,
+			expectErr: func(tt require.TestingT, err error, i ...any) {
+				require.ErrorIs(tt, err, cli.ErrBundleIncomplete)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -1227,6 +1495,32 @@ func TestGenerateErrSource(t *testing.T) {
 					"main.go:6:8",
 					errHasMsg("TIK: arg int(42) doesn't match any TIK placeholder"),
 				},
+			},
+		},
+		{
+			name: "ERR same TIK in different domains",
+			setup: Setup{
+				InitGoMod: true, InitBundle: true,
+				FilesAfterInit: map[string]string{
+					"main.go": `
+					package main
+					import "tstmod/tokibundle"
+					func main() { print(tokibundle.Default().String("hello world")) }
+					`,
+					"sub/.tokidomain.yml": "name: sub",
+					"sub/sub.go": `
+					package sub
+					import "tstmod/tokibundle"
+					func Hello() string { return tokibundle.Default().String("hello world") }
+					`,
+				},
+			},
+			expectSrcErrs: []SourceError{
+				{"sub.go:3:35", func(tt require.TestingT, err error, i ...any) {
+					require.ErrorIs(tt, err, codeparse.ErrTIKInMultipleDomains)
+					require.ErrorContains(tt, err, `"hello world" (also at `)
+					require.ErrorContains(tt, err, "main.go:3:26)")
+				}},
 			},
 		},
 	}

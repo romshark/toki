@@ -265,8 +265,7 @@ func (g *Generate) Run(
 			slog.String("id", id),
 			slog.String("message", msg.ICUMessage),
 		)
-		delete(nativeARB.Messages, id)
-		// Delete message in all other catalogs too.
+		// Delete the message in all catalogs, including the native one.
 		for c := range scan.Catalogs.Seq() {
 			delete(c.ARB.Messages, id)
 		}

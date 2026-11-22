@@ -1,9 +1,6 @@
 <a href="https://pkg.go.dev/github.com/romshark/toki">
     <img src="https://godoc.org/github.com/romshark/toki?status.svg" alt="GoDoc">
 </a>
-<a href="https://goreportcard.com/report/github.com/romshark/toki">
-    <img src="https://goreportcard.com/badge/github.com/romshark/toki" alt="GoReportCard">
-</a>
 <a href='https://coveralls.io/github/romshark/toki?branch=main'>
     <img src='https://coveralls.io/repos/github/romshark/toki/badge.svg?branch=main&service=github' alt='Coverage Status' />
 </a>
@@ -70,7 +67,7 @@ go run github.com/romshark/toki@latest generate -l en && go mod tidy
 ```
 
 2. Second, you'll need to adjust your messages in the source code to TIKs.
-Use the [TIK cheatsheet](https://romshark.github.io/tik-cheatsheet/)
+Use the [TIK cheatsheet](https://romshark.github.io/tik/cheatsheet/)
 for help and guidance.
 
 ```go
@@ -182,8 +179,7 @@ to ensure your generated Toki bundle package is up to date.
 Toki supports [TIK domains](https://github.com/romshark/tik/blob/main/SPECIFICATION.md#domains)
 via `.tokidomain.yml` files. A domain provides translators and LLMs with additional context
 and instructions on how to translate within a directory tree, such as the expected tone,
-style, target audience, or terminology conventions. Domains also scope TIK identity,
-so identical TIK strings in separate domains are treated as distinct messages.
+style, target audience, or terminology conventions.
 
 When you run `toki generate` for the first time, a `.tokidomain.yml` file is automatically
 created at your module root using the Go module name.
@@ -221,8 +217,12 @@ myapp/
 ```
 
 Directories without a `.tokidomain.yml` file inherit the nearest ancestor's domain.
-A sub-domain is a distinct domain from its parent, so the same TIK string
-in `myapp` and `myapp.storefront` will produce separate translations.
+A sub-domain is a distinct domain from its parent.
+The bundle looks up translations by TIK and can't tell domains apart.
+`toki generate` reports an error when a TIK is used in more than one domain,
+such as in `myapp` and `myapp.storefront`.
+Use a [context](https://github.com/romshark/tik/blob/main/SPECIFICATION.md#context)
+to tell them apart, such as `Order` and `[storefront] Order`.
 
 ## Bundle File Structure
 

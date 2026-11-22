@@ -37,6 +37,7 @@ var (
 	ErrUnsupportedSelectOption    = errors.New("unsupported select option")
 	ErrCantUnpackCompositeLiteral = errors.New("can't unpack composite literal")
 	ErrTIKCollision               = errors.New("TIK collision")
+	ErrTIKInMultipleDomains       = errors.New("TIK used in multiple domains")
 )
 
 type Statistics struct {
@@ -155,6 +156,13 @@ func (p *Parser) Parse(
 ) (scan *Scan, err error) {
 	fset := token.NewFileSet()
 
+	// go list reports package directories spelled like an absolute dir,
+	// even through symlinks, which the bundle detection relies on.
+	dir, err = filepath.Abs(dir)
+	if err != nil {
+		return nil, fmt.Errorf("resolving directory: %w", err)
+	}
+
 	conf := &packages.Config{
 		Dir: dir,
 		Mode: packages.NeedFiles |
@@ -186,8 +194,10 @@ func (p *Parser) Parse(
 		Catalogs:      sync.NewSlice[*Catalog](1),
 	}
 
-	bundlePkg := filepath.Base(bundlePkgPath)
-	pkgBundle := findBundlePkg(bundlePkg, pkgs)
+	// packages.Load runs go list in dir.
+	// Joining it yields the same path as the bundle's Dir.
+	bundleDir := filepath.Join(dir, bundlePkgPath)
+	pkgBundle := findBundlePkg(bundleDir, pkgs)
 	if pkgBundle != nil {
 		log.Verbose("bundle detected", slog.String("directory", pkgBundle.Dir))
 		scan.TokiVersion = getConstantValue(pkgBundle, "TokiVersion")
@@ -218,16 +228,16 @@ func (p *Parser) Parse(
 
 	// Trim positions relative to the directory the pattern is rooted in.
 	trimDir := filepath.Join(dir, strings.TrimSuffix(pathPattern, "/..."))
-	p.collectTexts(fset, pkgs, bundlePkg, trimDir, trimpath, scan)
+	p.collectTexts(fset, pkgs, bundleDir, trimDir, trimpath, scan)
 
 	p.classifyNativeMessages(scan)
 
 	return scan, nil
 }
 
-func findBundlePkg(bundlePkg string, pkgs []*packages.Package) *packages.Package {
+func findBundlePkg(bundleDir string, pkgs []*packages.Package) *packages.Package {
 	for _, pkg := range pkgs {
-		if isPkgBundle(bundlePkg, pkg) {
+		if isPkgBundle(bundleDir, pkg) {
 			return pkg
 		}
 	}
@@ -363,7 +373,7 @@ func isMsgIncomplete(
 	onRejected func(indexArgument, indexOption int) error,
 ) bool {
 	if msg.ICUMessage == "" {
-		return true
+		return true // The bundle treats empty messages as missing translations.
 	}
 	incomplete := false
 	_, _ = icumsg.Analyze(
@@ -426,12 +436,13 @@ func PlaceholdersMismatch(tk tik.TIK, msg arb.Message) bool {
 
 func (p *Parser) collectTexts(
 	fset *token.FileSet, pkgs []*packages.Package,
-	bundlePkg, trimDir string, trimpath bool,
+	bundleDir, trimDir string, trimpath bool,
 	scan *Scan,
 ) {
 	seenFiles := make(map[string]struct{})
+	textIndexByTIK := make(map[string]int)
 	for _, pkg := range pkgs {
-		if isPkgBundle(bundlePkg, pkg) {
+		if isPkgBundle(bundleDir, pkg) {
 			continue
 		}
 		for iFile, file := range pkg.Syntax {
@@ -523,6 +534,17 @@ func (p *Parser) collectTexts(
 							}
 							return nil
 						}
+						// Each domain gives the TIK a different ID, but the bundle
+						// looks up translations by TIK and can't tell them apart.
+						if existingIdx, ok := textIndexByTIK[tikVal.Raw]; ok {
+							existing := scan.Texts.At(existingIdx)
+							scan.SourceErrors.Append(SourceError{
+								Position: posCall,
+								Err: fmt.Errorf("%w: %q (also at %s)",
+									ErrTIKInMultipleDomains, tikVal.Raw, existing.Position),
+							})
+							return nil
+						}
 						index := scan.Texts.Append(Text{
 							Position: posCall,
 							IDHash:   id,
@@ -531,6 +553,7 @@ func (p *Parser) collectTexts(
 							Domain:   fileDomain,
 						})
 						s[id] = index
+						textIndexByTIK[tikVal.Raw] = index
 						return nil
 					})
 
@@ -943,16 +966,10 @@ func moduleDir(pkgs []*packages.Package) string {
 	return ""
 }
 
-func isPkgBundle(bundlePkg string, pkg *packages.Package) bool {
-	if pkg.Module == nil {
-		return false
-	}
-	if c, ok := strings.CutPrefix(pkg.Dir, pkg.Module.Dir); ok {
-		if len(c) > 1 && c[0] == '/' && strings.HasSuffix(c[1:], bundlePkg) {
-			return true
-		}
-	}
-	return false
+// isPkgBundle reports whether pkg is the bundle package or one of its test variants.
+// bundleDir must be absolute and clean, like the Dir reported by go list.
+func isPkgBundle(bundleDir string, pkg *packages.Package) bool {
+	return pkg.Dir == bundleDir
 }
 
 // mustTrimPath trims the absolute path of dir from s.
