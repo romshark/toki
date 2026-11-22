@@ -38,6 +38,10 @@ Releases up to v0.8.5 have their notes on
 - Print the `-json` result to stdout instead of stderr.
 - Print the usage for `-h` to stdout and start it with what the command does instead of "Usage of toki:". Report an unknown flag in one line, without the usage.
 
+#### `toki version`
+
+- Print the Go version and platform instead of the build information with every dependency. `-full` adds the build information.
+
 #### Requirements
 
 - Require Go 1.27.4.
@@ -70,5 +74,9 @@ Run `toki generate` to apply these.
 - Support exact `=n` plural options and plural offsets. `=n` options were ignored, and the plural category didn't subtract the offset.
 - Unescape apostrophes in catalog messages like ICU does. "He's here" rendered as "Hes here".
 - Generate valid Go for TIKs that contain a backtick. Generation failed with a formatting error.
+
+#### `toki version`
+
+- Print `Toki (devel)` instead of `Toki v(devel)` for a build from a local checkout.
 
 [Unreleased]: https://github.com/romshark/toki/compare/v0.8.5...HEAD

@@ -1,13 +1,12 @@
 package cli
 
 import (
-	"debug/buildinfo"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"os"
-	"os/exec"
+	"runtime"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -67,10 +66,13 @@ func Run(
 	switch osArgs[1] {
 	case "version", "-version", "--version":
 		fs := newFlagSet("version")
+		full := fs.Bool("full", false,
+			"also print the build information with the module dependencies")
 		if err := flagError(fs, stdout, fs.Parse(osArgs[2:])); err != nil {
 			return exit(Result{Err: err})
 		}
-		return Result{}, printVersionInfoAndExit(stderr, stdout)
+		printVersion(stdout, *full)
+		return Result{}, 0
 
 	case "repair":
 		return exit(Result{Err: new(Repair).Run(osArgs, env, stderr, stdout)})
@@ -170,36 +172,26 @@ func printCommandUsage(w io.Writer, fs *flag.FlagSet) {
 	fs.PrintDefaults()
 }
 
-func printVersionInfoAndExit(stderr, stdout io.Writer) (exitCode int) {
-	p, err := exec.LookPath(os.Args[0])
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "resolving executable file path: %v\n", err)
-		return 1
-	}
-
-	f, err := os.Open(p)
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "opening executable file %q: %v\n", os.Args[0], err)
-		return 1
-	}
-	defer func() { _ = f.Close() }()
-
-	info, err := buildinfo.Read(f)
-	if err != nil {
-		_, _ = fmt.Fprintf(stderr, "reading build information: %v\n", err)
-	}
-
+// printVersion prints the version of Toki and Go to w. With full it adds the
+// build information, including the module dependencies.
+func printVersion(w io.Writer, full bool) {
 	v := Version
-	if len(v) > 0 && v[0] != 'v' {
-		v = "v" + v
+	if len(v) > 0 && v[0] >= '0' && v[0] <= '9' {
+		v = "v" + v // Goreleaser sets the version without "v".
 	}
-	_, _ = fmt.Fprintf(stdout, "Toki %s\n", v)
+	_, _ = fmt.Fprintf(w, "Toki %s\n", v)
 	if Commit != "" {
-		_, _ = fmt.Fprintf(stdout, "commit: %s\n", Commit)
+		_, _ = fmt.Fprintf(w, "commit: %s\n", Commit)
 	}
 	if Date != "" {
-		_, _ = fmt.Fprintf(stdout, "built:  %s\n", Date)
+		_, _ = fmt.Fprintf(w, "built:  %s\n", Date)
 	}
-	_, _ = fmt.Fprintf(stdout, "\n%v\n", info)
-	return 0
+	_, _ = fmt.Fprintf(w, "go:     %s %s/%s\n",
+		runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	if !full {
+		return
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		_, _ = fmt.Fprintf(w, "\n%s", info)
+	}
 }

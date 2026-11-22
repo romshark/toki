@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -33,7 +34,23 @@ func TestVersion(t *testing.T) {
 	require.Zero(t, res)
 
 	require.Empty(t, stderr.String())
-	require.Contains(t, stdout.String(), "Toki v"+cli.Version)
+	require.Contains(t, stdout.String(), "Toki "+cli.Version)
+	require.Contains(t, stdout.String(), runtime.Version())
+	require.NotContains(t, stdout.String(), "\ndep\t")
+}
+
+func TestVersionFull(t *testing.T) {
+	var stderr, stdout bytes.Buffer
+
+	res, exitCode := cli.Run(
+		[]string{"toki", "version", "-full"}, osEnv(), &stderr, &stdout, TimeNow,
+	)
+	require.Equal(t, 0, exitCode)
+	require.Zero(t, res)
+
+	require.Empty(t, stderr.String())
+	require.Contains(t, stdout.String(), "Toki "+cli.Version)
+	require.Contains(t, stdout.String(), "\ndep\tgithub.com/stretchr/testify")
 }
 
 func TestVersionFlag(t *testing.T) {
@@ -45,7 +62,7 @@ func TestVersionFlag(t *testing.T) {
 			)
 			require.Equal(t, 0, exitCode)
 			require.Zero(t, res)
-			require.Contains(t, stdout.String(), "Toki v"+cli.Version)
+			require.Contains(t, stdout.String(), "Toki "+cli.Version)
 		})
 	}
 }
