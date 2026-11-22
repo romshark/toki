@@ -16,7 +16,10 @@ before:
     - go generate ./...
 
 builds:
-  - id: toki
+  # The desktop app of `toki edit` needs cgo, and cgo builds for macOS only on
+  # macOS. The release workflow runs on a macOS runner for this build.
+  - &build
+    id: toki-darwin
     binary: toki
     main: ./
     ldflags:
@@ -25,9 +28,17 @@ builds:
       - -X main.commit={{.ShortCommit}}
       - -X main.date={{.Date}}
     env:
-      - CGO_ENABLED=0
-    goos: [linux, windows, darwin]
+      - CGO_ENABLED=1
+    goos: [darwin]
     goarch: [amd64, arm64]
+
+  # Without cgo, these cross-compile on the macOS runner and need no system libraries.
+  # Their `toki edit` needs -server.
+  - <<: *build
+    id: toki
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, windows]
 
 # Used only when GoReleaser runs without --release-notes.
 changelog:
@@ -37,3 +48,27 @@ changelog:
       - "^docs:"
       - "^test:"
       - "^ci:"
+
+# The toki cask, pushed to the romshark/tools tap on release.
+# Needs HOMEBREW_TAP_GITHUB_TOKEN with write access to that repository.
+homebrew_casks:
+  - name: toki
+    homepage: https://github.com/romshark/toki
+    description: Internationalization framework for Go with a translation editor
+    license: MIT
+    # A prerelease leaves the cask at the last release.
+    skip_upload: auto
+    # Unsigned and unnotarized. An install leaves the binary quarantined and
+    # Gatekeeper refuses to run it.
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/toki"]
+          end
+    # The repository name, not the tap name: `brew tap romshark/tools` puts the
+    # homebrew- prefix back on, GoReleaser pushes over the API and needs the real one.
+    repository:
+      owner: romshark
+      name: homebrew-tools
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
