@@ -29,6 +29,7 @@ builds:
     goos: [linux, windows, darwin]
     goarch: [amd64, arm64]
 
+# Used only when GoReleaser runs without --release-notes.
 changelog:
   sort: asc
   filters:

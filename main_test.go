@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -12,8 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/romshark/toki/internal/app"
+	editorapp "github.com/romshark/toki/editor/app"
 	"github.com/romshark/toki/internal/arb"
+	"github.com/romshark/toki/internal/cli"
 	"github.com/romshark/toki/internal/codeparse"
 
 	"github.com/romshark/tik/tik-go"
@@ -24,14 +26,14 @@ import (
 func TestVersion(t *testing.T) {
 	var stderr, stdout bytes.Buffer
 
-	res, exitCode := app.Run(
+	res, exitCode := cli.Run(
 		[]string{"toki", "version"}, osEnv(), &stderr, &stdout, TimeNow,
 	)
 	require.Equal(t, 0, exitCode)
 	require.Zero(t, res)
 
 	require.Empty(t, stderr.String())
-	require.Contains(t, stdout.String(), "Toki v"+app.Version)
+	require.Contains(t, stdout.String(), "Toki v"+cli.Version)
 }
 
 func TestGenerateAndRun(t *testing.T) {
@@ -56,6 +58,10 @@ func TestGenerateAndRun(t *testing.T) {
 				_, _ = r.Write(os.Stdout, "write to stdout writer")
 
 				fmt.Println(r.String("text: {text}", "something"))
+				fmt.Println(r.String(
+					"texts: {text}|{text}|{text}|{text}|{text}|{text}|{text}|{text}|{text}|{text}|{text}",
+					"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+				))
 
 				fmt.Println(r.String("number: {number}", 3.1415912))
 				fmt.Println(r.String("number: {number}", float64(10.1000)))
@@ -92,7 +98,7 @@ func TestGenerateAndRun(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en"}
-		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -105,6 +111,7 @@ func TestGenerateAndRun(t *testing.T) {
 		just text
 		It's okay!
 		write to stdout writertext: something
+		texts: 0|1|2|3|4|5|6|7|8|9|10
 		number: 3.1415912
 		number: 10.1
 		number: 123
@@ -171,14 +178,14 @@ func TestGenerateAndRunFallback(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en", "-t=de"}
-		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate"}
-		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -223,14 +230,14 @@ func TestGenerateAndRunNoTranslationFallback(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en", "-t=de"}
-		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate"}
-		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -249,6 +256,105 @@ func TestGenerateAndRunNoTranslationFallback(t *testing.T) {
 	require.Equal(t, expect, actual)
 }
 
+// TestGenerateAndRunBacktick makes sure TIKs containing backticks
+// generate valid Go.
+func TestGenerateAndRunBacktick(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, "tstmod")
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				fmt.Println(r.String("Run \x60toki generate\x60 first"))
+			}
+		`,
+	})
+	_ = initBundle(t, dir, language.English, "tokibundle", io.Discard, io.Discard)
+
+	cmd := exec.Command("go", "run", ".")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %q", string(out))
+	require.Equal(t, "Run `toki generate` first", strings.TrimSpace(string(out)))
+}
+
+// TestGenerateMultiLineTIK makes sure multi-line TIKs
+// stay readable raw strings in the generated bundle.
+func TestGenerateMultiLineTIK(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, "tstmod")
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				fmt.Println(r.String("first line\nsecond line"))
+			}
+		`,
+	})
+	_ = initBundle(t, dir, language.English, "tokibundle", io.Discard, io.Discard)
+
+	bundle, err := os.ReadFile(filepath.Join(dir, "tokibundle", "bundle_gen.go"))
+	require.NoError(t, err)
+	require.Contains(t, string(bundle), "= `first line\nsecond line`\n")
+}
+
+// TestGenerateAndRunSelectOrdinal makes sure selectordinal messages
+// pick their option by the locale's ordinal plural rules.
+func TestGenerateAndRunSelectOrdinal(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, "tstmod")
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				for _, n := range []int{1, 2, 3, 4, 11, 12, 13, 21, 22, 23} {
+					fmt.Println(r.String("You finished {ordinal}!", n))
+				}
+			}
+		`,
+	})
+
+	_ = initBundle(t, dir, language.English, "tokibundle", io.Discard, io.Discard)
+
+	// Add the English ordinal options the TIK can't produce.
+	setOnlyMessage(t, filepath.Join(dir, "tokibundle", "catalog_en.arb"),
+		"{var0, selectordinal, "+
+			"one {You finished #st!} two {You finished #nd!} "+
+			"few {You finished #rd!} other {You finished #th!}}")
+	_ = initBundle(t, dir, language.English, "tokibundle", io.Discard, io.Discard)
+
+	cmd := exec.Command("go", "run", ".")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %q", string(out))
+	expect := stripLeadingSpaces(strings.TrimSpace(`
+		You finished 1st!
+		You finished 2nd!
+		You finished 3rd!
+		You finished 4th!
+		You finished 11th!
+		You finished 12th!
+		You finished 13th!
+		You finished 21st!
+		You finished 22nd!
+		You finished 23rd!
+	`))
+	actual := stripLeadingSpaces(strings.TrimSpace(string(out)))
+	require.Equal(t, expect, actual)
+}
+
 // TestGenerateAndRunApostrophes makes sure apostrophes in catalogs
 // edited by translators are unescaped like ICU does.
 func TestGenerateAndRunApostrophes(t *testing.T) {
@@ -261,7 +367,7 @@ func TestGenerateAndRunApostrophes(t *testing.T) {
 			import "tstmod/tokibundle"
 			import "golang.org/x/text/language"
 			func main() {
-				r, _ := tokibundle.Match(language.English)
+				r, _ := tokibundle.Match(language.German)
 				fmt.Println(r.String("apostrophe"))
 				fmt.Println(r.String("doubled apostrophe"))
 				fmt.Println(r.String("quoted braces"))
@@ -275,17 +381,20 @@ func TestGenerateAndRunApostrophes(t *testing.T) {
 	generate := func() {
 		runInDir(t, dir, func() {
 			args := []string{"toki", "generate", "-l=en"}
-			result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+			result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 			require.NoError(t, result.Err)
 			require.Zero(t, exitCode)
 		})
 	}
 	generate()
 
+	// Native messages the TIK fully determines are locked.
+	// Translate them in a German catalog derived from the native one.
 	catalog := filepath.Join(dir, "tokibundle", "catalog_en.arb")
 	contents, err := os.ReadFile(catalog)
 	require.NoError(t, err)
-	patched := string(contents)
+	patched := strings.Replace(string(contents),
+		`"@@locale": "en"`, `"@@locale": "de"`, 1)
 	for _, r := range [...]struct{ old, new string }{
 		{"apostrophe", "He's here"},
 		{"doubled apostrophe", "It''s fine"},
@@ -301,7 +410,9 @@ func TestGenerateAndRunApostrophes(t *testing.T) {
 		patched = strings.Replace(patched, `"`+r.old+`"`, `"`+r.new+`"`, 1)
 		require.NotEqual(t, before, patched, "%q not found in %s", r.old, catalog)
 	}
-	require.NoError(t, os.WriteFile(catalog, []byte(patched), 0o644))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(dir, "tokibundle", "catalog_de.arb"), []byte(patched), 0o644,
+	))
 	generate()
 
 	cmd := exec.Command("go", "run", ".")
@@ -318,6 +429,104 @@ func TestGenerateAndRunApostrophes(t *testing.T) {
 	`))
 	actual := stripLeadingSpaces(strings.TrimSpace(string(out)))
 	require.Equal(t, expect, actual)
+}
+
+// TestGenerateAndRunPluralExactAndOffset makes sure plurals match =n options
+// against the argument and pick the plural rule for the argument minus the offset.
+func TestGenerateAndRunPluralExactAndOffset(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, "tstmod")
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				for _, n := range []int{0, 1, 2, 3} {
+					fmt.Println(r.String("{# people} liked this", n))
+				}
+			}
+		`,
+	})
+
+	_ = initBundle(t, dir, language.English, "tokibundle", io.Discard, io.Discard)
+	setOnlyMessage(t, filepath.Join(dir, "tokibundle", "catalog_en.arb"),
+		"{var0, plural, offset:1 "+
+			"=0 {Nobody liked this} =1 {You liked this} "+
+			"one {You and # other liked this} other {You and # others liked this}}")
+	_ = initBundle(t, dir, language.English, "tokibundle", io.Discard, io.Discard)
+
+	cmd := exec.Command("go", "run", ".")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %q", string(out))
+	expect := stripLeadingSpaces(strings.TrimSpace(`
+		Nobody liked this
+		You liked this
+		You and 1 other liked this
+		You and 2 others liked this
+	`))
+	actual := stripLeadingSpaces(strings.TrimSpace(string(out)))
+	require.Equal(t, expect, actual)
+}
+
+// TestApplyChangesAndBuild makes sure editor builds render edited
+// messages and leave all files untouched when an edit isn't valid ICU.
+func TestApplyChangesAndBuild(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, "tstmod")
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.German)
+				fmt.Println(r.String("Hello {text}!", "Welt"))
+			}
+		`,
+	})
+
+	runInDir(t, dir, func() {
+		args := []string{"toki", "generate", "-l=en", "-t=de"}
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		require.NoError(t, result.Err)
+		require.Zero(t, exitCode)
+	})
+
+	f, err := os.Open(filepath.Join(dir, "tokibundle", "catalog_de.arb"))
+	require.NoError(t, err)
+	catalog, err := arb.NewDecoder().Decode(f)
+	require.NoError(t, f.Close())
+	require.NoError(t, err)
+	require.Len(t, catalog.Messages, 1)
+	var id string
+	for k := range catalog.Messages {
+		id = k
+	}
+
+	build := func(message string) error {
+		_, err := cli.ApplyChangesAndBuild(
+			osEnv(), dir, "tokibundle", language.English,
+			[]editorapp.BundleEdit{{Locale: "de", TIKID: id, Message: message}},
+		)
+		return err
+	}
+
+	ss := snapshotFiles(t, dir)
+	require.Error(t, build("Hallo {var0!"))
+	ss.RequireUnchanged(t, dir)
+
+	require.NoError(t, build("Hallo {var0}!"))
+
+	cmd := exec.Command("go", "run", ".")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %q", string(out))
+	require.Equal(t, "Hallo Welt!", strings.TrimSpace(string(out)))
 }
 
 // TestGenerateCrossCompile makes sure the generated bundle
@@ -345,7 +554,7 @@ func TestGenerateCrossCompile(t *testing.T) {
 	generate := func() {
 		runInDir(t, dir, func() {
 			args := []string{"toki", "generate", "-l=en"}
-			result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+			result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 			require.NoError(t, result.Err)
 			require.Zero(t, exitCode)
 		})
@@ -420,7 +629,7 @@ func TestGenerate(t *testing.T) {
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339), app.Version,
+					TimeNow.Format(time.RFC3339), cli.Version,
 				),
 				".tokidomain.yml": "# The TIK domain for this directory tree.\n" +
 					"# The description provides context for translators working on this domain.\n" +
@@ -448,7 +657,7 @@ func TestGenerate(t *testing.T) {
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339), app.Version),
+					TimeNow.Format(time.RFC3339), cli.Version),
 			},
 		},
 		{
@@ -465,7 +674,7 @@ func TestGenerate(t *testing.T) {
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339), app.Version),
+					TimeNow.Format(time.RFC3339), cli.Version),
 			},
 		},
 		{
@@ -487,21 +696,87 @@ func TestGenerate(t *testing.T) {
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339), app.Version),
+					TimeNow.Format(time.RFC3339), cli.Version),
 				"pkg/i18n/toki/catalog_de.arb": fmt.Sprintf(`{
 					"@@locale": "de",
 					"@@last_modified": %q,
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339), app.Version),
+					TimeNow.Format(time.RFC3339), cli.Version),
 				"pkg/i18n/toki/catalog_en_us.arb": fmt.Sprintf(`{
 					"@@locale": "en-US",
 					"@@last_modified": %q,
 					"@@x-generator": "github.com/romshark/toki",
 					"@@x-generator-version": %q
 				}`,
-					TimeNow.Format(time.RFC3339), app.Version),
+					TimeNow.Format(time.RFC3339), cli.Version),
+			},
+		},
+		{
+			name: "remove last TIK",
+			setup: Setup{
+				InitGoMod: true, InitBundle: true,
+				Files: map[string]string{
+					"main.go": `
+						package main
+						import "fmt"
+						import "tstmod/tokibundle"
+						import "golang.org/x/text/language"
+						func main() {
+							r, _ := tokibundle.Match(language.English)
+							fmt.Println(r.String("removed later"))
+						}
+					`,
+				},
+				FilesAfterInit: map[string]string{
+					"main.go": `
+						package main
+						func main() {}
+					`,
+				},
+			},
+			expectFiles: map[string]string{
+				"tokibundle/catalog_en.arb": fmt.Sprintf(`{
+					"@@locale": "en",
+					"@@last_modified": %q,
+					"@@x-generator": "github.com/romshark/toki",
+					"@@x-generator-version": %q
+				}`,
+					TimeNow.Format(time.RFC3339), cli.Version),
+			},
+		},
+		{
+			// Generation fills empty native messages from their TIKs,
+			// which completes the catalog.
+			name: "require completeness with empty native message",
+			setup: Setup{
+				InitGoMod: true, InitBundle: true,
+				Files: map[string]string{
+					"main.go": `
+						package main
+						import "tstmod/tokibundle"
+						func main() { print(tokibundle.Default().String("translated")) }
+					`,
+				},
+				FilesAfterInit: map[string]string{
+					"tokibundle/catalog_en.arb": `{
+						"@@locale": "en",
+						"msg9d21e6c2519b8be9": ""
+					}`,
+				},
+			},
+			args: []string{"-require-complete"},
+			expectFiles: map[string]string{
+				"tokibundle/catalog_en.arb": fmt.Sprintf(`{
+					"@@locale": "en",
+					"@@x-generator": "github.com/romshark/toki",
+					"@@x-generator-version": %q,
+					"msg9d21e6c2519b8be9": "translated",
+					"@msg9d21e6c2519b8be9": {
+						"type": "text"
+					}
+				}`, cli.Version),
 			},
 		},
 		{
@@ -594,6 +869,143 @@ func TestGenerate(t *testing.T) {
 	}
 }
 
+// TestGenerateRequireCompleteAfterSync makes sure -require-complete judges the
+// catalogs after synchronizing them with the source, not as they were loaded.
+func TestGenerateRequireCompleteAfterSync(t *testing.T) {
+	const mainHeader = `
+		package main
+		import "fmt"
+		import "tstmod/tokibundle"
+		import "golang.org/x/text/language"
+		func main() {
+			r, _ := tokibundle.Match(language.English)
+	`
+	generate := func(t *testing.T, dir string, args ...string) error {
+		t.Helper()
+		var err error
+		runInDir(t, dir, func() {
+			res, _ := cli.Run(
+				append([]string{"toki", "generate"}, args...),
+				osEnv(), io.Discard, io.Discard, TimeNow,
+			)
+			err = res.Err
+		})
+		return err
+	}
+
+	t.Run("new blank translation", func(t *testing.T) {
+		dir := t.TempDir()
+		initGoMod(t, dir, ModName)
+		writeFiles(t, dir, map[string]string{
+			"main.go": mainHeader + `fmt.Println(r.String("first")) }`,
+		})
+		require.NoError(t, generate(t, dir, "-l=en", "-t=de"))
+		setOnlyMessage(t, filepath.Join(dir, "tokibundle", "catalog_de.arb"), "erste")
+		require.NoError(t, generate(t, dir, "-require-complete"))
+
+		writeFiles(t, dir, map[string]string{
+			"main.go": mainHeader + `
+				fmt.Println(r.String("first"))
+				fmt.Println(r.String("second"))
+			}`,
+		})
+		require.ErrorIs(t, generate(t, dir, "-require-complete"), cli.ErrBundleIncomplete)
+	})
+
+	t.Run("obsolete incomplete translation", func(t *testing.T) {
+		dir := t.TempDir()
+		initGoMod(t, dir, ModName)
+		writeFiles(t, dir, map[string]string{
+			"main.go": mainHeader + `fmt.Println(r.String("{# apples}", 2)) }`,
+		})
+		require.NoError(t, generate(t, dir, "-l=en", "-t=de"))
+		setOnlyMessage(t, filepath.Join(dir, "tokibundle", "catalog_en.arb"),
+			"{var0, plural, one {# apple} other {# apples}}")
+		// German requires the "one" option too.
+		setOnlyMessage(t, filepath.Join(dir, "tokibundle", "catalog_de.arb"),
+			"{var0, plural, other {# Äpfel}}")
+		require.ErrorIs(t, generate(t, dir, "-require-complete"), cli.ErrBundleIncomplete)
+
+		writeFiles(t, dir, map[string]string{
+			"main.go": "package main\nfunc main() {}",
+		})
+		require.NoError(t, generate(t, dir, "-require-complete"))
+	})
+}
+
+// TestGenerateModPath makes sure -m generates a module
+// outside the module of the working directory.
+func TestGenerateModPath(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, ModName)
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			import "fmt"
+			import "tstmod/tokibundle"
+			import "golang.org/x/text/language"
+			func main() {
+				r, _ := tokibundle.Match(language.English)
+				fmt.Println(r.String("hello"))
+			}
+		`,
+	})
+	other := t.TempDir()
+	initGoMod(t, other, "othermod")
+
+	var result cli.Result
+	runInDir(t, other, func() {
+		var exitCode int
+		result, exitCode = cli.Run(
+			[]string{"toki", "generate", "-l=en", "-m=" + dir},
+			osEnv(), io.Discard, io.Discard, TimeNow,
+		)
+		require.NoError(t, result.Err)
+		require.Zero(t, exitCode)
+	})
+	require.Equal(t, 1, result.Scan.Texts.Len())
+	// -trimpath trims the module directory.
+	require.Equal(t, "/main.go", result.Scan.Texts.At(0).Position.Filename)
+	require.NoDirExists(t, filepath.Join(other, "tokibundle"))
+
+	cmd := exec.Command("go", "run", ".")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "output: %q", string(out))
+	require.Equal(t, "hello", strings.TrimSpace(string(out)))
+}
+
+// TestGenerateJSONPackageError makes sure JSON output reports errors
+// that stop the source scan.
+func TestGenerateJSONPackageError(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, ModName)
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			func main() {
+		`,
+	})
+
+	var result cli.Result
+	runInDir(t, dir, func() {
+		var exitCode int
+		result, exitCode = cli.Run(
+			[]string{"toki", "generate", "-l=en", "-json"},
+			osEnv(), io.Discard, io.Discard, TimeNow,
+		)
+		require.NotZero(t, exitCode)
+	})
+	require.ErrorIs(t, result.Err, cli.ErrAnalyzingSource)
+	require.Nil(t, result.Scan)
+
+	var stdout bytes.Buffer
+	result.Print(&stdout)
+	var out cli.ResultJSON
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &out), stdout.String())
+	require.Equal(t, result.Err.Error(), out.Error)
+}
+
 // TestGenerateDomainFileNotOverwritten verifies that an existing .tokidomain.yml file
 // is preserved when running `toki generate` again.
 func TestGenerateDomainFileNotOverwritten(t *testing.T) {
@@ -607,7 +1019,7 @@ func TestGenerateDomainFileNotOverwritten(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en"}
-		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -650,7 +1062,7 @@ func TestGenerateSameTextDifferentDomains(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate", "-l=en"}
-		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -685,7 +1097,7 @@ func TestGenerateSimilarlyNamedPackage(t *testing.T) {
 
 	runInDir(t, dir, func() {
 		args := []string{"toki", "generate"}
-		result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+		result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 		require.NoError(t, result.Err)
 		require.Zero(t, exitCode)
 	})
@@ -726,7 +1138,7 @@ func TestGenerateBundlesWithSameName(t *testing.T) {
 	runInDir(t, dir, func() {
 		for _, bundle := range []string{"app1/tokibundle", "app2/tokibundle"} {
 			args := []string{"toki", "generate", "-b", bundle}
-			result, exitCode := app.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
+			result, exitCode := cli.Run(args, osEnv(), io.Discard, io.Discard, TimeNow)
 			require.NoError(t, result.Err, bundle)
 			require.Zero(t, exitCode, bundle)
 		}
@@ -784,13 +1196,13 @@ func TestGenerateErr(t *testing.T) {
 				InitGoMod: true,
 				FilesAfterInit: map[string]string{
 					"main.go":                            "this file is broken",
-					"tokibundle/" + app.MainBundleFileGo: "this file is broken",
+					"tokibundle/" + cli.MainBundleFileGo: "this file is broken",
 				},
 			},
 			args:           []string{"-l=en"},
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrAnalyzingSource)
+				require.ErrorIs(tt, err, cli.ErrAnalyzingSource)
 				require.ErrorContains(t, err, "analyzing sources: errors in package")
 				require.ErrorContains(t, err, "expected 'package'")
 			},
@@ -817,7 +1229,7 @@ func TestGenerateErr(t *testing.T) {
 			args:           []string{"-l=en"},
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrAnalyzingSource)
+				require.ErrorIs(tt, err, cli.ErrAnalyzingSource)
 				require.ErrorContains(t, err,
 					`analyzing sources: errors in package "main"`)
 			},
@@ -829,7 +1241,7 @@ func TestGenerateErr(t *testing.T) {
 			},
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrMissingLocaleParam)
+				require.ErrorIs(tt, err, cli.ErrMissingLocaleParam)
 				require.Equal(t, "please provide a valid non-und BCP 47 locale for the "+
 					"default language of your original code base "+
 					"using the 'l' parameter", err.Error())
@@ -843,7 +1255,7 @@ func TestGenerateErr(t *testing.T) {
 			expectExitCode: 2,
 			args:           []string{"-l=invalid"},
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrInvalidCLIArgs)
+				require.ErrorIs(tt, err, cli.ErrInvalidCLIArgs)
 				require.Equal(t, `invalid arguments: argument l="invalid": `+
 					"must be a valid non-und BCP 47 locale: "+
 					"language: tag is not well-formed", err.Error())
@@ -857,7 +1269,7 @@ func TestGenerateErr(t *testing.T) {
 			expectExitCode: 2,
 			args:           []string{"-l=und"},
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrInvalidCLIArgs)
+				require.ErrorIs(tt, err, cli.ErrInvalidCLIArgs)
 				require.Equal(t, `invalid arguments: argument l="und": `+
 					"must be a valid non-und BCP 47 locale: is und", err.Error())
 			},
@@ -870,7 +1282,7 @@ func TestGenerateErr(t *testing.T) {
 			expectExitCode: 2,
 			args:           []string{"-l=en", "-t=invalid"},
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrInvalidCLIArgs)
+				require.ErrorIs(tt, err, cli.ErrInvalidCLIArgs)
 				require.Equal(t, `invalid arguments: argument t="invalid": `+
 					"must be a valid non-und BCP 47 locale: "+
 					"language: tag is not well-formed", err.Error())
@@ -884,7 +1296,7 @@ func TestGenerateErr(t *testing.T) {
 			expectExitCode: 2,
 			args:           []string{"-l=en", "-t=und"},
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrInvalidCLIArgs)
+				require.ErrorIs(tt, err, cli.ErrInvalidCLIArgs)
 				require.Equal(t, `invalid arguments: argument t="und": `+
 					"must be a valid non-und BCP 47 locale: is und", err.Error())
 			},
@@ -916,13 +1328,13 @@ func TestGenerateErr(t *testing.T) {
 								"type": "text"
 							}
 						}
-					`, app.Version),
+					`, cli.Version),
 				},
 			},
 			args:           []string{"-l=en"},
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrAnalyzingSource)
+				require.ErrorIs(tt, err, cli.ErrAnalyzingSource)
 				require.Equal(t, "analyzing sources: searching .arb files: "+
 					"locale in ARB file (en) differs from file name (de): "+
 					"catalog_de.arb", err.Error())
@@ -946,7 +1358,7 @@ func TestGenerateErr(t *testing.T) {
 			args:           []string{"-require-complete"},
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrBundleIncomplete)
+				require.ErrorIs(tt, err, cli.ErrBundleIncomplete)
 				require.Equal(t, "bundle contains incomplete catalogs", err.Error())
 			},
 		},
@@ -971,31 +1383,7 @@ func TestGenerateErr(t *testing.T) {
 			args:           []string{"-require-complete"},
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrBundleIncomplete)
-			},
-		},
-		{
-			name: "require completeness with empty native message",
-			setup: Setup{
-				InitGoMod: true, InitBundle: true,
-				Files: map[string]string{
-					"main.go": `
-						package main
-						import "tstmod/tokibundle"
-						func main() { print(tokibundle.Default().String("translated")) }
-					`,
-				},
-				FilesAfterInit: map[string]string{
-					"tokibundle/catalog_en.arb": `{
-						"@@locale": "en",
-						"msg9d21e6c2519b8be9": ""
-					}`,
-				},
-			},
-			args:           []string{"-require-complete"},
-			expectExitCode: 1,
-			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrBundleIncomplete)
+				require.ErrorIs(tt, err, cli.ErrBundleIncomplete)
 			},
 		},
 		{
@@ -1016,7 +1404,7 @@ func TestGenerateErr(t *testing.T) {
 			args:           []string{"-require-complete"},
 			expectExitCode: 1,
 			expectErr: func(tt require.TestingT, err error, i ...any) {
-				require.ErrorIs(tt, err, app.ErrBundleIncomplete)
+				require.ErrorIs(tt, err, cli.ErrBundleIncomplete)
 			},
 		},
 	}
@@ -1166,7 +1554,7 @@ func TestGenerateErrSource(t *testing.T) {
 			_, resLint, resGenerate := tt.setup.generate(t, TimeNow, tt.args...)
 			check := func(t *testing.T, res RunResult) {
 				t.Helper()
-				require.ErrorIs(t, res.Err, app.ErrSourceErrors)
+				require.ErrorIs(t, res.Err, cli.ErrSourceErrors)
 				require.Equal(t, 1, res.ExitCode)
 				index := 0
 				for err := range res.Scan.SourceErrors.SeqRead() {
@@ -1200,7 +1588,7 @@ func BenchmarkOKGenerate(b *testing.B) {
 
 	args := []string{"toki", "generate", "-l=en", "-q"}
 	for b.Loop() {
-		res, exitCode := app.Run(args, osEnv(), os.Stderr, os.Stdout, TimeNow)
+		res, exitCode := cli.Run(args, osEnv(), os.Stderr, os.Stdout, TimeNow)
 		if res.Err != nil {
 			b.Fatalf("unexpected error: %v", res.Err)
 		}
@@ -1234,12 +1622,12 @@ func runInDir(tb testing.TB, dir string, fn func()) {
 func initBundle(
 	tb testing.TB, dir string, locale language.Tag, bundlePkg string,
 	stderr, stdout io.Writer,
-) (result app.Result) {
+) (result cli.Result) {
 	tb.Helper()
 
 	runInDir(tb, dir, func() {
 		var exitCode int
-		result, exitCode = app.Run([]string{
+		result, exitCode = cli.Run([]string{
 			"toki", "generate", "-l", locale.String(), "-b", bundlePkg,
 		}, osEnv(), stderr, stdout, TimeNow)
 		require.Zero(tb, exitCode)
@@ -1260,6 +1648,24 @@ func writeFiles(tb testing.TB, dir string, files map[string]string) {
 	}
 }
 
+// setOnlyMessage sets the ICU message of the only message in the catalog file at path.
+func setOnlyMessage(tb testing.TB, path, icuMessage string) {
+	tb.Helper()
+	f, err := os.Open(path)
+	require.NoError(tb, err)
+	catalog, err := arb.NewDecoder().Decode(f)
+	require.NoError(tb, f.Close())
+	require.NoError(tb, err)
+	require.Len(tb, catalog.Messages, 1)
+	for id, msg := range catalog.Messages {
+		msg.ICUMessage = icuMessage
+		catalog.Messages[id] = msg
+	}
+	var buf bytes.Buffer
+	require.NoError(tb, arb.Encode(&buf, catalog, "\t"))
+	require.NoError(tb, os.WriteFile(path, buf.Bytes(), 0o644))
+}
+
 type Setup struct {
 	Stderr, Stdout io.Writer
 	InitGoMod      bool
@@ -1269,7 +1675,7 @@ type Setup struct {
 }
 
 type RunResult struct {
-	app.Result
+	cli.Result
 	ExitCode int
 }
 
@@ -1300,13 +1706,13 @@ func (s Setup) generate(
 
 	runInDir(tb, dir, func() {
 		a := append([]string{"toki", "generate"}, args...)
-		generateResult.Result, generateResult.ExitCode = app.Run(
+		generateResult.Result, generateResult.ExitCode = cli.Run(
 			a, osEnv(), stderr, stdout, now,
 		)
 
 		ss := snapshotFiles(tb, dir)
 		a = append([]string{"toki", "lint"}, args...)
-		lintResult.Result, lintResult.ExitCode = app.Run(
+		lintResult.Result, lintResult.ExitCode = cli.Run(
 			a, osEnv(), stderr, stdout, now,
 		)
 		ss.RequireUnchanged(tb, dir)

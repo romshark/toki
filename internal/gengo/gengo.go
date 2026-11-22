@@ -128,7 +128,12 @@ func (w *Writer) WritePackageBundle(
 	w.println("// TIKs")
 	w.printf("const (\n")
 	for msg := range newMsgIter(w.scan, w.scan.DefaultLocale) {
-		w.printf("\t%s = `%s`\n", msg.ID, msg.TIK)
+		// Raw strings may span lines, which CanBackquote doesn't allow.
+		if strconv.CanBackquote(strings.ReplaceAll(msg.TIK, "\n", "")) {
+			w.printf("\t%s = `%s`\n", msg.ID, msg.TIK)
+		} else {
+			w.printf("\t%s = %q\n", msg.ID, msg.TIK)
+		}
 	}
 	w.println(`)`)
 }
@@ -261,15 +266,13 @@ func parseArgName(s string) (argName, error) {
 	}
 	gender := strings.HasSuffix(s, "_gender")
 
-	endIndex := len("var0")
-	for i := range s[endIndex:] {
-		if s[i] < '0' || s[i] > '9' {
-			endIndex += i
-			break
-		}
+	digits := s[len("var"):]
+	end := 0
+	for end < len(digits) && digits[end] >= '0' && digits[end] <= '9' {
+		end++
 	}
 
-	v, err := strconv.ParseUint(s[len("var"):endIndex], 10, 32)
+	v, err := strconv.ParseUint(digits[:end], 10, 32)
 	if err != nil {
 		return argName{}, err
 	}

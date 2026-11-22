@@ -1,0 +1,42 @@
+package template
+
+import (
+	"github.com/romshark/morpheus/neo"
+
+	"github.com/romshark/toki/editor/app/datapagesgen/href"
+)
+
+templ PageNotFound(path string) {
+	@page("page-not-found", nil) {
+		<div class="page-center">
+			<header>
+				<code>404</code>
+			</header>
+			<main>
+				<toki-editor
+					value={ "Hello, {name}!\n"+
+					"The page \"{text}\" you asked for, doesn''t exist.\n"+
+					"Want to go back, or to the dashboard?" }
+					data-attr:theme="$pref_theme_resolved"
+					readonly
+				></toki-editor>
+				@neo.ButtonGroupAttrs(neo.ButtonGroupOpts{}, templ.Attributes{
+					"class": "not-found-actions",
+				}) {
+					@neo.ButtonAttrs(
+						neo.ButtonOpts{Variant: neo.Set(neo.ButtonVariantSecondary)},
+						templ.Attributes{"data-on:click": "history.back()"},
+					) {
+						Previous Page
+					}
+					@neo.Link(neo.LinkOpts{
+						Href:    neo.Set(href.PageIndex()),
+						Variant: neo.Set(neo.LinkVariantButtonPrimary),
+					}) {
+						Dashboard
+					}
+				}
+			</main>
+		</div>
+	}
+}

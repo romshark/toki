@@ -12,6 +12,26 @@ please follow it in all your interactions with the project.
    environment variables, exposed ports, useful file locations and container parameters.
 3. The versioning scheme we use is [SemVer v2.0.0](http://semver.org/).
 
+## Development
+
+The Makefile has these targets:
+
+| Target | What it does |
+| ------ | ------------ |
+| `make`, `make all` | Runs `templ`, `test` and `vulncheck` |
+| `make templ` | Regenerates the editor's `*_templ.go` files with the templ version the Makefile pins |
+| `make test` | Runs `fmtcheck`, `lint` and the tests of the root package |
+| `make fmtcheck` | Fails when a file is not formatted with gofumpt |
+| `make fmt` | Formats the code with gofumpt |
+| `make lint` | Runs golangci-lint |
+| `make vulncheck` | Runs govulncheck |
+| `make dev-editor` | Runs `templ`, installs the editor's JavaScript dependencies and starts `datapages watch` |
+| `make gen-example-large` | Generates a Toki project with 10,000 TIKs in `examples/largecodebase` for testing the editor |
+
+`datapages watch` regenerates a template when its `.templ` file changes. After a templ upgrade, run `make` or `make templ` to regenerate all of them: the generated code of the old version does not compile with the new one.
+
+Don't run `make` or `make templ` while `make dev-editor` runs. `templ generate` stops the dev server from rendering until you save a `.templ` file or restart the watch.
+
 ## Code of Conduct
 
 ### Our Pledge

@@ -22,6 +22,9 @@ func (w *Writer) writeFunc(id, icuMsg string, tokens []icumsg.Token) {
 	endIndex := len(w.t)
 	if s := w.literalConcat(endIndex); s != "" {
 		w.printf("return wrs(w, %q)\n", unescapeICULiteral(s))
+	} else if endIndex == 0 {
+		// No tokens but non-empty message. Write raw ICU as literal.
+		w.printf("return wrs(w, %q)\n", icuMsg)
 	} else {
 		w.println("var n int;")
 		w.writeExpr(endIndex)
@@ -47,9 +50,9 @@ func (w *Writer) writeExpr(endIndex int) {
 			w.i++ // Advance.
 		case icumsg.TokenTypeSimpleArg:
 			w.writeSimpleArg()
-		case icumsg.TokenTypePlural, icumsg.TokenTypeSelectOrdinal:
+		case icumsg.TokenTypePlural:
 			w.writePlural(false)
-		case icumsg.TokenTypeArgTypeOrdinal:
+		case icumsg.TokenTypeSelectOrdinal:
 			w.writePlural(true)
 		case icumsg.TokenTypeSelect:
 			w.writeSelect()
@@ -202,9 +205,29 @@ func (w *Writer) writePlural(ordinal bool) {
 		getterFunc = "pluralRuleOrdinal"
 	}
 
+	// Exact =n options match the argument before the offset is subtracted
+	// and take precedence over the plural rule.
+	hasExact := false
 	var iOther, iZero, iOne, iTwo, iFew, iMany int
 	for i := range icumsg.Options(w.t, w.i) {
 		switch w.t[i].Type {
+		case icumsg.TokenTypeOptionNumber:
+			// The option name includes the '='.
+			name := w.t[i+1].String(w.m, w.t)
+			v, err := strconv.ParseFloat(name[1:], 64)
+			if err != nil {
+				// The tokenizer validated the number, which leaves values
+				// beyond the float64 range that no finite argument matches.
+				continue
+			}
+			if !hasExact {
+				w.println("switch {")
+				hasExact = true
+			}
+			w.printf("case pluralExact(args[%d], %s):\n",
+				argIndex.Index, strconv.FormatFloat(v, 'g', -1, 64))
+			w.i = i
+			w.writePluralOption(argIndex, offset)
 		case icumsg.TokenTypeOptionZero:
 			iZero = i
 		case icumsg.TokenTypeOptionOne:
@@ -220,8 +243,17 @@ func (w *Writer) writePlural(ordinal bool) {
 		}
 	}
 
-	w.printf("switch %s(%s, args[%d]) {\n",
-		getterFunc, w.translatorVar, argIndex.Index)
+	if hasExact {
+		w.println("default:")
+	}
+	// The plural rule applies to the argument minus the offset.
+	if offset != 0 {
+		w.printf("switch %s(%s, subtract(args[%d], %d)) {\n",
+			getterFunc, w.translatorVar, argIndex.Index, offset)
+	} else {
+		w.printf("switch %s(%s, args[%d]) {\n",
+			getterFunc, w.translatorVar, argIndex.Index)
+	}
 	if iZero != 0 {
 		w.println("case locales.PluralRuleZero:")
 		w.i = iZero
@@ -253,6 +285,9 @@ func (w *Writer) writePlural(ordinal bool) {
 		w.writePluralOption(argIndex, offset)
 	}
 	w.println("};")
+	if hasExact {
+		w.println("};")
+	}
 	w.i = t.IndexEnd + 1 // Skip the whole block.
 }
 

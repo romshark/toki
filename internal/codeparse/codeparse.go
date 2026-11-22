@@ -19,6 +19,7 @@ import (
 	"github.com/romshark/toki/internal/arb"
 	"github.com/romshark/toki/internal/log"
 	"github.com/romshark/toki/internal/sync"
+	tikutil "github.com/romshark/toki/internal/tik"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/romshark/icumsg"
@@ -56,6 +57,13 @@ type Parser struct {
 	readerType string
 }
 
+// ICUTranslator returns the parser's TIK-to-ICU translator.
+func (p *Parser) ICUTranslator() *tik.ICUTranslator { return p.icuTranslator }
+
+// ICUTokenizer returns the parser's ICU message tokenizer.
+func (p *Parser) ICUTokenizer() *icumsg.Tokenizer { return p.icuDecoder }
+
+// NewParser creates a new source code parser.
 func NewParser(
 	hasher *xxhash.Digest,
 	tikParser *tik.Parser,
@@ -94,7 +102,21 @@ type SourceError struct {
 }
 
 type CatalogStatistics struct {
+	// MessagesIncomplete counts messages that are blank or miss required
+	// plural/select options (see [IsMsgIncomplete]).
 	MessagesIncomplete atomic.Int64
+	// MessagesMissing counts native-locale messages that are present as TIKs
+	// in source code but absent from the ARB. An out-of-date bundle — fixed
+	// by re-running `toki generate`, not by repair.
+	MessagesMissing atomic.Int64
+	// MessagesCorrupt counts native-locale messages that exist in the ARB
+	// but disagree with the source-code TIK. Two sub-cases:
+	//  1. Locked mismatch — [tikutil.ProducesCompleteICU] returns true (the TIK
+	//     fully determines the ICU) but the ARB value differs from the expected one.
+	//  2. Placeholder mismatch — the message's placeholder metadata doesn't
+	//     match what the TIK expects (see [PlaceholdersMismatch]).
+	// True corruption — fixed by `toki repair`.
+	MessagesCorrupt atomic.Int64
 }
 
 type Catalog struct {
@@ -125,12 +147,24 @@ type Scan struct {
 	Domains       *DomainTree // Domain hierarchy discovered during scan.
 }
 
+// Parse parses Go source code and ARB files to produce a Scan.
+// If dir is non-empty, package loading is rooted there instead of the
+// process working directory. Callers should prefer passing dir over
+// using os.Chdir, which is process-global and unsafe in servers.
 func (p *Parser) Parse(
-	env []string, pathPattern, bundlePkgPath string, trimpath bool,
+	env []string, dir, pathPattern, bundlePkgPath string, trimpath bool,
 ) (scan *Scan, err error) {
 	fset := token.NewFileSet()
 
+	// go list reports package directories spelled like an absolute dir,
+	// even through symlinks, which the bundle detection relies on.
+	dir, err = filepath.Abs(dir)
+	if err != nil {
+		return nil, fmt.Errorf("resolving directory: %w", err)
+	}
+
 	conf := &packages.Config{
+		Dir: dir,
 		Mode: packages.NeedFiles |
 			packages.NeedSyntax |
 			packages.NeedTypes |
@@ -160,12 +194,9 @@ func (p *Parser) Parse(
 		Catalogs:      sync.NewSlice[*Catalog](1),
 	}
 
-	// packages.Load runs go list in the current directory.
-	// Resolving against it yields the same path as the bundle's Dir.
-	bundleDir, err := filepath.Abs(bundlePkgPath)
-	if err != nil {
-		return nil, fmt.Errorf("resolving bundle package path: %w", err)
-	}
+	// packages.Load runs go list in dir.
+	// Joining it yields the same path as the bundle's Dir.
+	bundleDir := filepath.Join(dir, bundlePkgPath)
 	pkgBundle := findBundlePkg(bundleDir, pkgs)
 	if pkgBundle != nil {
 		log.Verbose("bundle detected", slog.String("directory", pkgBundle.Dir))
@@ -181,6 +212,7 @@ func (p *Parser) Parse(
 		if err != nil {
 			return scan, fmt.Errorf("searching .arb files: %w", err)
 		}
+
 		p.genderType = pkgBundle.PkgPath + ".Gender"
 		p.readerType = pkgBundle.PkgPath + ".Reader"
 	}
@@ -194,7 +226,11 @@ func (p *Parser) Parse(
 		scan.Domains = domains
 	}
 
-	p.collectTexts(fset, pkgs, bundleDir, pathPattern, trimpath, scan)
+	// Trim positions relative to the directory the pattern is rooted in.
+	trimDir := filepath.Join(dir, strings.TrimSuffix(pathPattern, "/..."))
+	p.collectTexts(fset, pkgs, bundleDir, trimDir, trimpath, scan)
+
+	p.classifyNativeMessages(scan)
 
 	return scan, nil
 }
@@ -266,6 +302,7 @@ func (p *Parser) CollectARBFiles(bundlePkgDir string, scan *Scan) error {
 		if err != nil {
 			return err
 		}
+		defer func() { _ = f.Close() }()
 
 		arbFile, err := p.arbDecoder.Decode(f)
 		if err != nil {
@@ -297,18 +334,13 @@ func (p *Parser) CollectARBFiles(bundlePkgDir string, scan *Scan) error {
 	})
 }
 
+// IsMsgIncomplete reports whether msg is blank or misses required plural or
+// select options. Select options msg mustn't use become source errors in scan.
 func IsMsgIncomplete(
 	scan *Scan, arbFile *arb.File, fileName string, msg *arb.Message,
 ) bool {
-	if msg.ICUMessage == "" {
-		return true // The bundle treats empty messages as missing translations.
-	}
-	incomplete := false
-	_, _ = icumsg.Analyze(
-		arbFile.Locale, msg.ICUMessage, msg.ICUMessageTokens,
-		ICUSelectOptions,
-		func(index int) error { incomplete = true; return nil }, // On incomplete.
-		func(indexArgument, indexOption int) error { // On rejected.
+	return isMsgIncomplete(arbFile.Locale, msg,
+		func(indexArgument, indexOption int) error {
 			name := msg.ICUMessageTokens[indexArgument+1].String(
 				msg.ICUMessage, msg.ICUMessageTokens,
 			)
@@ -319,14 +351,92 @@ func IsMsgIncomplete(
 				},
 			})
 			return nil
-		},
+		})
+}
+
+// CountIncomplete sets MessagesIncomplete to the number of messages in c
+// that [IsMsgIncomplete] reports. Unlike IsMsgIncomplete, it doesn't report
+// rejected select options, which parsing already did.
+func (c *Catalog) CountIncomplete() {
+	var n int64
+	for _, msg := range c.ARB.Messages {
+		if isMsgIncomplete(c.ARB.Locale, &msg,
+			func(indexArgument, indexOption int) error { return nil }) {
+			n++
+		}
+	}
+	c.MessagesIncomplete.Store(n)
+}
+
+func isMsgIncomplete(
+	locale language.Tag, msg *arb.Message,
+	onRejected func(indexArgument, indexOption int) error,
+) bool {
+	if msg.ICUMessage == "" {
+		return true // The bundle treats empty messages as missing translations.
+	}
+	incomplete := false
+	_, _ = icumsg.Analyze(
+		locale, msg.ICUMessage, msg.ICUMessageTokens,
+		ICUSelectOptions,
+		func(index int) error { incomplete = true; return nil },
+		onRejected,
 	)
 	return incomplete
 }
 
+// classifyNativeMessages counts native-locale messages that are either
+// missing from the ARB (out of date — see [CatalogStatistics.MessagesMissing])
+// or corrupt (present but disagreeing with the TIK — see
+// [CatalogStatistics.MessagesCorrupt]).
+// Must be called after both CollectARBFiles and collectTexts.
+func (p *Parser) classifyNativeMessages(scan *Scan) {
+	var nativeCatalog *Catalog
+	for c := range scan.Catalogs.SeqRead() {
+		if c.ARB.Locale == scan.DefaultLocale {
+			nativeCatalog = c
+			break
+		}
+	}
+	if nativeCatalog == nil {
+		return
+	}
+	for _, i := range scan.TextIndexByID.SeqRead() {
+		t := scan.Texts.At(i)
+		msg := nativeCatalog.ARB.Messages[t.IDHash]
+		expectedICU := p.icuTranslator.TIK2ICU(t.TIK)
+		switch {
+		case msg.ICUMessage == "":
+			// Out of date: TIK exists in source but ARB has no entry.
+			nativeCatalog.MessagesMissing.Add(1)
+		case tikutil.ProducesCompleteICU(scan.DefaultLocale, t.TIK) &&
+			msg.ICUMessage != expectedICU:
+			// Corrupt: locked message doesn't match expected ICU.
+			nativeCatalog.MessagesCorrupt.Add(1)
+		case PlaceholdersMismatch(t.TIK, msg):
+			// Corrupt: missing or wrong placeholder metadata.
+			nativeCatalog.MessagesCorrupt.Add(1)
+		}
+	}
+}
+
+// PlaceholdersMismatch returns true if the message's placeholder metadata
+// doesn't match what the TIK expects (wrong count or missing entries).
+func PlaceholdersMismatch(tk tik.TIK, msg arb.Message) bool {
+	n := 0
+	for range tk.Placeholders() {
+		name := fmt.Sprintf("var%d", n)
+		if _, ok := msg.Placeholders[name]; !ok {
+			return true
+		}
+		n++
+	}
+	return len(msg.Placeholders) != n
+}
+
 func (p *Parser) collectTexts(
 	fset *token.FileSet, pkgs []*packages.Package,
-	bundleDir, pathPattern string, trimpath bool,
+	bundleDir, trimDir string, trimpath bool,
 	scan *Scan,
 ) {
 	seenFiles := make(map[string]struct{})
@@ -399,7 +509,7 @@ func (p *Parser) collectTexts(
 					}
 
 					if trimpath {
-						posCall.Filename = mustTrimPath(pathPattern, posCall.Filename)
+						posCall.Filename = mustTrimPath(trimDir, posCall.Filename)
 					}
 
 					comments := findLeadingComments(fset, file, call)
@@ -862,9 +972,9 @@ func isPkgBundle(bundleDir string, pkg *packages.Package) bool {
 	return pkg.Dir == bundleDir
 }
 
-func mustTrimPath(basePattern, s string) string {
-	basePattern = strings.TrimSuffix(basePattern, "/...")
-	abs, err := filepath.Abs(basePattern)
+// mustTrimPath trims the absolute path of dir from s.
+func mustTrimPath(dir, s string) string {
+	abs, err := filepath.Abs(dir)
 	if err != nil {
 		panic(fmt.Errorf("getting absolute path: %w", err))
 	}

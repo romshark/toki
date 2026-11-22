@@ -1,0 +1,320 @@
+package template
+
+import (
+	"github.com/romshark/morpheus/neo"
+
+	"github.com/romshark/toki/editor/app/datapagesgen/action"
+	"github.com/romshark/toki/editor/app/datapagesgen/href"
+	"github.com/romshark/toki/editor/app/template/strfmt"
+)
+
+// Trigger ids the folder field's Enter chord activates, and the Datastar
+// expression deciding which one is live.
+const (
+	idProjectContinue = "project-continue"
+	idProjectOpen     = "project-open"
+	showOpenProject   = "$folder!==$origfolder || $origfolder==='' || $haserror"
+)
+
+// openProjectClickAttr wires the Open Project button. With unsaved
+// changes pending it opens the confirmation modal instead of switching
+// project directly, so the discard is always deliberate.
+func openProjectClickAttr(numChanges int) templ.Attributes {
+	if numChanges > 0 {
+		return templ.Attributes{"data-on:click": "$confirmdiscard=true"}
+	}
+	return templ.Attributes{
+		"data-on:click": action.PageProjectDir.Open.POST(
+			action.WithBefore("$opening=true"),
+		),
+	}
+}
+
+// PageProjectDir renders the whole project-directory page. It is both the
+// GET body and what PageProjectDir.OnUpdated morphs.
+templ PageProjectDir(
+	dir string, errMsg string, repairErr string,
+	numChanges int, numCorrupt int, numMissing int,
+	sourceErrors []SourceError,
+	isHybrid bool,
+) {
+	@page("page-project-dir", nil) {
+		// $folder is what the user types, hence __ifmissing: a fat morph
+		// after another tab opened a project must not overwrite it.
+		// $origfolder is the project that is open, which the morph updates.
+		<div
+			class="page-center"
+			data-signals:folder__ifmissing={ strfmt.SingleQuote(dir) }
+			data-signals:origfolder={ strfmt.SingleQuote(dir) }
+			data-signals:haserror={ strfmt.Bool(errMsg != "") }
+			data-signals:confirmdiscard="false"
+			data-signals:opening="false"
+		>
+			@neo.Card(neo.CardOpts{}) {
+				@neo.CardHeader() {
+					@neo.CardTitle() {
+						<h1>Toki Project Directory</h1>
+					}
+				}
+				@neo.CardBody() {
+					<div class="folder-picker">
+						<label>
+							<span>Project Folder</span>
+							@neo.LayoutAttrs(
+								neo.LayoutOpts{
+									AlignItems: neo.Set(neo.AlignItemsStretch),
+									Gap:        neo.Set(neo.GapSm),
+								},
+								templ.Attributes{"class": "folder-input-row"},
+							) {
+								@neo.TextInputAttrs(
+									neo.TextInputOpts{
+										Placeholder: neo.Set("/path/to/your/project"),
+									},
+									templ.Attributes{"data-bind:folder": true},
+								)
+								if isHybrid {
+									@neo.ButtonAttrs(
+										neo.ButtonOpts{},
+										templ.Attributes{
+											"class":         "folder-pick-btn",
+											"title":         "Browse for folder...",
+											"aria-label":    "Browse for folder",
+											"data-on:click": action.PageProjectDir.Pick.POST(),
+										},
+									) {
+										@iconFolderOpen()
+									}
+								}
+							}
+						</label>
+						if errMsg != "" {
+							@componentProjectDirAlert(
+								neo.AlertVariantDanger, iconAlertCircle(),
+							) {
+								@neo.AlertTitle(2) {
+									{ errMsg }
+								}
+								if len(sourceErrors) > 0 {
+									@neo.AlertDescription() {
+										<ul class="source-error-list">
+											for _, se := range sourceErrors {
+												<li>
+													<code class="source-error-pos">
+														{ se.File }:{ strfmt.Int(se.Line) }:{ strfmt.Int(se.Col) }
+													</code>
+													<span class="source-error-msg">{ se.Err }</span>
+												</li>
+											}
+										</ul>
+									}
+								}
+							}
+						}
+						if numCorrupt > 0 {
+							@componentProjectDirAlert(
+								neo.AlertVariantDanger, iconAlertTriangle(),
+							) {
+								@neo.AlertTitle(2) {
+									Corrupted Bundle
+								}
+								@neo.AlertDescription() {
+									<p>
+										{ strfmt.Int(numCorrupt) }
+										native-locale message(s) disagree(s)
+										with the source-code TIK
+										(locked-ICU or placeholder mismatch).
+										Run <code>toki repair</code> or click
+										the button below to repair the bundle.
+									</p>
+									if repairErr != "" {
+										<p>
+											<strong>Repair failed:</strong>
+											{ repairErr }
+										</p>
+									}
+								}
+							}
+						}
+						if numMissing > 0 && numCorrupt == 0 {
+							@componentProjectDirAlert(
+								neo.AlertVariantWarning, iconAlertCircle(),
+							) {
+								@neo.AlertTitle(2) {
+									Bundle Out of Date
+								}
+								@neo.AlertDescription() {
+									<p>
+										Source code declares
+										{ strfmt.Int(numMissing) } TIK(s)
+										that have no entry in the native-locale catalog yet.
+										Click Regenerate (or run <code>toki generate</code>)
+										to update the bundle.
+									</p>
+									if repairErr != "" {
+										<p>
+											<strong>Regenerate failed:</strong>
+											{ repairErr }
+										</p>
+									}
+								}
+							}
+						}
+						if dir != "" && errMsg == "" && numCorrupt == 0 && numMissing == 0 {
+							@neo.LinkAttrs(
+								neo.LinkOpts{
+									Href:    neo.Set(href.PageIndex()),
+									Variant: neo.Set(neo.LinkVariantButtonPrimary),
+								},
+								templ.Attributes{
+									"id":        idProjectContinue,
+									"data-show": "$folder===$origfolder",
+								},
+							) {
+								Continue
+							}
+							// Enter in the folder field activates whichever trigger is
+							// live. <neo-keys> scopes the chord to .folder-picker (its
+							// parent) and clicks the target by id, so no DOM crawl.
+							@neo.KeysAttrs(
+								neo.KeysOpts{
+									Keys:    neo.Set("Enter"),
+									For:     neo.Set(idProjectContinue),
+									InInput: neo.Set(true),
+								},
+								templ.Attributes{
+									"data-attr:disabled": "$folder!==$origfolder",
+								},
+							)
+						}
+						if numMissing > 0 && numCorrupt == 0 {
+							@neo.ButtonAttrs(
+								neo.ButtonOpts{Variant: neo.Set(neo.ButtonVariantPrimary)},
+								templ.Attributes{
+									"data-show":     "$folder===$origfolder",
+									"data-on:click": action.App.Regenerate.POST(),
+								},
+							) {
+								Regenerate Bundle
+							}
+						}
+						if numCorrupt > 0 {
+							@neo.ButtonAttrs(
+								neo.ButtonOpts{Variant: neo.Set(neo.ButtonVariantDanger)},
+								templ.Attributes{
+									"data-show":     "$folder===$origfolder",
+									"data-on:click": action.App.Repair.POST(),
+								},
+							) {
+								Repair Bundle
+							}
+						}
+						@neo.ButtonAttrs(
+							neo.ButtonOpts{Variant: neo.Set(neo.ButtonVariantPrimary)},
+							attrs(
+								templ.Attributes{
+									"id":                     idProjectOpen,
+									"data-show":              showOpenProject,
+									"data-attr:disabled":     "$folder==='' || $opening",
+									"data-class:btn-loading": "$opening",
+								},
+								hiddenWhen(dir != "" && errMsg == "" &&
+									numCorrupt == 0 && numMissing == 0),
+								openProjectClickAttr(numChanges),
+							),
+						) {
+							@componentOpenProjectLabel("Open Project")
+						}
+						@neo.KeysAttrs(
+							neo.KeysOpts{
+								Keys:    neo.Set("Enter"),
+								For:     neo.Set(idProjectOpen),
+								InInput: neo.Set(true),
+							},
+							templ.Attributes{
+								"data-attr:disabled": "!(" + showOpenProject + ")",
+							},
+						)
+					</div>
+				}
+			}
+			if numChanges > 0 {
+				<div
+					class="modal-overlay"
+					style="display:none"
+					data-show="$confirmdiscard"
+				>
+					@neo.CardAttrs(neo.CardOpts{}, templ.Attributes{"class": "modal-card"}) {
+						@neo.CardHeader() {
+							@neo.CardTitle() {
+								<h3>Unsaved Changes</h3>
+							}
+						}
+						@neo.CardBody() {
+							<p>
+								You have { strfmt.Int(numChanges) } unsaved change(s).
+								Opening a new project will irreversibly discard them.
+							</p>
+						}
+						@neo.CardFooterAttrs(templ.Attributes{"class": "modal-actions"}) {
+							@neo.ButtonAttrs(
+								neo.ButtonOpts{Variant: neo.Set(neo.ButtonVariantGhost)},
+								templ.Attributes{"data-on:click": "$confirmdiscard=false"},
+							) {
+								Cancel
+							}
+							@neo.ButtonAttrs(
+								neo.ButtonOpts{Variant: neo.Set(neo.ButtonVariantDanger)},
+								templ.Attributes{
+									"data-attr:disabled":     "$opening",
+									"data-class:btn-loading": "$opening",
+									"data-on:click": action.PageProjectDir.Open.POST(
+										action.WithBefore(
+											"$confirmdiscard=false;$opening=true",
+										),
+									),
+								},
+							) {
+								@componentOpenProjectLabel("Discard Changes")
+							}
+						}
+					}
+				</div>
+			}
+		</div>
+	}
+}
+
+// componentProjectDirAlert renders one of the project-directory
+// diagnostics. Each is scoped to the originally loaded folder, so a
+// pending edit in the input hides the stale message.
+templ componentProjectDirAlert(variant neo.AlertVariant, icon templ.Component) {
+	@neo.AlertAttrs(
+		neo.AlertOpts{Variant: neo.Set(variant)},
+		templ.Attributes{
+			"role":      "alert",
+			"data-show": "$folder===$origfolder",
+		},
+	) {
+		@neo.AlertIcon() {
+			@icon
+		}
+		@neo.AlertContent() {
+			{ children... }
+		}
+	}
+}
+
+// componentOpenProjectLabel swaps the button label for a spinner while
+// the open request is in flight.
+templ componentOpenProjectLabel(idle string) {
+	<span data-show="!$opening">{ idle }</span>
+	<span
+		class="btn-loading-label"
+		style="display:none"
+		data-show="$opening"
+	>
+		@iconLoader()
+		Opening&hellip;
+	</span>
+}

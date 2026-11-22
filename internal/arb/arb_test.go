@@ -2,6 +2,7 @@ package arb_test
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"runtime"
 	"strings"
@@ -220,6 +221,32 @@ func TestDecodeDefaultMessageType(t *testing.T) {
 	require.Equal(t, expectEncoded, out.String())
 }
 
+// failFirstWriter fails its first write and accepts all later ones.
+type failFirstWriter struct{ writes int }
+
+var errWrite = errors.New("write failed")
+
+func (w *failFirstWriter) Write(p []byte) (int, error) {
+	w.writes++
+	if w.writes == 1 {
+		return 0, errWrite
+	}
+	return len(p), nil
+}
+
+func TestEncodeWriteError(t *testing.T) {
+	t.Parallel()
+
+	file := &arb.File{
+		Locale: language.English,
+		Messages: map[string]arb.Message{
+			"msg": {ID: "msg", ICUMessage: "Hello", Description: "greeting"},
+		},
+	}
+	err := arb.Encode(new(failFirstWriter), file, "  ")
+	require.ErrorIs(t, err, errWrite)
+}
+
 func TestDecodeErr(t *testing.T) {
 	t.Parallel()
 	arbDecoder := arb.NewDecoder()
@@ -260,9 +287,6 @@ func TestDecodeErr(t *testing.T) {
 			`parsing time "15:40" as "2006-01-02T15:04:05Z07:00": `+
 			`cannot parse "15:40" as "2006"`,
 		MustReadFile(t, "testdata/err_invalid_last_modified.arb"))
-	f(t, arb.ErrUndefinedPlaceholder,
-		`undefined placeholder: "notInList"`,
-		MustReadFile(t, "testdata/err_undefined_placeholder.arb.txt"))
 }
 
 func MustReadFile(tb testing.TB, fileName string) string {

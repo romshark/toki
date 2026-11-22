@@ -1,0 +1,27 @@
+package template
+
+import "github.com/romshark/morpheus/neo"
+
+templ PageLoading() {
+	@page("page-loading", nil) {
+		<div class="page-center">
+			<meta http-equiv="refresh" content="1"/>
+			@neo.Card(neo.CardOpts{}) {
+				@neo.CardHeader() {
+					@neo.CardTitle() {
+						<h1>Toki Editor</h1>
+					}
+				}
+				@neo.CardBody() {
+					<div class="loading-screen">
+						@componentLoadingDots()
+						<p>Rebuilding index database&hellip;</p>
+						<p class="loading-hint">
+							This may take a moment for large codebases.
+						</p>
+					</div>
+				}
+			}
+		</div>
+	}
+}
