@@ -105,6 +105,7 @@ func printVersionInfoAndExit(stderr, stdout io.Writer) (exitCode int) {
 		_, _ = fmt.Fprintf(stderr, "opening executable file %q: %v\n", os.Args[0], err)
 		return 1
 	}
+	defer func() { _ = f.Close() }()
 
 	info, err := buildinfo.Read(f)
 	if err != nil {

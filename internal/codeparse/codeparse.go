@@ -290,6 +290,7 @@ func (p *Parser) CollectARBFiles(bundlePkgDir string, scan *Scan) error {
 		if err != nil {
 			return err
 		}
+		defer func() { _ = f.Close() }()
 
 		arbFile, err := p.arbDecoder.Decode(f)
 		if err != nil {
