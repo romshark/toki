@@ -25,6 +25,20 @@ test: fmtcheck lint
 templ:
 	go run github.com/a-h/templ/cmd/templ@v0.3.1118 generate
 
+# MORPHEUS_COMPONENTS lists the Morpheus components the editor uses.
+# Add a component when a template starts using it, then run `make morpheus`.
+MORPHEUS_COMPONENTS = alert badge breadcrumb button buttongroup card clipcopy \
+	combobox keys layout link navgroup pagination popover radio-group select \
+	sidebar switch textinput tooltip
+
+# morpheus bundles MORPHEUS_COMPONENTS into the editor's static assets
+# at the Morpheus version go.mod requires.
+morpheus:
+	go run github.com/romshark/morpheus@$$(go list -m -f '{{.Version}}' github.com/romshark/morpheus) \
+		bundle $(addprefix -components ,$(MORPHEUS_COMPONENTS)) -o editor/app/static
+	mv editor/app/static/morpheus.min.js editor/app/static/morpheus.js
+	mv editor/app/static/morpheus.min.css editor/app/static/morpheus.css
+
 # TEMPL_DEV_MODE_WATCH_ROOT scopes templ's hot-reload string lookup to this repository.
 # Templier runs the app with TEMPL_DEV_MODE=true, which makes the templ runtime resolve
 # every literal through a _templ.txt sidecar — including for prebuilt _templ.go files in
