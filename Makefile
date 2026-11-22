@@ -47,7 +47,7 @@ morpheus:
 dev-editor: templ
 	cd editor/js && npm install
 	TEMPL_DEV_MODE_WATCH_ROOT=$(CURDIR) \
-		go run github.com/romshark/datapages/cmd/datapages@v0.11.4 watch
+		go run github.com/romshark/datapages/cmd/datapages@v0.11.6 watch
 
 gen-example-large:
 	go run ./cmd/genexamplelarge
