@@ -32,6 +32,6 @@ func main() {
 	cli.Commit = commit
 	cli.Date = date
 	r, exitCode := cli.Run(os.Args, os.Environ(), os.Stderr, os.Stdout, time.Now())
-	r.Print()
+	r.Print(os.Stdout)
 	os.Exit(exitCode)
 }

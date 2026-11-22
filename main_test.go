@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -706,6 +707,37 @@ func TestGenerate(t *testing.T) {
 			// TODO: make sure the program is compilable.
 		})
 	}
+}
+
+// TestGenerateJSONPackageError makes sure JSON output reports errors
+// that stop the source scan.
+func TestGenerateJSONPackageError(t *testing.T) {
+	dir := t.TempDir()
+	initGoMod(t, dir, ModName)
+	writeFiles(t, dir, map[string]string{
+		"main.go": `
+			package main
+			func main() {
+		`,
+	})
+
+	var result cli.Result
+	runInDir(t, dir, func() {
+		var exitCode int
+		result, exitCode = cli.Run(
+			[]string{"toki", "generate", "-l=en", "-json"},
+			osEnv(), io.Discard, io.Discard, TimeNow,
+		)
+		require.NotZero(t, exitCode)
+	})
+	require.ErrorIs(t, result.Err, cli.ErrAnalyzingSource)
+	require.Nil(t, result.Scan)
+
+	var stdout bytes.Buffer
+	result.Print(&stdout)
+	var out cli.ResultJSON
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &out), stdout.String())
+	require.Equal(t, result.Err.Error(), out.Error)
 }
 
 // TestGenerateDomainFileNotOverwritten verifies that an existing .tokidomain.yml file

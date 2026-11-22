@@ -3,8 +3,8 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
-	"os"
 	"time"
 
 	"github.com/romshark/toki/internal/codeparse"
@@ -14,9 +14,9 @@ import (
 )
 
 type Result struct {
-	Config       *config.ConfigGenerate
-	Start        time.Time
-	Scan         *codeparse.Scan
+	Config     *config.ConfigGenerate
+	Start      time.Time
+	Scan       *codeparse.Scan
 	NewTexts   []codeparse.Text
 	RemovedIDs []string // IDs of the TIKs removed from the source.
 	Err        error
@@ -46,52 +46,56 @@ type ResultJSON struct {
 	Catalogs       []ResultJSONCatalog     `json:"catalogs"`
 }
 
-func (r Result) mustPrintJSON() {
-	enc := json.NewEncoder(os.Stdout)
+func (r Result) mustPrintJSON(stdout io.Writer) {
+	enc := json.NewEncoder(stdout)
 	var errMsg string
 	if r.Err != nil {
 		errMsg = r.Err.Error()
 	}
 	data := ResultJSON{
-		Error:          errMsg,
-		StringCalls:    r.Scan.StringCalls.Load(),
-		WriteCalls:     r.Scan.WriteCalls.Load(),
-		TIKs:           r.Scan.Texts.Len(),
-		TIKsUnique:     r.Scan.TextIndexByID.Len(),
-		TIKsNew:        len(r.NewTexts),
-		FilesTraversed: int(r.Scan.FilesTraversed.Load()),
-		TimeMS:         time.Since(r.Start).Milliseconds(),
+		Error:   errMsg,
+		TIKsNew: len(r.NewTexts),
+		TimeMS:  time.Since(r.Start).Milliseconds(),
 	}
-	_ = r.Scan.SourceErrors.Access(func(s []codeparse.SourceError) error {
-		data.SourceErrors = make([]ResultJSONSourceError, len(s))
-		for i, serr := range s {
-			data.SourceErrors[i] = ResultJSONSourceError{
-				Error: serr.Err.Error(),
-				File:  serr.Filename,
-				Line:  serr.Line,
-				Col:   serr.Column,
+	// Errors that stop the source scan leave no scan to report.
+	if r.Scan != nil {
+		data.StringCalls = r.Scan.StringCalls.Load()
+		data.WriteCalls = r.Scan.WriteCalls.Load()
+		data.TIKs = r.Scan.Texts.Len()
+		data.TIKsUnique = r.Scan.TextIndexByID.Len()
+		data.FilesTraversed = int(r.Scan.FilesTraversed.Load())
+		_ = r.Scan.SourceErrors.Access(func(s []codeparse.SourceError) error {
+			data.SourceErrors = make([]ResultJSONSourceError, len(s))
+			for i, serr := range s {
+				data.SourceErrors[i] = ResultJSONSourceError{
+					Error: serr.Err.Error(),
+					File:  serr.Filename,
+					Line:  serr.Line,
+					Col:   serr.Column,
+				}
 			}
-		}
-		return nil
-	})
-	_ = r.Scan.Catalogs.Access(func(s []*codeparse.Catalog) error {
-		data.Catalogs = make([]ResultJSONCatalog, len(s))
-		for i, c := range s {
-			completeness := completeness(c)
-			data.Catalogs[i] = ResultJSONCatalog{
-				Locale:       c.ARB.Locale.String(),
-				Completeness: completeness,
+			return nil
+		})
+		_ = r.Scan.Catalogs.Access(func(s []*codeparse.Catalog) error {
+			data.Catalogs = make([]ResultJSONCatalog, len(s))
+			for i, c := range s {
+				completeness := completeness(c)
+				data.Catalogs[i] = ResultJSONCatalog{
+					Locale:       c.ARB.Locale.String(),
+					Completeness: completeness,
+				}
 			}
-		}
-		return nil
-	})
+			return nil
+		})
+	}
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(data); err != nil {
 		panic(fmt.Errorf("encoding JSON to stdout: %w", err))
 	}
 }
 
-func (r Result) Print() {
+// Print logs r and, in JSON mode, writes it to stdout as JSON.
+func (r Result) Print(stdout io.Writer) {
 	if r.Err != nil {
 		log.Error(r.Err.Error(), nil)
 	}
@@ -99,7 +103,7 @@ func (r Result) Print() {
 		return
 	}
 	if r.Config.JSON {
-		r.mustPrintJSON()
+		r.mustPrintJSON(stdout)
 		return
 	}
 
