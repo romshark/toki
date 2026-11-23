@@ -94,7 +94,7 @@ func PageTIKs(tr tokibundle.Reader, data DataIndex) templ.Component {
 				templ_7745c5c3_Err = componentNavbarSearch(tr, []Breadcrumb{
 					{Label: tr.String("Dashboard"), Href: href.PageIndex()},
 					{Label: tr.String("Messages")},
-				}, data.TotalChanges, data.CanApplyChanges).Render(ctx, templ_7745c5c3_Buffer)
+				}, data.TotalChanges, data.CanApplyChanges, data.UserAgent).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

@@ -20,6 +20,15 @@ const ActionExcludeEditor = `(^_|\._|^editor\.)`
 // NoEditorSignals applies ActionExcludeEditor to an action.
 var NoEditorSignals = action.WithFilterSignals("", ActionExcludeEditor)
 
+// openNavSearch is the Datastar expression that opens the search of the
+// navbar and focuses its field, which shows once $_navsearch is set.
+const openNavSearch = `$_navsearch=true;
+requestAnimationFrame(() => document.getElementById('navsearch-input')?.focus())`
+
+// idNavSearchClose is the element id of the button that closes the search
+// of the navbar, which Escape clicks.
+const idNavSearchClose = "navsearch-close"
+
 // LangSystem is the interface language preference that follows the
 // languages the browser asks for.
 const LangSystem = "system"
@@ -214,6 +223,11 @@ type DataIndex struct {
 	// read from the cookies on a page load. A server re-render leaves it nil,
 	// which keeps each section as the user set it. See [sectionOpen].
 	ClosedSections map[string]bool
+
+	// UserAgent is the User-Agent of the request of a page load, for which
+	// the server renders the keys of shortcut hints. A server re-render
+	// leaves it empty, and <neo-kbd> renders them in the browser.
+	UserAgent string
 
 	// ShownLocales which locales are shown (nil = all)
 	ShownLocales map[string]bool

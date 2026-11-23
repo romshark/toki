@@ -32,7 +32,7 @@ templ PageTIKs(tr tokibundle.Reader, data DataIndex) {
 			@componentNavbarSearch(tr, []Breadcrumb{
 				{Label: tr.String("Dashboard"), Href: href.PageIndex()},
 				{Label: tr.String("Messages")},
-			}, data.TotalChanges, data.CanApplyChanges)
+			}, data.TotalChanges, data.CanApplyChanges, data.UserAgent)
 			<main>
 				@TiksContentList(tr, data)
 			</main>

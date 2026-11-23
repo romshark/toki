@@ -293,6 +293,18 @@ a {
 	text-overflow: ellipsis;
 }
 
+/* The hint of the shortcut that opens the search, at the end of the field.
+   A touch screen rarely comes with a keyboard. */
+.navbar-search-kbd {
+	position: absolute;
+	inset-inline-end: 0.5rem;
+	pointer-events: none;
+
+	@media (pointer: coarse) {
+		display: none;
+	}
+}
+
 /* Mobile search mode */
 .navbar-search-mode {
 	display: flex;

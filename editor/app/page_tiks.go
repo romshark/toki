@@ -79,6 +79,7 @@ func (p PageTIKs) GET(
 		max(q.Page-1, 0),
 		q.PageSize, q.Search)
 	data.ClosedSections = readClosedSections(r)
+	data.UserAgent = r.UserAgent()
 	body = template.PageTIKs(tr, data)
 	return
 }

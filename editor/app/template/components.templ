@@ -166,13 +166,21 @@ templ componentNavbar(
 	</nav>
 }
 
+// componentNavbarSearch is the navbar of the TIKs page, with its search.
+// mod+K opens the search from anywhere on the page. userAgent is as in
+// [DataIndex.UserAgent].
 templ componentNavbarSearch(
 	tr tokibundle.Reader, breadcrumbs []Breadcrumb, totalChanges int, canApplyChanges bool,
+	userAgent string,
 ) {
 	<nav
 		class="navbar"
 		data-signals:_navsearch="false"
 	>
+		@neo.KeysAttrs(
+			neo.KeysOpts{Keys: neo.Set("mod+k"), Target: neo.Set("document")},
+			templ.Attributes{"data-on:neo-keys": openNavSearch},
+		)
 		<!-- Normal mode -->
 		<div class="navbar-normal" data-show="!$_navsearch">
 			@componentNavbarCore(tr, breadcrumbs)
@@ -192,24 +200,30 @@ templ componentNavbarSearch(
 							Placeholder: neo.Set(tr.String("Search…")),
 						},
 						templ.Attributes{
-							"data-bind:searchquery": true,
-							"data-on:focus": `
-								$_navsearch=true;
-								requestAnimationFrame(() => document.getElementById(
-									'navsearch-input')?.focus())
-							`,
+							"data-bind:searchquery":          true,
+							"data-on:focus":                  openNavSearch,
 							"data-on:input__debounce.300ms": action.PageTIKs.Filter.POST(NoEditorSignals),
 						},
 					)
+					// The hint of the shortcut gives way to the clear button of a
+					// query. The glyphs alone mean nothing to a screen reader.
+					@neo.KbdGroupAttrs(templ.Attributes{
+						"class":       "navbar-search-kbd",
+						"aria-hidden": "true",
+						"data-show":   "!$searchquery",
+					}) {
+						@neo.Kbd(neo.KbdOpts{
+							Key: neo.Set("mod"), Size: neo.Set("sm"), UserAgent: neo.Set(userAgent),
+						})
+						@neo.Kbd(neo.KbdOpts{
+							Key: neo.Set("k"), Size: neo.Set("sm"), UserAgent: neo.Set(userAgent),
+						})
+					}
 				</div>
 				<!-- Mobile search button -->
 				@componentIconButton(tr.String("Search"), templ.Attributes{
-					"class": "btn-icon navbar-mobile-only",
-					"data-on:click": `
-						$_navsearch=true;
-						requestAnimationFrame(() => document.getElementById(
-							'navsearch-input')?.focus())
-					`,
+					"class":         "btn-icon navbar-mobile-only",
+					"data-on:click": openNavSearch,
 				}) {
 					@iconSearch()
 				}
@@ -219,10 +233,18 @@ templ componentNavbarSearch(
 		<!-- Mobile search mode (replaces navbar content) -->
 		<div class="navbar-search-mode" style="display:none" data-show="$_navsearch">
 			@componentIconButton(tr.String("Close search"), templ.Attributes{
+				"id":            idNavSearchClose,
 				"data-on:click": "$_navsearch=false",
 			}) {
 				@iconX()
 			}
+			// Escape in the search mode closes it as the button does. Its default
+			// would clear the query of the search field.
+			@neo.Keys(neo.KeysOpts{
+				Keys:    neo.Set("escape"),
+				For:     neo.Set(idNavSearchClose),
+				InInput: neo.Set(true),
+			})
 			<div class="navbar-search" style="flex:1">
 				@iconSearch()
 				@neo.TextInputAttrs(

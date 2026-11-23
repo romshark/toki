@@ -25,6 +25,7 @@ Releases up to v0.8.5 have their notes on
 - Install toki on macOS with Homebrew: `brew install --cask romshark/tools/toki`.
 - Cache the scan of the module in `.toki/index.db`, together with the edits not yet written to the catalogs. Add `.toki/` to `.gitignore`.
 - Reorder the locales by dragging them in the sidebar. Every page shows them in that order, which `.toki/index.db` keeps. Until then, the default locale comes first.
+- Open the search of the messages with ⌘K on macOS and Ctrl+K elsewhere, and close it with Escape. The search field shows the shortcut, except on touch screens.
 - Collapse the Domains, Locales and Filter sections of the sidebar, and the ICU Messages and Source Occurrences sections on the page of a TIK. The browser remembers which ones you closed.
 - Drag the right edge of the sidebar to resize it between 15rem and 32rem. The browser remembers the width.
 - Pick the motion of the editor in the settings: Animated, Reduced Motion, or System, which follows the reduced motion setting of the OS.
