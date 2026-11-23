@@ -396,7 +396,6 @@ a {
 
 .sidebar-nav-link {
 	inline-size: 100%;
-	justify-content: flex-start;
 	gap: 0.5rem;
 	text-align: start;
 
@@ -484,11 +483,13 @@ neo-radio-group {
 	/* Ghost-button styling comes from Morpheus; these only shape the
 	   two-line content inside it. */
 	inline-size: 100%;
-	justify-content: flex-start;
 	text-align: start;
 	overflow: hidden;
 
+	/* Morpheus centers the content of a button. Filling the button puts
+	   it at the start, in line with the rows above. */
 	& neo-layout {
+		flex: 1 1 auto;
 		min-inline-size: 0;
 	}
 
@@ -739,12 +740,6 @@ main {
 }
 
 .locale-card {
-	& [data-neo-card-header] {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
 	& [data-neo-card-body] {
 		display: flex;
 		flex-direction: column;
