@@ -32,6 +32,15 @@ templ componentIconButton(ariaLabel string, extra templ.Attributes) {
 	}
 }
 
+// componentPageCardTitle is the title of the card of a page that is a single card:
+// an h1 with the styles of [neo.CardTitle], which renders an h3.
+// Place it in a [neo.CardHeader].
+templ componentPageCardTitle() {
+	<h1 data-neo-card-title>
+		{ children... }
+	</h1>
+}
+
 // --- Navbar ---
 templ componentNavbarBuildBtn(tr tokibundle.Reader, totalChanges int, canApplyChanges bool) {
 	if totalChanges > 0 {
@@ -200,8 +209,8 @@ templ componentNavbarSearch(
 							Placeholder: neo.Set(tr.String("Search…")),
 						},
 						templ.Attributes{
-							"data-bind:searchquery":          true,
-							"data-on:focus":                  openNavSearch,
+							"data-bind:searchquery":         true,
+							"data-on:focus":                 openNavSearch,
 							"data-on:input__debounce.300ms": action.PageTIKs.Filter.POST(NoEditorSignals),
 						},
 					)
@@ -661,7 +670,7 @@ templ componentResetModal(tr tokibundle.Reader) {
 		@neo.CardAttrs(neo.CardOpts{}, templ.Attributes{"class": "modal-card"}) {
 			@neo.CardHeader() {
 				@neo.CardTitle() {
-					<h3>{ tr.String("Reset to original?") }</h3>
+					{ tr.String("Reset to original?") }
 				}
 			}
 			@neo.CardBody() {

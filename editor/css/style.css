@@ -105,7 +105,6 @@ main {
 		inline-size: 0 !important;
 		min-inline-size: 0 !important;
 		max-inline-size: 0 !important;
-		flex-basis: 0;
 	}
 
 	@media (max-width: 50rem) {
@@ -113,8 +112,18 @@ main {
 			inline-size: 0 !important;
 			min-inline-size: 0 !important;
 			max-inline-size: 0 !important;
-			flex-basis: 0;
 		}
+	}
+
+	/* The row narrows and widens with the sidebar, at the pace of its
+	   transition. Without it, the main area takes the row at once and the
+	   closing sidebar draws over it. Like the sidebar, the row doesn't
+	   animate its first render, a switch between in-flow and overlay, or a
+	   drag. The bounds move too, which would cut the transition short. */
+	&:has(> neo-sidebar:state(ready):not(:state(mode-snap))):not(:state(resizing)) {
+		transition-property: width, min-width, max-width;
+		transition-duration: var(--neo-sidebar-transition-duration);
+		transition-timing-function: var(--neo-easing, ease);
 	}
 }
 
@@ -1005,7 +1014,9 @@ toki-editor {
 	overflow: auto;
 }
 
-/* Prevent CodeMirror from overflowing cards */
+/* Prevent CodeMirror from overflowing cards. The card clips, not its header
+   and body: their boxes fit their content tightly and would clip the focus
+   ring of a control at their edge, which the padding of the card holds. */
 neo-card {
 	min-inline-size: 0;
 	overflow: hidden;
@@ -1013,16 +1024,11 @@ neo-card {
 	& [data-neo-card-header],
 	& [data-neo-card-body] {
 		min-inline-size: 0;
-		overflow: hidden;
 	}
 
 	/* Native locale card: allow tooltip to escape */
 	&.native-locale-cell {
 		overflow: visible;
-
-		& [data-neo-card-body] {
-			overflow: visible;
-		}
 
 		&:hover {
 			z-index: 10;
@@ -1053,6 +1059,11 @@ neo-card {
 	gap: 1rem;
 	padding: 2rem 1rem;
 	text-align: center;
+
+	/* The gap spaces the lines. */
+	& p {
+		margin: 0;
+	}
 }
 
 .loading-hint {
@@ -1322,10 +1333,6 @@ neo-card {
 
 		& svg { width: 0.75rem; height: 0.75rem; }
 	}
-}
-
-.domain-card [data-neo-card-body] {
-	overflow: hidden;
 }
 
 .domain-dir-path {

@@ -23,8 +23,8 @@ templ PageBuildBundle(tr tokibundle.Reader, state BuildBundleState) {
 templ buildBundleCard(title string) {
 	@neo.Card(neo.CardOpts{}) {
 		@neo.CardHeader() {
-			@neo.CardTitle() {
-				<h1>{ title }</h1>
+			@componentPageCardTitle() {
+				{ title }
 			}
 		}
 		@neo.CardBody() {

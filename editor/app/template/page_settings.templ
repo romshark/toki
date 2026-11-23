@@ -312,7 +312,7 @@ templ PageSettings(tr tokibundle.Reader, version string, data DataSettingsPrevie
 			@neo.CardAttrs(neo.CardOpts{}, templ.Attributes{"class": "modal-card"}) {
 				@neo.CardHeader() {
 					@neo.CardTitle() {
-						<h3>{ tr.String("AI Translation Service") }</h3>
+						{ tr.String("AI Translation Service") }
 					}
 				}
 				@neo.CardBodyAttrs(templ.Attributes{
