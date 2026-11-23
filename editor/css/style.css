@@ -95,13 +95,26 @@ main {
 	/* A closed sidebar, or one that overlays the page on a narrow screen,
 	   leaves the row to the main area. The important overrides the size a
 	   drag set inline, which --neo-resizable-width keeps for the sidebar
-	   when it opens again. */
+	   when it opens again. Until Morpheus upgrades the sidebar, its
+	   open="false" closes it and a viewport below 50rem overlays it, as
+	   Morpheus renders it then. Without these, the main area moves when
+	   the upgrade collapses the row. */
 	&:has(> neo-sidebar:defined:not([open])),
+	&:has(> neo-sidebar:not(:defined)[open="false"]),
 	&:has(> neo-sidebar:state(overlay)) {
 		inline-size: 0 !important;
 		min-inline-size: 0 !important;
 		max-inline-size: 0 !important;
 		flex-basis: 0;
+	}
+
+	@media (max-width: 50rem) {
+		&:has(> neo-sidebar:not(:defined)) {
+			inline-size: 0 !important;
+			min-inline-size: 0 !important;
+			max-inline-size: 0 !important;
+			flex-basis: 0;
+		}
 	}
 }
 
