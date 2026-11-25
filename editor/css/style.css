@@ -1126,10 +1126,21 @@ neo-card {
 	font-variant-numeric: tabular-nums;
 }
 
+/* The flex basis fits the arrows and five pages in English and German. With less
+   room beside the other items, the pagination wraps onto its own row.
+   The auto margins put the arrows at the edges and center the pages between them.
+   Overflow must stay on the inline end: <neo-pagination> drops chips until its
+   scrollWidth fits, and overflow on the inline start counts toward no scrollWidth. */
 .pagination {
-	display: flex;
-	justify-content: flex-end;
-	flex: 1 1 auto;
+	flex: 1 1 26rem;
+
+	& > [data-neo-pagination-prev] {
+		margin-inline-end: auto;
+	}
+
+	& > [data-neo-pagination-next] {
+		margin-inline-start: auto;
+	}
 }
 
 /* --- Loading indicators --- */
