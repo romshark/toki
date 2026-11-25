@@ -44,8 +44,8 @@ github.com/prometheus/common v0.74.0 h1:6iYW8MsYvmEnXFD9zLGgF0qmReaRhs3OMONu1c/n
 github.com/prometheus/common v0.74.0/go.mod h1:i/02C+FCst5B1etKgWesNrD49n+onplJCqUCtUKkOeA=
 github.com/prometheus/procfs v0.23.0 h1:ad+S6FTkzwaMgacKLM5h6bNKExS+DMH0YiUwXItH/o4=
 github.com/prometheus/procfs v0.23.0/go.mod h1:3AVXO0FqLafyYFU/V/IQRZlC8Rgqz8Dm/x6pKLK+RIk=
-github.com/romshark/datapages v0.11.6 h1:cTamaU1HE1j6lLn1N7gyBcXQhMi8jbRivkY3S5IbnOI=
-github.com/romshark/datapages v0.11.6/go.mod h1:w5s6eB7G3Oi91fRira/xgf+tHF12G605i6J/bk3L9AA=
+github.com/romshark/datapages v0.11.7 h1:7ThW26jtorQ1gIMIlRUfFVlr7i5y3wiYmYhI94dMwE0=
+github.com/romshark/datapages v0.11.7/go.mod h1:w5s6eB7G3Oi91fRira/xgf+tHF12G605i6J/bk3L9AA=
 github.com/romshark/icumsg v0.5.0 h1:ytyBN0WwNwJH3es+jCadHDtOqAqJGh8LppgTJMrmcW4=
 github.com/romshark/icumsg v0.5.0/go.mod h1:gYyFym8yMLPF3OSp9KtaN6LPZA4t+lukL2UZkmXwCRg=
 github.com/romshark/morpheus v0.7.0 h1:5HLYiD7rtuDVyq4CYCgnT0aMIbFdkrSTlW3VVAKjAyY=
